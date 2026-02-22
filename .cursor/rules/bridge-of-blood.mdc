@@ -1,0 +1,192 @@
+---
+alwaysApply: true
+---
+
+# Bridge of Blood – Core Design & Architecture Rules
+
+Bridge of Blood is a real-time, round-based roguelike centered on exponential scaling through event-driven spell synergies.
+
+This project prioritizes:
+- Data-oriented design
+- Deterministic systems
+- Event aggregation over direct coupling
+- Scalability and robustness over short-term simplicity
+
+All generated systems must reinforce these principles.
+
+---
+
+# Core Gameplay Pillars
+
+## 1. Throughput, Not Survival
+
+- The player does not take damage.
+- Enemies respawn instantly when killed.
+- Overkill damage counts.
+- There must be no implicit DPS cap.
+
+Systems should never introduce hidden ceilings that limit scaling.
+
+The game is about optimizing blood extraction throughput under time pressure.
+
+---
+
+## 2. Spell Loop Engine
+
+The player defines an ordered sequence of N spells that continuously loop.
+
+Design requirements:
+- Spell order must matter.
+- Earlier spells must be able to modify later spells.
+- Later spells must be able to consume prior effects.
+- The system must support chain amplification.
+
+All spell execution systems should allow:
+- Cross-spell state sharing
+- Event accumulation within a loop
+- Conditional multipliers based on prior spell outcomes
+
+Avoid tightly coupling spells directly to each other.
+
+---
+
+## 3. Event → Condition → Effect Architecture
+
+Items and reactive systems must follow this structure:
+
+- Event (combat telemetry or game state change)
+- Condition (optional filter or constraint)
+- Effect (spell modifier, stat modifier, or game modifier)
+
+Do NOT design item logic as ad-hoc direct calls.
+
+Instead:
+- Aggregate combat results into structured outcome data.
+- Feed that data into item processors.
+- Generate modifier structs or state changes.
+- Apply those changes cleanly back into simulation.
+
+Favor pipelines over bidirectional logic.
+
+---
+
+# Architecture Bias
+
+## Data-Oriented First
+
+- Prefer structs over classes for runtime simulation data.
+- Separate authoring data (ScriptableObjects) from runtime data (structs).
+- Avoid runtime allocations during combat.
+- Avoid reflection-heavy systems in hot paths.
+
+## Hybrid ECS Approach
+
+We are NOT fully committing to Unity DOTS.
+
+However:
+- Combat simulation and heavy iteration systems should be jobifiable.
+- Burst-compatible data paths should be favored.
+- Avoid MonoBehaviour-driven per-entity logic in combat.
+
+GameObject/MonoBehaviour usage should primarily handle:
+- Presentation
+- UI
+- Authoring
+- Non-hot-path coordination
+
+Simulation should be:
+- Batch-processable
+- Deterministic
+- Aggregatable
+
+---
+
+# Scaling Philosophy
+
+Bridge of Blood follows a layered scaling recipe:
+
+1. Flat Base Stats
+2. Additive Modifiers
+3. Conditional Multipliers
+4. Global Multipliers
+5. Cross-Spell Multipliers
+
+Late-game scaling should naturally become multiplicative.
+
+Do NOT introduce artificial caps unless absolutely required for performance stability.
+
+Favor stacking systems that allow controlled exponential growth.
+
+---
+
+# Anti-One-Spell Meta
+
+Systems must discourage hyper-investment into a single spell.
+
+Encourage:
+- Multi-step engines
+- Setup → Proc → Amplify → Finisher structures
+- Tradeoffs (positive + negative modifiers)
+- Tag-based synergies
+
+Pure linear upgrades without downside should be rare.
+
+---
+
+# Enemy Philosophy
+
+Enemies are intentionally simple:
+
+- HP
+- Speed
+- Elemental weakness
+
+Do NOT design complex AI systems unless explicitly requested.
+
+Enemies exist primarily as scaling vessels for the player's engine.
+
+---
+
+# Combat Telemetry Requirement
+
+Combat systems must expose structured outcome data such as:
+
+- Total damage dealt
+- Damage by type
+- Enemies hit
+- Enemies killed
+- Ailments applied
+- Ailments consumed
+- Kill streaks
+- Overkill totals
+- Per-spell metrics
+
+Items and modifiers should consume telemetry data rather than hooking directly into spell logic.
+
+---
+
+# Determinism and Robustness
+
+- Prefer deterministic simulation paths.
+- Avoid hidden mutable global state.
+- Avoid side effects inside modifier evaluation.
+- Ensure multiplier order is explicit and predictable.
+
+Design systems so that:
+- Multiplier application order can be reasoned about.
+- Stacking behavior is transparent.
+- Debugging scaling issues is feasible.
+
+---
+
+# Thematic Constraints
+
+Tone:
+- Macabre but darkly humorous.
+- Medieval satanic manuscript aesthetic.
+- Blood as a visual progress resource.
+
+UI and systems should reinforce:
+- Escalation tension
+- Ritualistic sequencing
+- Dramatic exponential payoff moments

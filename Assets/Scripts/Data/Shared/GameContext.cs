@@ -65,7 +65,7 @@ namespace BridgeOfBlood.Data.Shared
 		public int spellInvocationId;
 		public int enemyEntityId;
 		public float damageDealt;
-		public SpellDamageType damageType;
+		public DamageType damageType;
 		public StatusAilmentFlag statusAilmentsApplied;
 		public bool wasKill;
 		public float overkillDamage;

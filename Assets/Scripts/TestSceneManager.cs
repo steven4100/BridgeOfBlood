@@ -2,13 +2,22 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
 using BridgeOfBlood.Data.Enemies;
+using BridgeOfBlood.Data.Spells;
 using Unity.Collections;
 using Debug = UnityEngine.Debug;
+using System;
+
+/// <summary>
+/// A named simulation step that can be executed, timed, and stepped through by the debug controller.
+/// </summary>
+public struct SimulationStepCommand
+{
+    public string Name;
+    public Action Execute;
+}
 
 public class TestSceneManager : MonoBehaviour
 {
-    private const int TotalSimulationPhases = 5;
-
     [Header("Simulation")]
     [Tooltip("Enemies spawned per second along the left edge")]
     public float spawnRate = 2f;
@@ -26,9 +35,24 @@ public class TestSceneManager : MonoBehaviour
     public Camera renderCamera;
 
     public Material material;
+    public Material attackMaterial;
 
     [Tooltip("Size of each enemy quad in rect-local units")]
     public float enemyScale = 10f;
+
+    [Header("Player")]
+    [Tooltip("Player movement speed in rect-local units per second")]
+    public float playerMoveSpeed = 100f;
+
+    [Tooltip("Optional. Assign a PlayerRenderer (e.g. on a child of the simulation zone) to visualize the player.")]
+    public PlayerRenderer playerRenderer;
+
+    [Header("Spells")]
+    [Tooltip("Ordered list of spells in the loop. Cast timing uses each spell's castCompletionDuration.")]
+    public List<SpellAuthoringData> spells = new List<SpellAuthoringData>();
+
+    [Tooltip("Key that requests casting the next spell in the loop. Only casts when this is pressed and enough time has elapsed.")]
+    public KeyCode castInputKey = KeyCode.Space;
 
     [Header("Debug")]
     [Tooltip("Gizmo sphere radius at each unit position (Scene view, Play mode only)")]
@@ -40,12 +64,25 @@ public class TestSceneManager : MonoBehaviour
     [Tooltip("Optional debug controller for frame/phase stepping. If null, simulation runs normally.")]
     public SimulationDebugController debugController;
 
+    private Player _player;
     private EnemyManager _enemyManager;
     private EnemyMovementSystemLinear _movementSystem;
     private EnemyCullingSystem _cullingSystem;
     private EnemySpawner _spawner;
     private EnemyRenderSystem _renderSystem;
+    private AttackEntityManager _attackEntityManager;
+    private AttackEntityMovementSystem _attackMovementSystem;
+    private AttackEntityTimeSystem _attackTimeSystem;
+    private AttackEntityDebugRenderer _attackDebugRenderer;
+    private LoopedSpellCaster _loopedSpellCaster;
+    private CollisionSystem _collisionSystem;
+    private DamageSystem _damageSystem;
+    private DeadEnemyRemovalSystem _deadEnemyRemovalSystem;
+    private NativeList<CollisionEvent> _collisionEvents;
+    private NativeList<EnemyHitEvent> _hitEvents;
+    private NativeList<EnemyKilledEvent> _killEvents;
     private readonly List<IDebugDrawable> _debugDrawables = new List<IDebugDrawable>();
+    private SimulationStepCommand[] _steps;
     private float _simulationTime;
     private float _frameDeltaTime;
     private readonly List<int> _toRemove = new List<int>();
@@ -58,11 +95,48 @@ public class TestSceneManager : MonoBehaviour
         _cullingSystem = new EnemyCullingSystem();
         _spawner = new EnemySpawner(spawnRate, simulationZone.rect.height);
 
+        Rect r = rect;
+        _player = new Player(
+            new Unity.Mathematics.float2(r.center.x, r.center.y),
+            playerMoveSpeed);
+
+        if (playerRenderer != null)
+            playerRenderer.Player = _player;
+
+        _attackEntityManager = new AttackEntityManager();
+        _attackMovementSystem = new AttackEntityMovementSystem();
+        _attackTimeSystem = new AttackEntityTimeSystem();
+        _attackDebugRenderer = new AttackEntityDebugRenderer(_attackEntityManager, attackMaterial);
+        _collisionSystem = new CollisionSystem();
+        _damageSystem = new DamageSystem();
+        _deadEnemyRemovalSystem = new DeadEnemyRemovalSystem();
+        _collisionEvents = new NativeList<CollisionEvent>(64, Allocator.Persistent);
+        _hitEvents = new NativeList<EnemyHitEvent>(64, Allocator.Persistent);
+        _killEvents = new NativeList<EnemyKilledEvent>(16, Allocator.Persistent);
+
+        SpellInvoker loopInvoker = new SpellInvoker(_attackEntityManager);
+        List<Spell> runtimeSpells = BuildRuntimeSpells(spells);
+        _loopedSpellCaster = new LoopedSpellCaster(runtimeSpells, loopInvoker);
+
         _debugDrawables.Add(_enemyManager.Grid);
         _debugDrawables.Add(new EnemyManagerGizmoDrawer(_enemyManager, gizmoRadius));
+        _debugDrawables.Add(_attackDebugRenderer);
+
+        _steps = new[]
+        {
+            new SimulationStepCommand { Name = "Spawn",        Execute = StepSpawnEnemies },
+            new SimulationStepCommand { Name = "Move",         Execute = StepMoveEnemies },
+            new SimulationStepCommand { Name = "BuildGrid",    Execute = StepBuildGrid },
+            new SimulationStepCommand { Name = "Cull",         Execute = StepCull },
+            new SimulationStepCommand { Name = "RemoveCulled", Execute = StepRemoveCulled },
+            new SimulationStepCommand { Name = "AttackTick",   Execute = StepAttackTick },
+            new SimulationStepCommand { Name = "Collision",    Execute = StepCollision },
+            new SimulationStepCommand { Name = "Damage",       Execute = StepDamage },
+            new SimulationStepCommand { Name = "AttackExpire", Execute = StepAttackExpire },
+        };
 
         if (debugController != null)
-            debugController.Initialize(TotalSimulationPhases);
+            debugController.Initialize(_steps.Length);
     }
 
     void Update()
@@ -73,6 +147,12 @@ public class TestSceneManager : MonoBehaviour
         if (hasController)
             debugController.ProcessInput();
 
+        _player.Update(Time.deltaTime, rect);
+
+        bool castRequested = Input.GetKeyDown(castInputKey);
+        _loopedSpellCaster?.AttemptToCastNextSpell(_simulationTime, _player.Position, spells, castRequested);
+        _loopedSpellCaster?.Update(_simulationTime);
+
         bool advanceTime = !hasController || debugController.ShouldAdvanceTime;
         if (advanceTime)
         {
@@ -80,67 +160,40 @@ public class TestSceneManager : MonoBehaviour
             _simulationTime += _frameDeltaTime;
         }
 
-        var sw = debugLogTiming ? Stopwatch.StartNew() : null;
-        long spawnMs = 0, moveMs = 0, buildGridMs = 0, cullMs = 0, removeMs = 0;
+        Stopwatch sw = debugLogTiming ? new Stopwatch() : null;
+        long totalMs = 0;
 
-        int phase = 0;
-
-        if (!hasController || debugController.ShouldRunPhase(phase, "Spawn"))
+        for (int i = 0; i < _steps.Length; i++)
         {
-            sw?.Restart();
-            SpawnEnemies();
-            if (sw != null) spawnMs = sw.ElapsedMilliseconds;
+            if (!hasController || debugController.ShouldRunPhase(i, _steps[i].Name))
+            {
+                sw?.Restart();
+                _steps[i].Execute();
+                if (sw != null)
+                {
+                    long ms = sw.ElapsedMilliseconds;
+                    totalMs += ms;
+                    if (debugLogTiming)
+                        Debug.Log($"[Timing] {_steps[i].Name}: {ms}ms");
+                }
+            }
         }
-        phase++;
-
-        if (!hasController || debugController.ShouldRunPhase(phase, "Move"))
-        {
-            sw?.Restart();
-            MoveEnemies(_enemyManager.GetEnemies());
-            if (sw != null) moveMs = sw.ElapsedMilliseconds;
-        }
-        phase++;
-
-        if (!hasController || debugController.ShouldRunPhase(phase, "BuildGrid"))
-        {
-            sw?.Restart();
-            _enemyManager.BuildGrid();
-            if (sw != null) buildGridMs = sw.ElapsedMilliseconds;
-        }
-        phase++;
-
-        if (!hasController || debugController.ShouldRunPhase(phase, "Cull"))
-        {
-            sw?.Restart();
-            _cullingSystem.CollectEnemiesPastRightEdge(_enemyManager.GetEnemies(), rect.xMax, _toRemove);
-            if (sw != null) cullMs = sw.ElapsedMilliseconds;
-        }
-        phase++;
-
-        if (!hasController || debugController.ShouldRunPhase(phase, "Remove"))
-        {
-            sw?.Restart();
-            if (_toRemove.Count > 0)
-                _enemyManager.RemoveEnemies(_toRemove);
-            if (sw != null) removeMs = sw.ElapsedMilliseconds;
-        }
-        phase++;
 
         Camera cam = renderCamera != null ? renderCamera : Camera.main;
         if (cam != null)
+        {
             _renderSystem.RenderEnemies(_enemyManager.GetEnemies(), simulationZone, cam);
+            _attackDebugRenderer.Render(_attackEntityManager.GetEntities(), simulationZone, cam);
+        }
 
         if (hasController)
             debugController.NotifyFrameComplete();
 
         if (debugLogTiming)
-        {
-            long totalMs = spawnMs + moveMs + buildGridMs + cullMs + removeMs;
-            Debug.Log($"[Timing] Spawn:{spawnMs}ms Move:{moveMs}ms BuildGrid:{buildGridMs}ms Cull:{cullMs}ms Remove:{removeMs}ms Total:{totalMs}ms");
-        }
+            Debug.Log($"[Timing] Total: {totalMs}ms");
     }
 
-    void SpawnEnemies()
+    void StepSpawnEnemies()
     {
         List<Vector2> spawnPositions = _spawner.GetSpawnPositions(_simulationTime);
         if (spawnPositions.Count > 0 && enemyAuthoringData != null)
@@ -155,15 +208,106 @@ public class TestSceneManager : MonoBehaviour
         }
     }
 
-    void MoveEnemies(NativeArray<Enemy> enemies)
+    void StepMoveEnemies()
     {
-        _movementSystem.MoveEnemies(enemies, _frameDeltaTime);
+        _movementSystem.MoveEnemies(_enemyManager.GetEnemies(), _frameDeltaTime);
+    }
+
+    void StepBuildGrid()
+    {
+        _enemyManager.BuildGrid();
+    }
+
+    void StepCull()
+    {
+        _cullingSystem.CollectEnemiesPastRightEdge(_enemyManager.GetEnemies(), rect.xMax, _toRemove);
+    }
+
+    void StepRemoveCulled()
+    {
+        if (_toRemove.Count > 0)
+            _enemyManager.RemoveEnemies(_toRemove);
+    }
+
+    void StepAttackTick()
+    {
+        var attackEntities = _attackEntityManager.GetEntities();
+        if (attackEntities.Length > 0)
+        {
+            _attackTimeSystem.Tick(attackEntities, _frameDeltaTime);
+            _attackMovementSystem.MoveEntities(_attackEntityManager.GetEntities(), _frameDeltaTime);
+        }
+    }
+
+    void StepCollision()
+    {
+        if (_attackEntityManager.EntityCount > 0 && _enemyManager.EnemyCount > 0)
+        {
+            _collisionSystem.Detect(
+                _attackEntityManager.GetEntities(),
+                _enemyManager.GetEnemies(),
+                _enemyManager.Grid,
+                _collisionEvents);
+        }
+    }
+
+    void StepDamage()
+    {
+        _hitEvents.Clear();
+        _killEvents.Clear();
+
+        if (_collisionEvents.Length > 0)
+        {
+            _damageSystem.ProcessCollisions(
+                _collisionEvents,
+                _attackEntityManager.GetEntities(),
+                _enemyManager.GetEnemies(),
+                _hitEvents,
+                _killEvents);
+
+            _deadEnemyRemovalSystem.CollectDeadEnemies(_enemyManager.GetEnemies(), _toRemove);
+            if (_toRemove.Count > 0)
+                _enemyManager.RemoveEnemies(_toRemove);
+        }
+    }
+
+    void StepAttackExpire()
+    {
+        _attackEntityManager.RemoveExpired();
+    }
+
+    static List<Spell> BuildRuntimeSpells(List<SpellAuthoringData> authoringList)
+    {
+        var list = new List<Spell>();
+        if (authoringList == null) return list;
+        for (int i = 0; i < authoringList.Count; i++)
+        {
+            SpellAuthoringData a = authoringList[i];
+            if (a == null) continue;
+            list.Add(new Spell
+            {
+                spellId = i,
+                baseMultiplier = a.baseMultiplier,
+                castCompletionDuration = a.castCompletionDuration,
+                castTime = a.castTime,
+                attributeMask = a.attributeMask,
+                invocationCount = 0,
+                roundTimeInvokedAt = 0
+            });
+        }
+        return list;
     }
 
     void OnDestroy()
     {
         _enemyManager?.Dispose();
         _renderSystem?.Dispose();
+        _attackEntityManager?.Dispose();
+        _attackDebugRenderer?.Dispose();
+        _collisionSystem?.Dispose();
+        if (_collisionEvents.IsCreated) _collisionEvents.Dispose();
+        if (_hitEvents.IsCreated) _hitEvents.Dispose();
+        if (_killEvents.IsCreated) _killEvents.Dispose();
     }
 
     void OnDrawGizmos()

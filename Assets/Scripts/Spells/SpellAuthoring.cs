@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using BridgeOfBlood.Data.Shared;
-using Unity.Collections;
 using UnityEngine;
 
 namespace BridgeOfBlood.Data.Spells
@@ -15,12 +14,13 @@ namespace BridgeOfBlood.Data.Spells
 		public SpellAttributeMask attributeMask;
 	}
 
+    [System.Serializable]
 	public class SpellAnimation
 	{
 		public List<SpellKeyFrame> keyFrames = new List<SpellKeyFrame>();
 	}
-
-	public class SpellKeyFrame
+    [System.Serializable]
+    public class SpellKeyFrame
 	{
         public float time;
 		public List<AttackEntityData> entitiesToSpawn = new List<AttackEntityData>();
@@ -28,15 +28,20 @@ namespace BridgeOfBlood.Data.Spells
 	
 }
 
+[System.Serializable]
 public struct Damage
 {
     public DamageType type;
     public int baseDamage;
 }
 
+[System.Serializable]
 public struct AttackEntityData
 {
-    public FixedList32Bytes<Damage> damages;
+    public float physicalDamage;
+    public float coldDamage;
+    public float fireDamage;
+    public float lightningDamage;
     public Vector2 entityVelocity;
     public AttackEntityLifecycleData lifecycleData;
     public HitBoxData hitBoxData;
@@ -47,6 +52,7 @@ public struct AttackEntityData
     public NearestEnemySpawnCriteria nearestEnemySpawnCriteria;
 }
 
+[System.Serializable]
 public struct HitBoxData
 {
     public bool isSphere;
@@ -56,6 +62,7 @@ public struct HitBoxData
     public float scaleGrowthRate;
 }
 
+[System.Serializable]
 public struct AttackEntityLifecycleData
 {
     public int maxNumEnemiesHit;
@@ -69,11 +76,13 @@ public enum AttackEntitySpawnType
     NearestEnemy
 }
 
+[System.Serializable]
 public struct RelativeToPlayerSpawnCriteria
 {
     public Vector2 offsetFromPlayer;
 }
 
+[System.Serializable]
 public struct NearestEnemySpawnCriteria
 {
     public float minDistanceFromPlayer;

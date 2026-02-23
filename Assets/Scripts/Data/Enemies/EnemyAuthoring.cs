@@ -27,7 +27,7 @@ namespace BridgeOfBlood.Data.Enemies
 		public EnemyCorruptionFlag corruptionFlag;
 
 		[Tooltip("Elemental weakness(es) - takes increased damage from these types")]
-		public SpellDamageType elementalWeakness;
+		public DamageType elementalWeakness;
 
 		/// <summary>
 		/// Creates a runtime Enemy struct from this authoring data.

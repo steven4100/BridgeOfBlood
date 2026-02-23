@@ -16,8 +16,10 @@ public struct AttackEntity
     public float distanceTravelled;
     public int enemiesHit;
 
-    // Copied from AttackEntityData at spawn time
-    public FixedList32Bytes<Damage> damages;
+    public float physicalDamage;
+    public float coldDamage;
+    public float fireDamage;
+    public float lightningDamage;
     public AttackEntityLifecycleData lifecycle;
     public HitBoxData hitBox;
     public float currentHitBoxScale;
@@ -42,6 +44,7 @@ public class AttackEntityManager
     /// Spawns a new attack entity from the given data at the specified position.
     /// </summary>
     public int Spawn(AttackEntityData data, float2 spawnPosition)
+
     {
         int id = _nextEntityId++;
         _entities.Add(new AttackEntity
@@ -52,7 +55,10 @@ public class AttackEntityManager
             timeAlive = 0f,
             distanceTravelled = 0f,
             enemiesHit = 0,
-            damages = data.damages,
+            physicalDamage = data.physicalDamage,
+            coldDamage = data.coldDamage,
+            fireDamage = data.fireDamage,
+            lightningDamage = data.lightningDamage,
             lifecycle = data.lifecycleData,
             hitBox = data.hitBoxData,
             currentHitBoxScale = 1f

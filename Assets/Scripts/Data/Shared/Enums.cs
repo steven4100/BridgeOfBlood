@@ -10,7 +10,8 @@ namespace BridgeOfBlood.Data.Shared
 		Physical = 0,
 		Cold = 1,
 		Fire = 2,
-		Lightning = 3
+		Lightning = 3,
+		None = 4
 	}
 
 	/// <summary>

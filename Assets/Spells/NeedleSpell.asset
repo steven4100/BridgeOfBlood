@@ -16,10 +16,10 @@ MonoBehaviour:
     keyFrames:
     - time: 0
       attackEntityEmitter:
-        spreadDegrees: 181
+        spreadDegrees: 80
         forwardDegrees: -180
         emitDuration: 0
-        baseEmitCount: 15
+        baseEmitCount: 64
         speed: 666.2
         relativeToPlayerSpawnCriteria:
           offsetFromPlayer: {x: 0, y: 0}

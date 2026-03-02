@@ -889,12 +889,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 04e02f0386b6d374398cac082da0060c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  spawnRate: 14.5
+  spawnRate: 200.9
   simulationZone: {fileID: 1669307496}
   enemyAuthoringData: {fileID: 11400000, guid: 33babe2ce1813654d889516c2cef8262, type: 2}
   renderCamera: {fileID: 330585545}
   material: {fileID: 2100000, guid: 85da2e490a825fe4083d946cc1e340b4, type: 2}
   attackMaterial: {fileID: 2100000, guid: 5cb69cd1c6441e44496eaf809f96136c, type: 2}
+  damageNumberMaterial: {fileID: 0}
   enemyScale: 10
   playerMoveSpeed: 100
   playerRenderer: {fileID: 22834934}

@@ -34,7 +34,8 @@ public class DamageNumberManager
         _numbers = new NativeList<DamageNumber>(256, Allocator.Persistent);
     }
 
-    public void Spawn(float2 position, int damageValue, float lifetime = DefaultLifetime)
+    /// <param name="velocityX">Horizontal speed (e.g. enemy.moveSpeed) so the number moves right with the target. 0 = no horizontal drift.</param>
+    public void Spawn(float2 position, int damageValue, float lifetime = DefaultLifetime, float velocityX = 0f)
     {
         if (damageValue <= 0) return;
 
@@ -42,7 +43,7 @@ public class DamageNumberManager
         _numbers.Add(new DamageNumber
         {
             position = position,
-            velocity = new float2(0f, DefaultRiseSpeed),
+            velocity = new float2(velocityX, DefaultRiseSpeed),
             timeAlive = 0f,
             lifetime = lifetime,
             opacity = 1f,

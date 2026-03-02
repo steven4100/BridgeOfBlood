@@ -13,14 +13,18 @@ public class DamageSystem
 
     /// <summary>
     /// For each HitEvent, applies the attack entity's damage to the enemy, updates health and enemiesHit, emits telemetry.
+    /// When outDamageEvents is created, appends one DamageEvent per hit for the text/damage-number system.
     /// </summary>
     public void ProcessHits(
         NativeList<HitEvent> hitEvents,
         NativeArray<AttackEntity> attackEntities,
         NativeArray<Enemy> enemies,
         NativeList<EnemyHitEvent> outHitEvents,
-        NativeList<EnemyKilledEvent> outKillEvents)
+        NativeList<EnemyKilledEvent> outKillEvents,
+        NativeList<DamageEvent> outDamageEvents = default)
     {
+        bool emitDamageEvents = outDamageEvents.IsCreated;
+
         for (int i = 0; i < hitEvents.Length; i++)
         {
             HitEvent hit = hitEvents[i];
@@ -33,6 +37,16 @@ public class DamageSystem
             totalDamage += ApplyDamageType(atk.coldDamage, DamageType.Cold, enemy, outHitEvents);
             totalDamage += ApplyDamageType(atk.fireDamage, DamageType.Fire, enemy, outHitEvents);
             totalDamage += ApplyDamageType(atk.lightningDamage, DamageType.Lightning, enemy, outHitEvents);
+
+            if (emitDamageEvents && totalDamage > 0f)
+            {
+                outDamageEvents.Add(new DamageEvent
+                {
+                    position = hit.hitPosition,
+                    damageDealt = totalDamage,
+                    enemyIndex = hit.enemyIndex
+                });
+            }
 
             enemy.health -= totalDamage;
 

@@ -95,6 +95,7 @@ public class TestSceneManager : MonoBehaviour
     private NativeList<AttackEntityRemovalEvent> _attackRemovalEvents;
     private NativeList<EnemyHitEvent> _hitEvents;
     private NativeList<EnemyKilledEvent> _killEvents;
+    private NativeList<DamageEvent> _damageEvents;
     private readonly List<IDebugDrawable> _debugDrawables = new List<IDebugDrawable>();
     private SimulationStepCommand[] _steps;
     private float _simulationTime;
@@ -131,6 +132,7 @@ public class TestSceneManager : MonoBehaviour
         _attackRemovalEvents = new NativeList<AttackEntityRemovalEvent>(64, Allocator.Persistent);
         _hitEvents = new NativeList<EnemyHitEvent>(64, Allocator.Persistent);
         _killEvents = new NativeList<EnemyKilledEvent>(16, Allocator.Persistent);
+        _damageEvents = new NativeList<DamageEvent>(64, Allocator.Persistent);
         _pierceSystem = new PierceSystem();
         _expirationSystem = new ExpirationSystem();
         _damageNumberManager = new DamageNumberManager();
@@ -203,7 +205,8 @@ public class TestSceneManager : MonoBehaviour
             }
         }
 
-        _damageNumberManager.Update(_frameDeltaTime);
+        if (advanceTime)
+            _damageNumberManager.Update(_frameDeltaTime);
 
         Camera cam = renderCamera != null ? renderCamera : Camera.main;
         if (cam != null)
@@ -293,12 +296,13 @@ public class TestSceneManager : MonoBehaviour
             NativeArray<ChainPolicyRuntime> chainPolicies = _attackEntityManager.GetChainPolicies();
 
             _attackEntityManager.ValidateParallelLists();
-            _hitResolver.Resolve(_rawCollisionEvents, attackEntities, enemies, _attackEntityManager.GetPiercePolicies(), _resolvedHits);
+            _hitResolver.Resolve(_rawCollisionEvents, attackEntities, enemies, _attackEntityManager.GetPiercePolicies(), _attackEntityManager.GetRehitPolicies(), _resolvedHits);
             _attackEntityManager.ValidateHitEvents(_resolvedHits, _enemyManager.EnemyCount);
             _chainSystem.ResolveChains(_resolvedHits, attackEntities, chainPolicies, _enemyManager.Grid, enemies);
-            _damageSystem.ProcessHits(_resolvedHits, attackEntities, enemies, _hitEvents, _killEvents);
+            _damageSystem.ProcessHits(_resolvedHits, attackEntities, enemies, _hitEvents, _killEvents, _damageEvents);
+            _attackEntityManager.RecordRehitHits(_resolvedHits, attackEntities, enemies);
 
-            SpawnDamageNumbers(attackEntities, enemies);
+            SpawnDamageNumbersFromEvents(enemies);
 
             _deadEnemyRemovalSystem.CollectDeadEnemies(_enemyManager.GetEnemies(), _toRemove);
             if (_toRemove.Count > 0)
@@ -319,23 +323,17 @@ public class TestSceneManager : MonoBehaviour
         _attackRemovalEvents.Clear();
     }
 
-    void SpawnDamageNumbers(NativeArray<AttackEntity> attackEntities, NativeArray<Enemy> enemies)
+    void SpawnDamageNumbersFromEvents(NativeArray<Enemy> enemies)
     {
-        for (int i = 0; i < _resolvedHits.Length; i++)
+        for (int i = 0; i < _damageEvents.Length; i++)
         {
-            HitEvent hit = _resolvedHits[i];
-            AttackEntity atk = attackEntities[hit.attackEntityIndex];
-            Enemy enemy = enemies[hit.enemyIndex];
-
-            float total = 0f;
-            total += atk.physicalDamage * (enemy.elementalWeakness == DamageType.Physical ? DamageSystem.WeaknessMultiplier : 1f);
-            total += atk.coldDamage * (enemy.elementalWeakness == DamageType.Cold ? DamageSystem.WeaknessMultiplier : 1f);
-            total += atk.fireDamage * (enemy.elementalWeakness == DamageType.Fire ? DamageSystem.WeaknessMultiplier : 1f);
-            total += atk.lightningDamage * (enemy.elementalWeakness == DamageType.Lightning ? DamageSystem.WeaknessMultiplier : 1f);
-
-            if (total > 0f)
-                _damageNumberManager.Spawn(hit.hitPosition, (int)total);
+            DamageEvent evt = _damageEvents[i];
+            float velocityX = 0f;
+            if (evt.enemyIndex >= 0 && evt.enemyIndex < enemies.Length)
+                velocityX = enemies[evt.enemyIndex].moveSpeed;
+            _damageNumberManager.Spawn(evt.position, (int)evt.damageDealt, velocityX: velocityX);
         }
+        _damageEvents.Clear();
     }
 
     float2 GetCastForward()
@@ -378,6 +376,7 @@ public class TestSceneManager : MonoBehaviour
         if (_attackRemovalEvents.IsCreated) _attackRemovalEvents.Dispose();
         if (_hitEvents.IsCreated) _hitEvents.Dispose();
         if (_killEvents.IsCreated) _killEvents.Dispose();
+        if (_damageEvents.IsCreated) _damageEvents.Dispose();
         _damageNumberManager?.Dispose();
         _damageNumberRenderSystem?.Dispose();
     }

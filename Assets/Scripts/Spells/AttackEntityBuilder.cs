@@ -28,7 +28,7 @@ public static class AttackEntityBuilder
     static PiercePolicyRuntime DefaultPierce() => new PiercePolicyRuntime { isActive = false, maxEnemiesHit = 0 };
     static ExpirationPolicyRuntime DefaultExpiration() => new ExpirationPolicyRuntime { isActive = false, maxTimeAlive = 0f, maxDistanceTravelled = 0f };
     static ChainPolicyRuntime DefaultChain() => new ChainPolicyRuntime { isActive = false, enabled = false, chainCount = 0, chainRange = 0f };
-    static RehitPolicyRuntime DefaultRehit() => new RehitPolicyRuntime { rehitCooldownSeconds = 100000000 };
+    static RehitPolicyRuntime DefaultRehit() => new RehitPolicyRuntime { rehitCooldownSeconds = 0f };
 
     /// <summary>
     /// Builds a spawn payload from authoring data. Iterates behaviors and applies first of each type.

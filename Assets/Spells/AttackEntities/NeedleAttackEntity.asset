@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
   m_Name: NeedleAttackEntity
   m_EditorClassIdentifier: 
-  physicalDamage: 10000
+  physicalDamage: 100
   coldDamage: 0
   fireDamage: 0
   lightningDamage: 0
@@ -25,6 +25,7 @@ MonoBehaviour:
     rectDimension: {x: 0, y: 0}
     sphereRadius: 7.54
     scaleGrowthRate: 0
+  rehitCooldownSeconds: 1169.57
   behaviors:
   - rid: 72257236218675262
   references:
@@ -35,7 +36,7 @@ MonoBehaviour:
       data:
         isActive: 1
         mode: 1
-        chainCount: 20
+        chainCount: 201
         chainRange: 50
         targetSelect: 0
         excludePreviouslyHit: 1

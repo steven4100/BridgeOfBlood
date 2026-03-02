@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   physicalDamage: 0
   coldDamage: 0
-  fireDamage: 3711
+  fireDamage: 75
   lightningDamage: 0
   critChance: 0
   critDamageMultiplier: 0
@@ -25,6 +25,7 @@ MonoBehaviour:
     rectDimension: {x: 0, y: 0}
     sphereRadius: 9.68
     scaleGrowthRate: 0
+  rehitCooldownSeconds: 100000
   behaviors:
   - rid: 72257236218675258
   - rid: 72257236218675259

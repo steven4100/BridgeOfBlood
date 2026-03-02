@@ -31,3 +31,15 @@ public struct AttackEntityRemovalEvent
     public int entityId;
     public AttackEntityRemovalReason reason;
 }
+
+/// <summary>
+/// Emitted by DamageSystem for each hit that deals damage. Consumed by the damage number / text system.
+/// Blittable for NativeList.
+/// </summary>
+public struct DamageEvent
+{
+    public float2 position;
+    public float damageDealt;
+    /// <summary>Index into the enemies array at emit time (so consumers can look up target for presentation, e.g. velocity).</summary>
+    public int enemyIndex;
+}

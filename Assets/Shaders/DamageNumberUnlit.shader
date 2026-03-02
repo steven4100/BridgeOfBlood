@@ -7,7 +7,7 @@ Shader "BridgeOfBlood/DamageNumberUnlit"
 
     SubShader
     {
-        Tags { "RenderType"="Transparent" "RenderPipeline"="UniversalPipeline" "Queue"="Transparent" }
+        Tags { "RenderType"="Transparent" "RenderPipeline"="UniversalPipeline" "Queue"="Transparent+500" }
 
         Pass
         {
@@ -16,7 +16,7 @@ Shader "BridgeOfBlood/DamageNumberUnlit"
 
             Cull Off
             ZWrite Off
-            ZTest LEqual
+            ZTest Always
             Blend SrcAlpha OneMinusSrcAlpha
 
             HLSLPROGRAM

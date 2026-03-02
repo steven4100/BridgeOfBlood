@@ -2,8 +2,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
 using BridgeOfBlood.Data.Enemies;
+using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
 using Unity.Collections;
+using Unity.Mathematics;
 using Debug = UnityEngine.Debug;
 using System;
 
@@ -36,6 +38,9 @@ public class TestSceneManager : MonoBehaviour
 
     public Material material;
     public Material attackMaterial;
+
+    [Tooltip("Material for damage number rendering. If null, uses default with generated digit atlas.")]
+    public Material damageNumberMaterial;
 
     [Tooltip("Size of each enemy quad in rect-local units")]
     public float enemyScale = 10f;
@@ -74,11 +79,20 @@ public class TestSceneManager : MonoBehaviour
     private AttackEntityMovementSystem _attackMovementSystem;
     private AttackEntityTimeSystem _attackTimeSystem;
     private AttackEntityDebugRenderer _attackDebugRenderer;
+    private SpellEmissionHandler _emissionHandler;
     private LoopedSpellCaster _loopedSpellCaster;
     private CollisionSystem _collisionSystem;
+    private HitResolver _hitResolver;
+    private ChainSystem _chainSystem;
     private DamageSystem _damageSystem;
     private DeadEnemyRemovalSystem _deadEnemyRemovalSystem;
-    private NativeList<CollisionEvent> _collisionEvents;
+    private PierceSystem _pierceSystem;
+    private ExpirationSystem _expirationSystem;
+    private DamageNumberManager _damageNumberManager;
+    private DamageNumberRenderSystem _damageNumberRenderSystem;
+    private NativeList<CollisionEvent> _rawCollisionEvents;
+    private NativeList<HitEvent> _resolvedHits;
+    private NativeList<AttackEntityRemovalEvent> _attackRemovalEvents;
     private NativeList<EnemyHitEvent> _hitEvents;
     private NativeList<EnemyKilledEvent> _killEvents;
     private readonly List<IDebugDrawable> _debugDrawables = new List<IDebugDrawable>();
@@ -108,13 +122,22 @@ public class TestSceneManager : MonoBehaviour
         _attackTimeSystem = new AttackEntityTimeSystem();
         _attackDebugRenderer = new AttackEntityDebugRenderer(_attackEntityManager, attackMaterial);
         _collisionSystem = new CollisionSystem();
+        _hitResolver = new HitResolver();
+        _chainSystem = new ChainSystem();
         _damageSystem = new DamageSystem();
         _deadEnemyRemovalSystem = new DeadEnemyRemovalSystem();
-        _collisionEvents = new NativeList<CollisionEvent>(64, Allocator.Persistent);
+        _rawCollisionEvents = new NativeList<CollisionEvent>(64, Allocator.Persistent);
+        _resolvedHits = new NativeList<HitEvent>(64, Allocator.Persistent);
+        _attackRemovalEvents = new NativeList<AttackEntityRemovalEvent>(64, Allocator.Persistent);
         _hitEvents = new NativeList<EnemyHitEvent>(64, Allocator.Persistent);
         _killEvents = new NativeList<EnemyKilledEvent>(16, Allocator.Persistent);
+        _pierceSystem = new PierceSystem();
+        _expirationSystem = new ExpirationSystem();
+        _damageNumberManager = new DamageNumberManager();
+        _damageNumberRenderSystem = new DamageNumberRenderSystem(damageNumberMaterial);
 
-        SpellInvoker loopInvoker = new SpellInvoker(_attackEntityManager);
+        _emissionHandler = new SpellEmissionHandler(_attackEntityManager);
+        SpellInvoker loopInvoker = new SpellInvoker(_emissionHandler);
         List<Spell> runtimeSpells = BuildRuntimeSpells(spells);
         _loopedSpellCaster = new LoopedSpellCaster(runtimeSpells, loopInvoker);
 
@@ -151,7 +174,8 @@ public class TestSceneManager : MonoBehaviour
 
         bool castRequested = Input.GetKeyDown(castInputKey);
         _loopedSpellCaster?.AttemptToCastNextSpell(_simulationTime, _player.Position, spells, castRequested);
-        _loopedSpellCaster?.Update(_simulationTime);
+        _loopedSpellCaster?.Update(_simulationTime, -1 * GetCastForward());
+        _emissionHandler?.Update(_simulationTime);
 
         bool advanceTime = !hasController || debugController.ShouldAdvanceTime;
         if (advanceTime)
@@ -179,11 +203,14 @@ public class TestSceneManager : MonoBehaviour
             }
         }
 
+        _damageNumberManager.Update(_frameDeltaTime);
+
         Camera cam = renderCamera != null ? renderCamera : Camera.main;
         if (cam != null)
         {
             _renderSystem.RenderEnemies(_enemyManager.GetEnemies(), simulationZone, cam);
             _attackDebugRenderer.Render(_attackEntityManager.GetEntities(), simulationZone, cam);
+            _damageNumberRenderSystem.Render(_damageNumberManager.GetEntities(), simulationZone, cam);
         }
 
         if (hasController)
@@ -243,12 +270,15 @@ public class TestSceneManager : MonoBehaviour
     {
         if (_attackEntityManager.EntityCount > 0 && _enemyManager.EnemyCount > 0)
         {
+            _enemyManager.ValidateGridForCurrentEnemies();
             _collisionSystem.Detect(
                 _attackEntityManager.GetEntities(),
                 _enemyManager.GetEnemies(),
                 _enemyManager.Grid,
-                _collisionEvents);
+                _rawCollisionEvents);
         }
+        else
+            _rawCollisionEvents.Clear();
     }
 
     void StepDamage()
@@ -256,14 +286,19 @@ public class TestSceneManager : MonoBehaviour
         _hitEvents.Clear();
         _killEvents.Clear();
 
-        if (_collisionEvents.Length > 0)
+        if (_rawCollisionEvents.Length > 0)
         {
-            _damageSystem.ProcessCollisions(
-                _collisionEvents,
-                _attackEntityManager.GetEntities(),
-                _enemyManager.GetEnemies(),
-                _hitEvents,
-                _killEvents);
+            NativeArray<AttackEntity> attackEntities = _attackEntityManager.GetEntities();
+            NativeArray<Enemy> enemies = _enemyManager.GetEnemies();
+            NativeArray<ChainPolicyRuntime> chainPolicies = _attackEntityManager.GetChainPolicies();
+
+            _attackEntityManager.ValidateParallelLists();
+            _hitResolver.Resolve(_rawCollisionEvents, attackEntities, enemies, _attackEntityManager.GetPiercePolicies(), _resolvedHits);
+            _attackEntityManager.ValidateHitEvents(_resolvedHits, _enemyManager.EnemyCount);
+            _chainSystem.ResolveChains(_resolvedHits, attackEntities, chainPolicies, _enemyManager.Grid, enemies);
+            _damageSystem.ProcessHits(_resolvedHits, attackEntities, enemies, _hitEvents, _killEvents);
+
+            SpawnDamageNumbers(attackEntities, enemies);
 
             _deadEnemyRemovalSystem.CollectDeadEnemies(_enemyManager.GetEnemies(), _toRemove);
             if (_toRemove.Count > 0)
@@ -273,7 +308,39 @@ public class TestSceneManager : MonoBehaviour
 
     void StepAttackExpire()
     {
-        _attackEntityManager.RemoveExpired();
+        if (_attackEntityManager.EntityCount == 0) return;
+
+        _attackEntityManager.ValidateParallelLists();
+        NativeArray<AttackEntity> entities = _attackEntityManager.GetEntities();
+        _pierceSystem.CollectRemovals(entities, _attackEntityManager.GetPiercePolicies(), _attackRemovalEvents);
+        _expirationSystem.CollectRemovals(entities, _attackEntityManager.GetExpirationPolicies(), _attackRemovalEvents);
+        _chainSystem.CollectRemovals(entities, _attackEntityManager.GetChainPolicies(), _attackRemovalEvents);
+        _attackEntityManager.ApplyRemovals(_attackRemovalEvents);
+        _attackRemovalEvents.Clear();
+    }
+
+    void SpawnDamageNumbers(NativeArray<AttackEntity> attackEntities, NativeArray<Enemy> enemies)
+    {
+        for (int i = 0; i < _resolvedHits.Length; i++)
+        {
+            HitEvent hit = _resolvedHits[i];
+            AttackEntity atk = attackEntities[hit.attackEntityIndex];
+            Enemy enemy = enemies[hit.enemyIndex];
+
+            float total = 0f;
+            total += atk.physicalDamage * (enemy.elementalWeakness == DamageType.Physical ? DamageSystem.WeaknessMultiplier : 1f);
+            total += atk.coldDamage * (enemy.elementalWeakness == DamageType.Cold ? DamageSystem.WeaknessMultiplier : 1f);
+            total += atk.fireDamage * (enemy.elementalWeakness == DamageType.Fire ? DamageSystem.WeaknessMultiplier : 1f);
+            total += atk.lightningDamage * (enemy.elementalWeakness == DamageType.Lightning ? DamageSystem.WeaknessMultiplier : 1f);
+
+            if (total > 0f)
+                _damageNumberManager.Spawn(hit.hitPosition, (int)total);
+        }
+    }
+
+    float2 GetCastForward()
+    {
+        return new float2(1f, 0f);
     }
 
     static List<Spell> BuildRuntimeSpells(List<SpellAuthoringData> authoringList)
@@ -305,9 +372,14 @@ public class TestSceneManager : MonoBehaviour
         _attackEntityManager?.Dispose();
         _attackDebugRenderer?.Dispose();
         _collisionSystem?.Dispose();
-        if (_collisionEvents.IsCreated) _collisionEvents.Dispose();
+        _chainSystem?.Dispose();
+        if (_rawCollisionEvents.IsCreated) _rawCollisionEvents.Dispose();
+        if (_resolvedHits.IsCreated) _resolvedHits.Dispose();
+        if (_attackRemovalEvents.IsCreated) _attackRemovalEvents.Dispose();
         if (_hitEvents.IsCreated) _hitEvents.Dispose();
         if (_killEvents.IsCreated) _killEvents.Dispose();
+        _damageNumberManager?.Dispose();
+        _damageNumberRenderSystem?.Dispose();
     }
 
     void OnDrawGizmos()

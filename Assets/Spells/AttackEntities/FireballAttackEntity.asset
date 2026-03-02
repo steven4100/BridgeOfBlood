@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
+  m_Name: FireballAttackEntity
+  m_EditorClassIdentifier: 
+  physicalDamage: 0
+  coldDamage: 0
+  fireDamage: 3711
+  lightningDamage: 0
+  critChance: 0
+  critDamageMultiplier: 0
+  entityVelocity: {x: -250.14, y: 0}
+  hitBoxData:
+    isSphere: 1
+    isRect: 0
+    rectDimension: {x: 0, y: 0}
+    sphereRadius: 9.68
+    scaleGrowthRate: 0
+  behaviors:
+  - rid: 72257236218675258
+  - rid: 72257236218675259
+  references:
+    version: 2
+    RefIds:
+    - rid: 72257236218675258
+      type: {class: ExpirationBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        isActive: 1
+        maxTimeAlive: 3
+        maxDistanceTravelled: 0
+    - rid: 72257236218675259
+      type: {class: PierceBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        isActive: 1
+        maxEnemiesHit: 63

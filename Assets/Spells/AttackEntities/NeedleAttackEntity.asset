@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
+  m_Name: NeedleAttackEntity
+  m_EditorClassIdentifier: 
+  physicalDamage: 10000
+  coldDamage: 0
+  fireDamage: 0
+  lightningDamage: 0
+  critChance: 0
+  critDamageMultiplier: 0
+  entityVelocity: {x: 0, y: 0}
+  hitBoxData:
+    isSphere: 1
+    isRect: 0
+    rectDimension: {x: 0, y: 0}
+    sphereRadius: 7.54
+    scaleGrowthRate: 0
+  behaviors:
+  - rid: 72257236218675262
+  references:
+    version: 2
+    RefIds:
+    - rid: 72257236218675262
+      type: {class: ChainBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        isActive: 1
+        mode: 1
+        chainCount: 20
+        chainRange: 50
+        targetSelect: 0
+        excludePreviouslyHit: 1

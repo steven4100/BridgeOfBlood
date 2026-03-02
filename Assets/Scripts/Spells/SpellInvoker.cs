@@ -1,16 +1,24 @@
 using System.Collections.Generic;
 using BridgeOfBlood.Data.Spells;
 using Unity.Mathematics;
-using UnityEngine;
 
 /// <summary>
-/// Handles spell invocation: starts casts at a given origin/time and advances them through
-/// keyframes, spawning attack entities. Used by LoopedSpellCaster (loop-driven casts) and
-/// SpellCastTester (e.g. click-to-cast) so each can have its own invoker and active-cast list.
+/// Implemented by the type that handles "keyframe fired" (emit + spawn). Invoker depends on this.
+/// </summary>
+public interface ISpellEmissionHandler
+{
+    void OnKeyframeFired(SpellKeyFrame keyFrame, float2 origin, float2 forward, SpellAuthoringData spellData, float keyframeFireTime);
+    /// <summary>Process any pending time-delayed spawns. Call each frame after the invoker.</summary>
+    void Update(float simulationTime);
+}
+
+/// <summary>
+/// Manages casting only: tracks active casts and advances them by keyframe time.
+/// When a keyframe is due, calls the emission handler. Does not spawn entities or hold AttackEntityManager.
 /// </summary>
 public class SpellInvoker
 {
-    private readonly AttackEntityManager _attackEntityManager;
+    private readonly ISpellEmissionHandler _emissionHandler;
 
     private struct ActiveCast
     {
@@ -22,9 +30,9 @@ public class SpellInvoker
 
     private readonly List<ActiveCast> _activeCasts = new List<ActiveCast>();
 
-    public SpellInvoker(AttackEntityManager attackEntityManager)
+    public SpellInvoker(ISpellEmissionHandler emissionHandler)
     {
-        _attackEntityManager = attackEntityManager;
+        _emissionHandler = emissionHandler ?? throw new System.ArgumentNullException(nameof(emissionHandler));
     }
 
     /// <summary>
@@ -45,9 +53,11 @@ public class SpellInvoker
     }
 
     /// <summary>
-    /// Advance all active casts and spawn keyframe entities that are due by simulationTime.
+    /// Advance all active casts. When a keyframe is due, invokes OnKeyframeFired(keyFrame, origin, forward, spellData).
     /// </summary>
-    public void Update(float simulationTime)
+    /// <param name="simulationTime">Current simulation time.</param>
+    /// <param name="forward">Current cast direction (e.g. player facing). Used when the handler emits; pass default e.g. (1,0) if not applicable.</param>
+    public void Update(float simulationTime, float2 forward)
     {
         for (int c = _activeCasts.Count - 1; c >= 0; c--)
         {
@@ -64,7 +74,9 @@ public class SpellInvoker
             while (cast.nextKeyframeIndex < keyFrames.Count
                    && elapsed >= keyFrames[cast.nextKeyframeIndex].time)
             {
-                SpawnKeyframeEntities(keyFrames[cast.nextKeyframeIndex], cast.origin);
+                float keyframeTime = keyFrames[cast.nextKeyframeIndex].time;
+                float keyframeFireTime = cast.startTime + keyframeTime;
+                _emissionHandler.OnKeyframeFired(keyFrames[cast.nextKeyframeIndex], cast.origin, forward, cast.spellData, keyframeFireTime);
                 cast.nextKeyframeIndex++;
             }
 
@@ -72,22 +84,6 @@ public class SpellInvoker
                 _activeCasts.RemoveAt(c);
             else
                 _activeCasts[c] = cast;
-        }
-    }
-
-    void SpawnKeyframeEntities(SpellKeyFrame keyFrame, float2 origin)
-    {
-        if (keyFrame.entitiesToSpawn == null) return;
-        foreach (var data in keyFrame.entitiesToSpawn)
-        {
-            float2 spawnPos = origin;
-            if (data.spawnType == AttackEntitySpawnType.RelativeToPlayer)
-            {
-                spawnPos += new float2(
-                    data.relativeToPlayerSpawnCriteria.offsetFromPlayer.x,
-                    data.relativeToPlayerSpawnCriteria.offsetFromPlayer.y);
-            }
-            _attackEntityManager.Spawn(data, spawnPos);
         }
     }
 }

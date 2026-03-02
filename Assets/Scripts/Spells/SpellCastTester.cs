@@ -28,12 +28,13 @@ public class SpellCastTester
 
     /// <summary>
     /// Call each frame. On mouse click inside the simulation zone, starts a cast at the click position.
-    /// Then advances the invoker's active casts (keyframes, spawning).
+    /// Then advances the invoker's active casts (keyframes fire via callback).
     /// </summary>
-    public void Update(float simulationTime)
+    /// <param name="forward">Cast direction for emission (e.g. (1,0) for right).</param>
+    public void Update(float simulationTime, float2 forward)
     {
         HandleClick(simulationTime);
-        _spellInvoker?.Update(simulationTime);
+        _spellInvoker?.Update(simulationTime, forward);
     }
 
     void HandleClick(float simulationTime)

@@ -78,11 +78,12 @@ public class LoopedSpellCaster
     }
 
     /// <summary>
-    /// Advance the invoker's active casts (keyframes, spawning). Call each frame after AttemptToCastNextSpell.
+    /// Advance the invoker's active casts (keyframes fire via callback). Call each frame after AttemptToCastNextSpell.
     /// </summary>
-    public void Update(float simulationTime)
+    /// <param name="forward">Cast direction for emission (e.g. player facing).</param>
+    public void Update(float simulationTime, float2 forward)
     {
-        _spellInvoker?.Update(simulationTime);
+        _spellInvoker?.Update(simulationTime, forward);
     }
 
     /// <summary>

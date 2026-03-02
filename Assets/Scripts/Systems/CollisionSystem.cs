@@ -19,8 +19,9 @@ public struct CollisionEvent
 /// <summary>
 /// Detects overlaps between attack entity hitboxes and enemy positions.
 /// Queries the spatial grid for broad-phase, then runs narrow-phase overlap tests.
-/// Outputs a flat list of CollisionEvents for downstream processing.
-/// Updates enemiesHit on attack entities that score hits.
+/// Outputs a flat list of CollisionEvents for downstream processing. Does not update enemiesHit
+/// (HitResolver → ChainSystem → DamageSystem; DamageSystem increments enemiesHit when applying hits).
+/// Assumes grid was built from the same enemies array; caller (e.g. EnemyManager.ValidateGridForCurrentEnemies) must validate upstream.
 /// </summary>
 public class CollisionSystem
 {
@@ -32,13 +33,13 @@ public class CollisionSystem
     }
 
     /// <summary>
-    /// Detects all attack-entity-vs-enemy overlaps this frame.
-    /// Call after movement and BuildGrid, before RemoveExpired.
+    /// Detects all attack-entity-vs-enemy overlaps this frame. Pure geometry; no pierce or other policy.
+    /// Call after movement and BuildGrid. Downstream PierceSystem filters by pierce policy.
     /// </summary>
-    /// <param name="attackEntities">Read-write: enemiesHit is incremented on hits.</param>
+    /// <param name="attackEntities">Read-only for overlap.</param>
     /// <param name="enemies">Read-only enemy array (must match grid ordering from BuildGrid).</param>
     /// <param name="grid">Spatial grid built from the current enemy positions.</param>
-    /// <param name="results">Cleared and filled with collision events.</param>
+    /// <param name="results">Cleared and filled with all overlapping collision events.</param>
     public void Detect(
         NativeArray<AttackEntity> attackEntities,
         NativeArray<Enemy> enemies,
@@ -50,24 +51,14 @@ public class CollisionSystem
         for (int ai = 0; ai < attackEntities.Length; ai++)
         {
             AttackEntity atk = attackEntities[ai];
-
-            int hitsRemaining = atk.lifecycle.maxNumEnemiesHit > 0
-                ? atk.lifecycle.maxNumEnemiesHit - atk.enemiesHit
-                : int.MaxValue;
-            if (hitsRemaining <= 0) continue;
-
             float queryRadius = HitBoxQueryRadius(atk);
 
             _candidateIndices.Clear();
             grid.QueryNeighbors(atk.position, queryRadius, _candidateIndices);
 
-            int hitsThisFrame = 0;
             for (int c = 0; c < _candidateIndices.Length; c++)
             {
-                if (hitsThisFrame >= hitsRemaining) break;
-
                 int ei = _candidateIndices[c];
-                if (ei < 0 || ei >= enemies.Length) continue;
 
                 Enemy enemy = enemies[ei];
 
@@ -83,14 +74,6 @@ public class CollisionSystem
                     enemyPosition = enemy.position,
                     attackEntityPosition = atk.position
                 });
-
-                hitsThisFrame++;
-            }
-
-            if (hitsThisFrame > 0)
-            {
-                atk.enemiesHit += hitsThisFrame;
-                attackEntities[ai] = atk;
             }
         }
     }

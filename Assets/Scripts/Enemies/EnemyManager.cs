@@ -4,6 +4,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 public class EnemyManager
 {
@@ -74,6 +75,18 @@ public class EnemyManager
     {
         if (_grid != null && _enemies.IsCreated && _enemies.Length > 0)
             _grid.Build(_enemies.AsArray());
+    }
+
+    /// <summary>
+    /// Validates that the grid was built for the current enemy count. Call before using grid for collision/chain queries.
+    /// Throws if grid is stale (BuildGrid not called this frame or enemy list changed).
+    /// </summary>
+    public void ValidateGridForCurrentEnemies()
+    {
+        if (_grid == null) return;
+        int current = _enemies.Length;
+        if (current > 0 && _grid.LastBuildEnemyCount != current)
+            throw new InvalidOperationException($"EnemyManager: grid was built for {_grid.LastBuildEnemyCount} enemies but current count is {current}. Call BuildGrid() before collision/chain steps.");
     }
 
     /// <summary>

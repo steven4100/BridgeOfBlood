@@ -25,10 +25,13 @@ public class GridSpatialPartition : IDebugDrawable
     private NativeArray<int> _cellStarts;
     private NativeArray<int> _writeOffsets;
     private NativeArray<Enemy> _tempEnemies;
+    private int _lastBuildEnemyCount;
 
     public int GridWidth => _gridWidth;
     public int GridHeight => _gridHeight;
     public int TotalCells => _totalCells;
+    /// <summary>Enemy count passed to last Build(). Use to validate grid matches current enemies before querying.</summary>
+    public int LastBuildEnemyCount => _lastBuildEnemyCount;
 
     /// <summary>
     /// Allocates the grid and a persistent temp buffer for reordering. No allocations in Build().
@@ -80,6 +83,7 @@ public class GridSpatialPartition : IDebugDrawable
     public void Build(NativeArray<Enemy> enemies)
     {
         int N = math.min(enemies.Length, _maxEnemyCount);
+        _lastBuildEnemyCount = N;
         if (N == 0) return;
 
         for (int i = 0; i < _totalCells; i++)

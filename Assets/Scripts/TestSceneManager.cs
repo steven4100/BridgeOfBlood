@@ -59,6 +59,9 @@ public class TestSceneManager : MonoBehaviour
     [Tooltip("Key that requests casting the next spell in the loop. Only casts when this is pressed and enough time has elapsed.")]
     public KeyCode castInputKey = KeyCode.Space;
 
+    [Tooltip("Optional. If set, these modifications are applied to each spell when casting (spell.Modify then cast).")]
+    public SpellModificationsTestData castModifications;
+
     [Header("Debug")]
     [Tooltip("Gizmo sphere radius at each unit position (Scene view, Play mode only)")]
     public float gizmoRadius = 5f;
@@ -175,7 +178,8 @@ public class TestSceneManager : MonoBehaviour
         _player.Update(Time.deltaTime, rect);
 
         bool castRequested = Input.GetKeyDown(castInputKey);
-        _loopedSpellCaster?.AttemptToCastNextSpell(_simulationTime, _player.Position, spells, castRequested);
+        var mods = castModifications != null ? castModifications.GetModifications() : null;
+        _loopedSpellCaster?.AttemptToCastNextSpell(_simulationTime, _player.Position, spells, castRequested, mods);
         _loopedSpellCaster?.Update(_simulationTime, -1 * GetCastForward());
         _emissionHandler?.Update(_simulationTime);
 
@@ -331,7 +335,7 @@ public class TestSceneManager : MonoBehaviour
             float velocityX = 0f;
             if (evt.enemyIndex >= 0 && evt.enemyIndex < enemies.Length)
                 velocityX = enemies[evt.enemyIndex].moveSpeed;
-            _damageNumberManager.Spawn(evt.position, (int)evt.damageDealt, velocityX: velocityX);
+            _damageNumberManager.Spawn(evt.position, (int)evt.damageDealt, velocityX: velocityX, isCrit: evt.isCrit);
         }
         _damageEvents.Clear();
     }

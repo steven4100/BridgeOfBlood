@@ -14,8 +14,12 @@ public struct DamageNumber
     public float opacity;
     public int damageValue;
     public int digitCount;
-    /// <summary>Digits packed into 4 bits each (nibble 0 = leftmost digit). Max 8 digits (32 bits).</summary>
+    /// <summary>Digits packed into 4 bits each (nibble 0 = leftmost digit). Value 10 = exclamation (crit). Max 8 digits (32 bits).</summary>
     public uint packedDigits;
+    /// <summary>Visual scale (larger damage = larger number). Applied in render.</summary>
+    public float scale;
+    /// <summary>If true, render in yellow and show trailing '!'.</summary>
+    public bool isCrit;
 }
 
 /// <summary>
@@ -35,11 +39,22 @@ public class DamageNumberManager
     }
 
     /// <param name="velocityX">Horizontal speed (e.g. enemy.moveSpeed) so the number moves right with the target. 0 = no horizontal drift.</param>
-    public void Spawn(float2 position, int damageValue, float lifetime = DefaultLifetime, float velocityX = 0f)
+    /// <param name="isCrit">If true, number is shown in yellow with a trailing '!'.</param>
+    public void Spawn(float2 position, int damageValue, float lifetime = DefaultLifetime, float velocityX = 0f, bool isCrit = false)
     {
         if (damageValue <= 0) return;
 
         int digits = CountDigits(damageValue);
+        uint packed = PackDigits(damageValue, digits);
+        int digitCount = digits;
+        if (isCrit)
+        {
+            digitCount = digits + 1;
+            packed |= 10u << (digits * 4);
+        }
+
+        float scale = ScaleFromDamage(damageValue);
+
         _numbers.Add(new DamageNumber
         {
             position = position,
@@ -48,9 +63,19 @@ public class DamageNumberManager
             lifetime = lifetime,
             opacity = 1f,
             damageValue = damageValue,
-            digitCount = digits,
-            packedDigits = PackDigits(damageValue, digits)
+            digitCount = digitCount,
+            packedDigits = packed,
+            scale = scale,
+            isCrit = isCrit
         });
+    }
+
+    /// <summary>Larger damage values get a larger scale (e.g. 100 -> ~1.5, 1000 -> ~1.75).</summary>
+    static float ScaleFromDamage(int damageValue)
+    {
+        if (damageValue <= 0) return 1f;
+        float log = math.log10(math.max(1, damageValue));
+        return math.clamp(1f + 0.25f * log, 1f, 2.5f);
     }
 
     public void Update(float dt)

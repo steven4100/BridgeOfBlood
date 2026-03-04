@@ -20,8 +20,8 @@ public class ChainSystem
     /// <summary>
     /// For each hit: if the attack has chaining and chainHitsSoFar &lt; chainCount, add this enemy to hitEnemyIds,
     /// find one next target (nearest in range, excluding previously hit), redirect the projectile (position at hit,
-    /// velocity toward next target), increment chainHitsSoFar. Does not add new HitEvents—the next hit will be
-    /// detected by collision in a later frame.
+    /// velocity toward next target), increment chainHitsSoFar. If there is no valid target in range, exhaust remaining
+    /// chains (chainHitsSoFar = chainCount) so CollectRemovals later adds it to the remove buffer.
     /// </summary>
     public void ResolveChains(
         NativeList<HitEvent> hitEvents,
@@ -76,6 +76,7 @@ public class ChainSystem
 
             if (bestIndex < 0)
             {
+                policy.chainHitsSoFar = policy.chainCount;
                 chainPolicies[hit.attackEntityIndex] = policy;
                 continue;
             }

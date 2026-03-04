@@ -36,9 +36,11 @@ public class LoopedSpellCaster
     /// <summary>
     /// If the user requested a cast this frame and the next spell in the loop is ready (enough time since last cast),
     /// invokes it via the SpellInvoker at the given origin and returns that spell. Otherwise returns null.
+    /// When modifications is non-null, the spell is cast as spell.Modify(modifications) so modifications are applied.
     /// </summary>
     /// <param name="castRequestedThisFrame">True when the user pressed the cast input this frame (e.g. spacebar).</param>
-    public Spell AttemptToCastNextSpell(double roundTime, float2 origin, IReadOnlyList<SpellAuthoringData> spellDataList, bool castRequestedThisFrame)
+    /// <param name="modifications">Optional. If set, applied to the spell before casting (via SpellAuthoringData.Modify).</param>
+    public Spell AttemptToCastNextSpell(double roundTime, float2 origin, IReadOnlyList<SpellAuthoringData> spellDataList, bool castRequestedThisFrame, SpellModifications modifications = null)
     {
         if (!castRequestedThisFrame)
             return null;
@@ -72,7 +74,12 @@ public class LoopedSpellCaster
         _timeOfLastCast = roundTime;
 
         if (nextIndex < spellDataList.Count && spellDataList[nextIndex] != null)
-            _spellInvoker.StartCast(spellDataList[nextIndex], origin, (float)roundTime);
+        {
+            SpellAuthoringData spellToCast = modifications != null
+                ? spellDataList[nextIndex].Modify(modifications)
+                : spellDataList[nextIndex];
+            _spellInvoker.StartCast(spellToCast, origin, (float)roundTime);
+        }
 
         return next;
     }

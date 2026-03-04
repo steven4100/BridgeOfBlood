@@ -14,6 +14,8 @@ public struct DamageNumberInstanceData
     public float opacity;
     public uint packedDigits;
     public int digitCount;
+    public float scale;
+    public Vector3 color;
 }
 
 /// <summary>
@@ -62,12 +64,17 @@ public class DamageNumberRenderSystem
             GraphicsBuffer.IndirectDrawIndexedArgs.size);
     }
 
+    static readonly Vector3 CritColor = new Vector3(1f, 1f, 0f);
+    static readonly Vector3 NormalColor = new Vector3(1f, 1f, 1f);
+
+
     public void Render(NativeArray<DamageNumber> numbers, RectTransform rectTransform, Camera camera)
     {
         if (rectTransform == null || numbers.Length == 0 || camera == null) return;
 
         int count = numbers.Length;
         EnsureCapacity(count);
+
 
         for (int i = 0; i < count; i++)
         {
@@ -77,7 +84,9 @@ public class DamageNumberRenderSystem
                 localPos = n.position,
                 opacity = n.opacity,
                 packedDigits = n.packedDigits,
-                digitCount = n.digitCount
+                digitCount = n.digitCount,
+                scale = n.scale > 0f ? n.scale : 1f,
+                color = n.isCrit ? CritColor : NormalColor
             };
         }
 
@@ -175,13 +184,14 @@ public class DamageNumberRenderSystem
     }
 
     /// <summary>
-    /// Generates a 320x32 digit atlas texture at runtime (white digits on transparent black).
-    /// Each of 10 cells is 32x32 pixels. Used as a placeholder until an art asset is provided.
+    /// Generates a 352x32 digit atlas texture at runtime (white digits on transparent black).
+    /// 11 cells: 0-9 and exclamation (for crits). Each cell is 32x32 pixels.
     /// </summary>
     public static Texture2D GenerateDigitAtlas()
     {
         const int cellSize = 32;
-        const int width = cellSize * 10;
+        const int cellCount = 11;
+        const int width = cellSize * cellCount;
         const int height = cellSize;
 
         var tex = new Texture2D(width, height, TextureFormat.RGBA32, false)
@@ -202,7 +212,7 @@ public class DamageNumberRenderSystem
         int padX = (cellSize - gridW * pixW) / 2;
         int padY = (cellSize - gridH * pixH) / 2;
 
-        for (int d = 0; d < 10; d++)
+        for (int d = 0; d < patterns.Length; d++)
         {
             int cellX = d * cellSize;
             bool[] pat = patterns[d];
@@ -226,7 +236,7 @@ public class DamageNumberRenderSystem
     }
 
     /// <summary>
-    /// 3x5 pixel font patterns for digits 0-9 (row-major, top to bottom).
+    /// 3x5 pixel font patterns for digits 0-9 and exclamation (index 10).
     /// </summary>
     static bool[][] GetDigitPatterns()
     {
@@ -242,6 +252,7 @@ public class DamageNumberRenderSystem
             ToBools("111001001001001"), // 7
             ToBools("111101111101111"), // 8
             ToBools("111101111001111"), // 9
+            ToBools("010010010000010"), // 10 = !
         };
     }
 

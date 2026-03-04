@@ -11,6 +11,8 @@ public struct AttackEntitySpawnPayload
     public float coldDamage;
     public float fireDamage;
     public float lightningDamage;
+    public float critChance;
+    public float critDamageMultiplier;
     public float2 velocity;
     public HitBoxData hitBoxData;
     public PiercePolicyRuntime pierce;
@@ -41,6 +43,8 @@ public static class AttackEntityBuilder
             coldDamage = data.coldDamage,
             fireDamage = data.fireDamage,
             lightningDamage = data.lightningDamage,
+            critChance = data.critChance,
+            critDamageMultiplier = data.critDamageMultiplier > 0f ? data.critDamageMultiplier : 1f,
             velocity = new float2(data.entityVelocity.x, data.entityVelocity.y),
             hitBoxData = data.hitBoxData,
             pierce = DefaultPierce(),

@@ -35,6 +35,8 @@ Shader "BridgeOfBlood/DamageNumberUnlit"
                 float  opacity;
                 uint   packedDigits;
                 int    digitCount;
+                float  scale;
+                float3 color;
             };
 
             StructuredBuffer<InstanceData> _InstanceData;
@@ -58,6 +60,7 @@ Shader "BridgeOfBlood/DamageNumberUnlit"
                 nointerpolation float  opacity      : TEXCOORD1;
                 nointerpolation uint   packedDigits : TEXCOORD2;
                 nointerpolation int    digitCount   : TEXCOORD3;
+                nointerpolation float3 color       : TEXCOORD4;
             };
 
             Varyings vert(Attributes v, uint svInstanceID : SV_InstanceID)
@@ -67,9 +70,10 @@ Shader "BridgeOfBlood/DamageNumberUnlit"
 
                 InstanceData data = _InstanceData[instanceID];
 
-                // Stretch the quad horizontally by digitCount, keep height = _DigitScale
-                float width = _DigitScale * (float)data.digitCount;
-                float height = _DigitScale;
+                // Stretch the quad horizontally by digitCount, keep height = _DigitScale. Per-instance scale for larger values.
+                float baseScale = data.scale > 0.0 ? data.scale : 1.0;
+                float width = _DigitScale * (float)data.digitCount * baseScale;
+                float height = _DigitScale * baseScale;
 
                 // v.positionOS is a unit quad (-0.5 to 0.5); scale and offset so it sits above the position
                 float3 localPos = float3(
@@ -85,6 +89,7 @@ Shader "BridgeOfBlood/DamageNumberUnlit"
                 o.opacity = data.opacity;
                 o.packedDigits = data.packedDigits;
                 o.digitCount = data.digitCount;
+                o.color = data.color;
                 return o;
             }
 
@@ -97,12 +102,13 @@ Shader "BridgeOfBlood/DamageNumberUnlit"
                 // Extract digit from packed nibbles (nibble 0 = most significant)
                 uint digit = (i.packedDigits >> ((uint)column * 4u)) & 0xFu;
 
-                // Atlas UV: 10 cells horizontally, digit selects cell, frac gives position within cell
+                // Atlas UV: 11 cells (0-9 + exclamation), digit selects cell
                 float fracInCell = frac(columnF);
-                float atlasU = ((float)digit + fracInCell) * 0.1;
+                float atlasU = ((float)digit + fracInCell) / 11.0;
                 float atlasV = i.uv.y;
 
                 float4 texColor = SAMPLE_TEXTURE2D(_DigitAtlas, sampler_DigitAtlas, float2(atlasU, atlasV));
+                texColor.rgb *= i.color;
                 texColor.a *= i.opacity;
 
                 clip(texColor.a - 0.01);

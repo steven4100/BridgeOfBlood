@@ -23,6 +23,8 @@ public struct AttackEntity
     public float coldDamage;
     public float fireDamage;
     public float lightningDamage;
+    public float critChance;
+    public float critDamageMultiplier;
     public HitBoxData hitBox;
     public float currentHitBoxScale;
 }
@@ -71,6 +73,8 @@ public class AttackEntityManager
             coldDamage = payload.coldDamage,
             fireDamage = payload.fireDamage,
             lightningDamage = payload.lightningDamage,
+            critChance = payload.critChance,
+            critDamageMultiplier = payload.critDamageMultiplier > 0f ? payload.critDamageMultiplier : 1f,
             hitBox = payload.hitBoxData,
             currentHitBoxScale = 1f
         });

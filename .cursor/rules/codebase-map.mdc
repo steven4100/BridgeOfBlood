@@ -1,0 +1,13 @@
+---
+alwaysApply: true
+---
+
+# Codebase map – when to use it
+
+Before running broad grep/search across the repo for **multi-file changes**, **new features that touch several systems**, or **architectural questions**:
+
+1. **Read `docs/CODEBASE_MAP.md` first.** It lists where spell cast, combat pipeline, damage numbers, and modifications live, and the main data flows.
+2. Use that to **narrow searches** (e.g. target `Assets/Scripts/Spells/` or `Assets/Scripts/Systems/` instead of the whole Scripts folder) and to **open the right files** by name.
+3. The map is a **pointer**; the code is the source of truth. If the map is wrong or missing something, prefer the code and consider updating the map when you add a major system.
+
+For single-file or single-concept questions (e.g. "what does this function do"), reading the map is optional.

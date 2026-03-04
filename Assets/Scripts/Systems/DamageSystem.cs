@@ -1,10 +1,11 @@
 using BridgeOfBlood.Data.Enemies;
 using BridgeOfBlood.Data.Shared;
 using Unity.Collections;
+using UnityEngine;
 
 /// <summary>
 /// Consumes HitEvents (from HitResolver + ChainSystem), applies damage to enemies, increments enemiesHit,
-/// and emits EnemyHitEvent / EnemyKilledEvent. No collision or chain logic—pure application of hit results.
+/// and emits EnemyHitEvent / EnemyKilledEvent. Crit is rolled per hit: if roll < critChance, damage is multiplied by critDamageMultiplier.
 /// Assumes hit indices are valid; caller (e.g. AttackEntityManager.ValidateHitEvents) must validate upstream.
 /// </summary>
 public class DamageSystem
@@ -12,7 +13,7 @@ public class DamageSystem
     public const float WeaknessMultiplier = 1.5f;
 
     /// <summary>
-    /// For each HitEvent, applies the attack entity's damage to the enemy, updates health and enemiesHit, emits telemetry.
+    /// For each HitEvent, applies the attack entity's damage to the enemy (with weakness and crit), updates health and enemiesHit, emits telemetry.
     /// When outDamageEvents is created, appends one DamageEvent per hit for the text/damage-number system.
     /// </summary>
     public void ProcessHits(
@@ -38,13 +39,18 @@ public class DamageSystem
             totalDamage += ApplyDamageType(atk.fireDamage, DamageType.Fire, enemy, outHitEvents);
             totalDamage += ApplyDamageType(atk.lightningDamage, DamageType.Lightning, enemy, outHitEvents);
 
+            bool isCrit = atk.critChance > 0f && atk.critDamageMultiplier >= 1f && Random.value < atk.critChance;
+            if (isCrit)
+                totalDamage *= atk.critDamageMultiplier;
+
             if (emitDamageEvents && totalDamage > 0f)
             {
                 outDamageEvents.Add(new DamageEvent
                 {
                     position = hit.hitPosition,
                     damageDealt = totalDamage,
-                    enemyIndex = hit.enemyIndex
+                    enemyIndex = hit.enemyIndex,
+                    isCrit = isCrit
                 });
             }
 

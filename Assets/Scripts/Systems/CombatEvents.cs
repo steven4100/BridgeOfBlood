@@ -42,4 +42,5 @@ public struct DamageEvent
     public float damageDealt;
     /// <summary>Index into the enemies array at emit time (so consumers can look up target for presentation, e.g. velocity).</summary>
     public int enemyIndex;
+    public bool isCrit;
 }

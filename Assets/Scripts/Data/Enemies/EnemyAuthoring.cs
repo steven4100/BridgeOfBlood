@@ -29,6 +29,10 @@ namespace BridgeOfBlood.Data.Enemies
 		[Tooltip("Elemental weakness(es) - takes increased damage from these types")]
 		public DamageType elementalWeakness;
 
+		[Header("Visual")]
+		[Tooltip("Sprite visual for atlas-based rendering. Run Tools > BridgeOfBlood > Rebuild Sprite Rendering Data after assigning.")]
+		public SpriteProvider visual;
+
 		/// <summary>
 		/// Creates a runtime Enemy struct from this authoring data.
 		/// Uses deterministic random seed for moveSpeed calculation.
@@ -47,7 +51,10 @@ namespace BridgeOfBlood.Data.Enemies
 				corruptionFlag = corruptionFlag,
 				elementalWeakness = elementalWeakness,
 				statusAilmentFlag = 0,
-				entityId = entityId
+				entityId = entityId,
+				visual = visual != null
+					? visual.Resolve(randomSeed)
+					: new EntityVisual { frameIndex = -1, scale = 1f }
 			};
 		}
 	}

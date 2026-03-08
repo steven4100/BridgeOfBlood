@@ -51,6 +51,7 @@ public class SpellCastTester
         if (!_simulationZone.rect.Contains(localPoint))
             return;
 
-        _spellInvoker.StartCast(_testSpellData, new float2(localPoint.x, localPoint.y), simulationTime);
+        int spellId = _testSpellData.GetInstanceID();
+        _spellInvoker.StartCast(_testSpellData, new float2(localPoint.x, localPoint.y), simulationTime, spellId, spellInvocationId: 0);
     }
 }

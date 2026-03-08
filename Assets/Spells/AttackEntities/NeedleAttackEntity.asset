@@ -28,6 +28,7 @@ MonoBehaviour:
   rehitCooldownSeconds: 1169.57
   behaviors:
   - rid: 72257236218675262
+  visual: {fileID: 11400000, guid: 6a89cbba6c71e5440a3a15edec0394fe, type: 2}
   references:
     version: 2
     RefIds:

@@ -17,3 +17,4 @@ MonoBehaviour:
   healthPoints: 100
   corruptionFlag: 0
   elementalWeakness: 4
+  visual: {fileID: 11400000, guid: 351a5faaadb963f4d9aa9ebd9240e782, type: 2}

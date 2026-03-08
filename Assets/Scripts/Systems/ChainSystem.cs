@@ -24,11 +24,11 @@ public class ChainSystem
     /// chains (chainHitsSoFar = chainCount) so CollectRemovals later adds it to the remove buffer.
     /// </summary>
     public void ResolveChains(
-        NativeList<HitEvent> hitEvents,
+        NativeArray<HitEvent>.ReadOnly hitEvents,
         NativeArray<AttackEntity> attackEntities,
         NativeArray<ChainPolicyRuntime> chainPolicies,
         GridSpatialPartition grid,
-        NativeArray<Enemy> enemies)
+        NativeArray<Enemy>.ReadOnly enemies)
     {
         if (attackEntities.Length == 0 || chainPolicies.Length == 0 || enemies.Length == 0)
             return;

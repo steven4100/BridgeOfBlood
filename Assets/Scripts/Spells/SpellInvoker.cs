@@ -7,7 +7,7 @@ using Unity.Mathematics;
 /// </summary>
 public interface ISpellEmissionHandler
 {
-    void OnKeyframeFired(SpellKeyFrame keyFrame, float2 origin, float2 forward, SpellAuthoringData spellData, float keyframeFireTime);
+    void OnKeyframeFired(SpellKeyFrame keyFrame, float2 origin, float2 forward, SpellAuthoringData spellData, float keyframeFireTime, int spellId, int spellInvocationId);
     /// <summary>Process any pending time-delayed spawns. Call each frame after the invoker.</summary>
     void Update(float simulationTime);
 }
@@ -26,6 +26,8 @@ public class SpellInvoker
         public float startTime;
         public int nextKeyframeIndex;
         public SpellAuthoringData spellData;
+        public int spellId;
+        public int spellInvocationId;
     }
 
     private readonly List<ActiveCast> _activeCasts = new List<ActiveCast>();
@@ -38,7 +40,7 @@ public class SpellInvoker
     /// <summary>
     /// Start a new cast of the given spell at the given origin. Keyframes will fire relative to startTime.
     /// </summary>
-    public void StartCast(SpellAuthoringData spellData, float2 origin, float startTime)
+    public void StartCast(SpellAuthoringData spellData, float2 origin, float startTime, int spellId, int spellInvocationId)
     {
         if (spellData == null || spellData.SpellAnimation?.keyFrames == null || spellData.SpellAnimation.keyFrames.Count == 0)
             return;
@@ -48,7 +50,9 @@ public class SpellInvoker
             origin = origin,
             startTime = startTime,
             nextKeyframeIndex = 0,
-            spellData = spellData
+            spellData = spellData,
+            spellId = spellId,
+            spellInvocationId = spellInvocationId
         });
     }
 
@@ -76,7 +80,7 @@ public class SpellInvoker
             {
                 float keyframeTime = keyFrames[cast.nextKeyframeIndex].time;
                 float keyframeFireTime = cast.startTime + keyframeTime;
-                _emissionHandler.OnKeyframeFired(keyFrames[cast.nextKeyframeIndex], cast.origin, forward, cast.spellData, keyframeFireTime);
+                _emissionHandler.OnKeyframeFired(keyFrames[cast.nextKeyframeIndex], cast.origin, forward, cast.spellData, keyframeFireTime, cast.spellId, cast.spellInvocationId);
                 cast.nextKeyframeIndex++;
             }
 

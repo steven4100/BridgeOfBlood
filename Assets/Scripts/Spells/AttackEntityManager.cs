@@ -27,6 +27,9 @@ public struct AttackEntity
     public float critDamageMultiplier;
     public HitBoxData hitBox;
     public float currentHitBoxScale;
+    public EntityVisual visual;
+    public int spellId;
+    public int spellInvocationId;
 }
 
 /// <summary>
@@ -76,7 +79,10 @@ public class AttackEntityManager
             critChance = payload.critChance,
             critDamageMultiplier = payload.critDamageMultiplier > 0f ? payload.critDamageMultiplier : 1f,
             hitBox = payload.hitBoxData,
-            currentHitBoxScale = 1f
+            currentHitBoxScale = 1f,
+            visual = payload.visual,
+            spellId = payload.spellId,
+            spellInvocationId = payload.spellInvocationId
         });
         _chainPolicies.Add(payload.chain);
         _piercePolicies.Add(payload.pierce);
@@ -149,49 +155,18 @@ public class AttackEntityManager
     /// Call after DamageSystem.ProcessHits. Only updates entities with rehitCooldownSeconds > 0.
     /// </summary>
     public void RecordRehitHits(
-        NativeList<HitEvent> hitEvents,
-        NativeArray<AttackEntity> attackEntities,
-        NativeArray<Enemy> enemies)
+        NativeArray<HitEvent>.ReadOnly hitEvents,
+        NativeArray<AttackEntity>.ReadOnly attackEntities,
+        NativeArray<Enemy>.ReadOnly enemies)
     {
-        NativeArray<RehitPolicyRuntime> rehitPolicies = _rehitPolicies.AsArray();
-        for (int i = 0; i < hitEvents.Length; i++)
-        {
-            HitEvent hit = hitEvents[i];
-            int ai = hit.attackEntityIndex;
-            if (ai < 0 || ai >= rehitPolicies.Length) continue;
-            if (hit.enemyIndex < 0 || hit.enemyIndex >= enemies.Length) continue;
-
-            RehitPolicyRuntime rehit = rehitPolicies[ai];
-            if (rehit.rehitCooldownSeconds <= 0f) continue;
-
-            AttackEntity atk = attackEntities[ai];
-            Enemy enemy = enemies[hit.enemyIndex];
-            var entry = new RehitEntry { enemyId = enemy.entityId, hitTimeAlive = atk.timeAlive };
-
-            if (rehit.recentHits.Length >= rehit.recentHits.Capacity)
-            {
-                int oldestIndex = 0;
-                float oldest = rehit.recentHits[0].hitTimeAlive;
-                for (int j = 1; j < rehit.recentHits.Length; j++)
-                {
-                    if (rehit.recentHits[j].hitTimeAlive < oldest)
-                    {
-                        oldest = rehit.recentHits[j].hitTimeAlive;
-                        oldestIndex = j;
-                    }
-                }
-                rehit.recentHits.RemoveAt(oldestIndex);
-            }
-            rehit.recentHits.Add(entry);
-            rehitPolicies[ai] = rehit;
-        }
+        RehitRecordSystem.RecordRehitHits(hitEvents, attackEntities, enemies, _rehitPolicies.AsArray());
     }
 
     /// <summary>
     /// Validates that all hit events reference valid attack-entity and enemy indices. Call before passing hitEvents to ChainSystem/DamageSystem.
     /// Throws if any index is out of range (indicates upstream bug).
     /// </summary>
-    public void ValidateHitEvents(NativeList<HitEvent> hitEvents, int enemyCount)
+    public void ValidateHitEvents(NativeArray<HitEvent>.ReadOnly hitEvents, int enemyCount)
     {
         int entityCount = _entities.Length;
         int chainCount = _chainPolicies.Length;

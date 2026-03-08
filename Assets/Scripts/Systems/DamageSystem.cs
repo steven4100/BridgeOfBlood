@@ -17,7 +17,7 @@ public class DamageSystem
     /// When outDamageEvents is created, appends one DamageEvent per hit for the text/damage-number system.
     /// </summary>
     public void ProcessHits(
-        NativeList<HitEvent> hitEvents,
+        NativeArray<HitEvent>.ReadOnly hitEvents,
         NativeArray<AttackEntity> attackEntities,
         NativeArray<Enemy> enemies,
         NativeList<EnemyHitEvent> outHitEvents,
@@ -33,15 +33,26 @@ public class DamageSystem
             AttackEntity atk = attackEntities[hit.attackEntityIndex];
             Enemy enemy = enemies[hit.enemyIndex];
 
-            float totalDamage = 0f;
-            totalDamage += ApplyDamageType(atk.physicalDamage, DamageType.Physical, enemy, outHitEvents);
-            totalDamage += ApplyDamageType(atk.coldDamage, DamageType.Cold, enemy, outHitEvents);
-            totalDamage += ApplyDamageType(atk.fireDamage, DamageType.Fire, enemy, outHitEvents);
-            totalDamage += ApplyDamageType(atk.lightningDamage, DamageType.Lightning, enemy, outHitEvents);
+            float physical = ApplyDamageType(atk.physicalDamage, DamageType.Physical, enemy, outHitEvents);
+            float cold = ApplyDamageType(atk.coldDamage, DamageType.Cold, enemy, outHitEvents);
+            float fire = ApplyDamageType(atk.fireDamage, DamageType.Fire, enemy, outHitEvents);
+            float lightning = ApplyDamageType(atk.lightningDamage, DamageType.Lightning, enemy, outHitEvents);
 
             bool isCrit = atk.critChance > 0f && atk.critDamageMultiplier >= 1f && Random.value < atk.critChance;
             if (isCrit)
-                totalDamage *= atk.critDamageMultiplier;
+            {
+                float m = atk.critDamageMultiplier;
+                physical *= m;
+                cold *= m;
+                fire *= m;
+                lightning *= m;
+            }
+
+            float totalDamage = physical + cold + fire + lightning;
+            float healthBefore = enemy.health;
+            enemy.health -= totalDamage;
+            bool killed = healthBefore > 0f && enemy.health <= 0f;
+            float overkill = killed ? -enemy.health : 0f;
 
             if (emitDamageEvents && totalDamage > 0f)
             {
@@ -50,18 +61,24 @@ public class DamageSystem
                     position = hit.hitPosition,
                     damageDealt = totalDamage,
                     enemyIndex = hit.enemyIndex,
-                    isCrit = isCrit
+                    isCrit = isCrit,
+                    physicalDamage = physical,
+                    fireDamage = fire,
+                    coldDamage = cold,
+                    lightningDamage = lightning,
+                    spellId = atk.spellId,
+                    spellInvocationId = atk.spellInvocationId,
+                    wasKill = killed,
+                    overkillDamage = overkill
                 });
             }
 
-            enemy.health -= totalDamage;
-
-            if (enemy.health <= 0f)
+            if (killed)
             {
                 outKillEvents.Add(new EnemyKilledEvent
                 {
                     enemyEntityId = enemy.entityId,
-                    overkillDamage = -enemy.health,
+                    overkillDamage = overkill,
                     corruptionFlag = enemy.corruptionFlag,
                     finalStatusAilments = enemy.statusAilmentFlag
                 });

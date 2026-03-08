@@ -38,7 +38,7 @@ public class SpellEmissionHandler : ISpellEmissionHandler
         _payloadModifier = payloadModifier;
     }
 
-    public void OnKeyframeFired(SpellKeyFrame keyFrame, float2 origin, float2 forward, SpellAuthoringData spellData, float keyframeFireTime)
+    public void OnKeyframeFired(SpellKeyFrame keyFrame, float2 origin, float2 forward, SpellAuthoringData spellData, float keyframeFireTime, int spellId, int spellInvocationId)
     {
         if (keyFrame?.attackEntityEmitter == null || keyFrame.attackEntityData == null)
             return;
@@ -49,6 +49,8 @@ public class SpellEmissionHandler : ISpellEmissionHandler
             return;
 
         AttackEntitySpawnPayload basePayload = AttackEntityBuilder.Build(keyFrame.attackEntityData);
+        basePayload.spellId = spellId;
+        basePayload.spellInvocationId = spellInvocationId;
         _payloadModifier?.Apply(ref basePayload, spellData, keyFrame);
 
         float speed = keyFrame.attackEntityEmitter.speed;

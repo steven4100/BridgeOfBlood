@@ -1,4 +1,4 @@
-# Bridge of Blood – Codebase Map
+# Bridge of Blood -- Codebase Map
 
 Short reference for where systems live and how data flows. Update when adding major systems.
 
@@ -10,60 +10,94 @@ Short reference for where systems live and how data flows. Update when adding ma
 |---------------|--------|
 | `Assets/Scripts/` | All C# (no sub-namespace by folder; some use `BridgeOfBlood.Data.Spells` etc.) |
 | `Assets/Scripts/Spells/` | Spell authoring, cast flow, attack entities, modifications |
-| `Assets/Scripts/Systems/` | Combat pipeline: collision, hit resolve, chain, damage, pierce, expiration, damage numbers |
+| `Assets/Scripts/Systems/` | Combat pipeline: collision, hit resolve, chain, damage, pierce, expiration, damage numbers, telemetry aggregation |
 | `Assets/Scripts/Enemies/` | Enemy manager, movement, culling, spawner, grid, render |
 | `Assets/Scripts/Data/` | Shared enums, runtime/authoring structs (Enemies, Idols, Shared) |
 | `Assets/Scripts/Player/` | Player, PlayerRenderer, Stats |
 | `Assets/Scripts/Editor/` | Unity editors/drawers (e.g. AttackEntityData) |
 | `Assets/Shaders/` | DamageNumberUnlit, EnemyIndirectUnlit |
+| `Assets/Rendering/` | Sprite rendering system (atlas-based GPU instanced) |
+| `Assets/Rendering/Authoring/` | `SpriteEntityVisual` ScriptableObject (designer-facing, references Sprite) |
+| `Assets/Rendering/Runtime/` | `SpriteFrame`, `SpriteRenderDatabase`, `EntityVisual`, `SpriteInstanceData` (no Sprite dependency) |
+| `Assets/Rendering/Rendering/` | `SpriteInstancedRenderer`, `SpriteInstanceBuilder` (GPU instanced draw via RenderMeshIndirect) |
+| `Assets/Rendering/Editor/` | `SpriteAtlasBuilder` (menu: Tools > BridgeOfBlood > Rebuild Sprite Rendering Data) |
+| `Assets/Rendering/Shaders/` | `InstancedSprite.shader` (URP unlit, atlas UV remap) |
+| `Assets/Rendering/Data/` | Baked `SpriteEntityVisual` assets (e.g. FireballVisual, NeedleVisual) |
+
+---
+
+## Sprite rendering (atlas-based)
+
+Three-layer system: Authoring > Editor Bake > Runtime.
+
+- **Authoring**: `SpriteEntityVisual` (ScriptableObject) holds a `Sprite` reference and `scale`. Only layer that touches `UnityEngine.Sprite`. Assigned to `EnemyAuthoringData.visual` and `AttackEntityData.visual`.
+- **Bake**: `SpriteAtlasBuilder` (editor menu) finds all `SpriteEntityVisual` assets, packs sprites into a texture atlas via `Texture2D.PackTextures`, computes UV frames, writes `SpriteRenderDatabase` asset, and stamps `bakedFrameIndex` back onto each visual.
+- **Runtime**: `Enemy` and `AttackEntity` structs carry `EntityVisual` (frameIndex + scale), populated from authoring data at spawn. `SpriteInstanceBuilder.Build(enemies, attacks)` builds a combined `SpriteInstanceData[]` by looking up `SpriteRenderDatabase.frames[frameIndex]`, then `SpriteInstancedRenderer.Render` issues a single `Graphics.RenderMeshIndirect` draw call. Shader `InstancedSprite.shader` remaps quad UVs via `lerp(uvRect.xy, uvRect.zw, meshUV)`.
+- **Debug**: `AttackEntityDebugRenderer` still renders hitbox shapes (circles/rects) on top of sprite visuals.
+
+Visual data flow: `SpriteEntityVisual.bakedFrameIndex` > `EnemyAuthoringData.CreateRuntimeEnemy` / `AttackEntityBuilder.Build` > `EntityVisual` on entity struct > `SpriteInstanceBuilder` > `SpriteInstancedRenderer`.
 
 ---
 
 ## Spell cast flow
 
-1. **Entry**: `TestSceneManager` → `LoopedSpellCaster.AttemptToCastNextSpell(..., mods)` with optional `SpellModifications` from `castModifications` (SpellModificationsTestData).
+1. **Entry**: `TestSceneManager` > `LoopedSpellCaster.AttemptToCastNextSpell(..., mods)` returns `SpellCastResult` (didCast, spellId, invocationCount, loopCompleted, loopCount). Optional `SpellModifications` from `castModifications`.
 2. **Resolve**: `spellData.Modify(modifications)` returns a clone of `SpellAuthoringData` with modifications baked in via `SpellModificationsApplicator.CloneAndApply` (damage, crit, chains, pierce, area, flat additive). If no mods, raw spell is used.
-3. **Invoke**: `SpellInvoker.StartCast(spellToCast, origin, time)` stores active cast; each frame `Update(simulationTime, forward)` fires keyframes.
-4. **Emit**: On keyframe, `ISpellEmissionHandler.OnKeyframeFired` (implemented by `SpellEmissionHandler`) builds payload from keyframe’s `AttackEntityData` via `AttackEntityBuilder.Build`, queues spawns with delays.
-5. **Spawn**: `AttackEntityManager.Spawn(payload, position)` creates `AttackEntity` and policy lists (chain, pierce, expiration, rehit).
+3. **Invoke**: `SpellInvoker.StartCast(spellToCast, origin, time, spellId, spellInvocationId)` stores active cast with spell provenance; each frame `Update(simulationTime, forward)` fires keyframes.
+4. **Emit**: On keyframe, `ISpellEmissionHandler.OnKeyframeFired` (implemented by `SpellEmissionHandler`) builds payload from keyframe's `AttackEntityData` via `AttackEntityBuilder.Build`, stamps `spellId`/`spellInvocationId` on payload, queues spawns with delays.
+5. **Spawn**: `AttackEntityManager.Spawn(payload, position)` creates `AttackEntity` (with spell provenance) and policy lists (chain, pierce, expiration, rehit).
 
-**Key types**: `SpellAuthoringData`, `SpellModifications`, `SpellModificationsApplicator`, `SpellInvoker`, `SpellEmissionHandler`, `AttackEntityBuilder`, `AttackEntitySpawnPayload`, `AttackEntityManager`, `AttackEntity`.
+**Key types**: `SpellAuthoringData`, `SpellModifications`, `SpellModificationsApplicator`, `SpellInvoker`, `SpellEmissionHandler`, `AttackEntityBuilder`, `AttackEntitySpawnPayload`, `AttackEntityManager`, `AttackEntity`, `SpellCastResult`.
 
 ---
 
 ## Combat pipeline (per frame)
 
-Order of steps in `TestSceneManager._steps` (after Move/BuildGrid/Cull/RemoveCulled):
+Order of steps in `GameSimulation._steps` (after Move/BuildGrid/Cull/RemoveCulled):
 
-1. **AttackTick** – Move attack entities (`AttackEntityMovementSystem`), tick time (`AttackEntityTimeSystem`).
-2. **Collision** – `CollisionSystem`: overlap attack vs enemy → `CollisionEvent`s.
-3. **Damage** (step name) – `HitResolver.Resolve` (collisions → `HitEvent`s, pierce/rehit filtering) → `ChainSystem.ResolveChains` (redirect projectiles, or exhaust chains if no target) → `DamageSystem.ProcessHits` (apply damage, crit roll, health, emit `DamageEvent`/`EnemyKilledEvent`) → `RecordRehitHits`. Then `DeadEnemyRemovalSystem` + remove dead enemies.
-4. **AttackExpire** – `PierceSystem`, `ExpirationSystem`, `ChainSystem` each `CollectRemovals` into `_attackRemovalEvents`; `AttackEntityManager.ApplyRemovals`.
+1. **AttackTick** -- Move attack entities (`AttackEntityMovementSystem`), tick time (`AttackEntityTimeSystem`).
+2. **Collision** -- `CollisionSystem`: overlap attack vs enemy > `CollisionEvent`s.
+3. **Damage** (step name) -- `HitResolver.Resolve` (collisions > `HitEvent`s, pierce/rehit filtering) > `ChainSystem.ResolveChains` (redirect projectiles, or exhaust chains if no target) > `DamageSystem.ProcessHits` (apply damage, crit roll, health, emit `DamageEvent`/`EnemyKilledEvent`) > `RecordRehitHits`. Then `DeadEnemyRemovalSystem` + remove dead enemies.
+4. **AttackExpire** -- `PierceSystem`, `ExpirationSystem`, `ChainSystem` each `CollectRemovals` into `_attackRemovalEvents`; `AttackEntityManager.ApplyRemovals`.
 
-**Event types**: `HitEvent`, `DamageEvent`, `EnemyHitEvent`, `EnemyKilledEvent`, `AttackEntityRemovalEvent` (see `CombatEvents.cs`).
+**Event types**: `HitEvent`, `DamageEvent` (enriched: per-type damage, spell provenance, kill/overkill), `EnemyHitEvent`, `EnemyKilledEvent`, `AttackEntityRemovalEvent` (see `CombatEvents.cs`).
+
+---
+
+## Combat telemetry
+
+Hierarchical aggregation at five time scales: Frame > Spell Cast > Spell Loop > Round > Game.
+
+- **Source**: `DamageEvent` is the single source of truth — enriched with damage-by-type, `spellId`, `spellInvocationId`, `wasKill`, `overkillDamage`.
+- **Aggregator**: `TelemetryAggregator` (plain class) iterates `DamageEvent` list each frame, builds `FrameSnapshot`, accumulates into `CombatMetrics` at each level.
+- **Boundaries**: `SpellCastResult` (from `LoopedSpellCaster`) drives spell cast resets and loop completion resets. Round boundary via `EndRound()` (not yet wired).
+- **Consumers**: UI reads `CurrentFrame`, `CurrentSpellCast`, `CurrentSpellLoop`, `CurrentRound`, `Game` snapshot properties.
+- **Per-spell**: Each level maintains per-spell `CombatMetrics` via `Dictionary<int, CombatMetrics>`, exposed as `SpellCombatMetrics[]` on snapshot structs.
+
+**Key types**: `CombatMetrics`, `SpellCombatMetrics`, `FrameSnapshot`, `SpellCastSnapshot`, `SpellLoopSnapshot`, `RoundSnapshot`, `GameSnapshot`, `TelemetryAggregator` (see `CombatTelemetry.cs`, `TelemetryAggregator.cs`).
 
 ---
 
 ## Damage numbers
 
-- **Source**: `DamageSystem.ProcessHits` fills `outDamageEvents` (`DamageEvent`: position, damageDealt, enemyIndex, isCrit).
-- **Spawn**: `TestSceneManager.SpawnDamageNumbersFromEvents` → `DamageNumberManager.Spawn(position, damage, velocityX, isCrit)`. Scale from value and crit exclamation are applied in the manager.
-- **Render**: `DamageNumberRenderSystem.Render(numbers, rect, camera)` – instance buffer with per-number scale and color (yellow for crit); shader `DamageNumberUnlit.shader` uses 11-cell atlas (digits + `!`).
+- **Source**: `DamageSystem.ProcessHits` fills `outDamageEvents` (`DamageEvent`: position, damageDealt, enemyIndex, isCrit, plus telemetry fields).
+- **Spawn**: `DamageNumberController.SpawnFromDamageEvents` > `DamageNumberManager.Spawn(position, damage, velocityX, isCrit)`. Scale from value and crit exclamation are applied in the manager.
+- **Render**: `DamageNumberRenderSystem.Render(numbers, rect, camera)` -- instance buffer with per-number scale and color (yellow for crit); shader `DamageNumberUnlit.shader` uses 11-cell atlas (digits + `!`).
 
 ---
 
 ## Modifications (spell stats)
 
 - **Authoring**: `SpellModifications` (SpellModification.cs): ParamaterModifier for crit chance/mult, chains, pierce, area, damage type/attribute scaling, flat damage, etc. `ParamaterModifier`: flatAdditiveValue, percentIncreased, moreMultipliers (percent-based). `SpellModificationResolver` in same file: `ResolveToMultiplier`, `GetFlatAdditive` (used by applicator).
-- **Application**: `SpellModificationsApplicator.CloneAndApply(AttackEntityData, spellAttributeMask, mods)` – clones entity data and applies all mods (damage, crit chance/mult, area, behaviors for chain/pierce). Used only from `SpellAuthoringData.Modify(modifications)` when building the spell to cast.
+- **Application**: `SpellModificationsApplicator.CloneAndApply(AttackEntityData, spellAttributeMask, mods)` -- clones entity data via `Object.Instantiate` (copies all serialized fields including `visual`) and applies all mods (damage, crit chance/mult, area, behaviors for chain/pierce). Used only from `SpellAuthoringData.Modify(modifications)` when building the spell to cast.
 - **Test data**: `SpellModificationsTestData` (ScriptableObject) holds list-based authoring and `GetModifications()` builds runtime `SpellModifications`.
 
 ---
 
 ## Key data splits
 
-- **Authoring (ScriptableObject)**: `SpellAuthoringData`, `AttackEntityData`, `EnemyAuthoringData`, `IdolAuthoringData`, `SpellModificationsTestData`. Lives in project; not mutated at runtime for “baked” values.
-- **Runtime (structs / NativeList)**: `AttackEntity`, `Enemy`, `HitEvent`, `DamageEvent`, `DamageNumber`, chain/pierce/expiration/rehit policy structs. Simulation-only, no MonoBehaviours in hot path.
+- **Authoring (ScriptableObject)**: `SpellAuthoringData`, `AttackEntityData`, `EnemyAuthoringData`, `IdolAuthoringData`, `SpellModificationsTestData`, `SpriteEntityVisual`, `SpriteRenderDatabase`. Lives in project; not mutated at runtime for "baked" values.
+- **Runtime (structs / NativeList)**: `AttackEntity`, `Enemy`, `HitEvent`, `DamageEvent`, `DamageNumber`, chain/pierce/expiration/rehit policy structs, `EntityVisual`, `SpriteFrame`, `SpriteInstanceData`, `CombatMetrics`, `SpellCastResult`. Simulation-only, no MonoBehaviours in hot path.
 - **Enums / shared**: `DamageType`, `SpellAttributeMask` in `Data/Shared/Enums.cs`.
 
 ---
@@ -71,6 +105,6 @@ Order of steps in `TestSceneManager._steps` (after Move/BuildGrid/Cull/RemoveCul
 ## Namespaces
 
 - `BridgeOfBlood.Data.Spells`: spell/modification types, resolver, applicator, SpellAuthoringData, ResolvedKeyframe, etc.
-- `BridgeOfBlood.Data.Shared`: enums, GameContext, telemetry structs.
+- `BridgeOfBlood.Data.Shared`: enums, GameContext, `CombatMetrics`, snapshot structs (`FrameSnapshot`, `SpellCastSnapshot`, etc.).
 - `BridgeOfBlood.Data.Enemies` / `BridgeOfBlood.Data.Idols`: runtime/authoring for enemies and idols.
-- Top-level (no namespace): many systems, CombatEvents, AttackEntity*, DamageNumber*, SpellInvoker, LoopedSpellCaster, etc.
+- Top-level (no namespace): many systems, CombatEvents, AttackEntity*, DamageNumber*, SpellInvoker, LoopedSpellCaster, SpriteInstancedRenderer, SpriteInstanceBuilder, etc.

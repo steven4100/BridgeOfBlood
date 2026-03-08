@@ -33,7 +33,8 @@ public struct AttackEntityRemovalEvent
 }
 
 /// <summary>
-/// Emitted by DamageSystem for each hit that deals damage. Consumed by the damage number / text system.
+/// Emitted by DamageSystem for each hit that deals damage. Single source of truth for telemetry aggregation
+/// and damage number rendering. Per-type damage values include crit scaling and sum to damageDealt.
 /// Blittable for NativeList.
 /// </summary>
 public struct DamageEvent
@@ -43,4 +44,13 @@ public struct DamageEvent
     /// <summary>Index into the enemies array at emit time (so consumers can look up target for presentation, e.g. velocity).</summary>
     public int enemyIndex;
     public bool isCrit;
+
+    public float physicalDamage;
+    public float fireDamage;
+    public float coldDamage;
+    public float lightningDamage;
+    public int spellId;
+    public int spellInvocationId;
+    public bool wasKill;
+    public float overkillDamage;
 }

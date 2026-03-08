@@ -14,22 +14,21 @@ public class HitResolver
     /// <summary>
     /// Converts each collision into one HitEvent when allowed by pierce and rehit cooldown. Clears and fills the hitEvents list.
     /// Only collisions that pass the per-entity pierce limit and are not in rehit cooldown produce hits.
-    /// If piercePolicies is default or empty, pierce is skipped. If rehitPolicies is default or rehitCooldownSeconds &lt;= 0, rehit is skipped.
-    /// Does not modify enemies or attack entities; may prune and read rehitPolicies.
+    /// If piercePolicies is empty, pierce is skipped. If rehitCooldownSeconds &lt;= 0, rehit is skipped.
+    /// Does not modify enemies or attack entities; may prune rehitPolicies.
     /// </summary>
     public void Resolve(
-        NativeList<CollisionEvent> collisions,
-        NativeArray<AttackEntity> attackEntities,
-        NativeArray<Enemy> enemies,
-        NativeArray<PiercePolicyRuntime> piercePolicies,
+        NativeArray<CollisionEvent>.ReadOnly collisions,
+        NativeArray<AttackEntity>.ReadOnly attackEntities,
+        NativeArray<PiercePolicyRuntime>.ReadOnly piercePolicies,
         NativeArray<RehitPolicyRuntime> rehitPolicies,
         NativeList<HitEvent> hitEvents)
     {
         hitEvents.Clear();
         if (collisions.Length == 0) return;
 
-        bool applyPierce = piercePolicies.IsCreated && piercePolicies.Length > 0 && attackEntities.Length > 0;
-        bool applyRehit = rehitPolicies.IsCreated && rehitPolicies.Length == attackEntities.Length;
+        bool applyPierce = piercePolicies.Length > 0 && attackEntities.Length > 0;
+        bool applyRehit = rehitPolicies.Length == attackEntities.Length;
         NativeArray<int> countPerEntity = default;
         if (applyPierce)
         {

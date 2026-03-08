@@ -19,6 +19,9 @@ public struct AttackEntitySpawnPayload
     public ExpirationPolicyRuntime expiration;
     public ChainPolicyRuntime chain;
     public RehitPolicyRuntime rehit;
+    public EntityVisual visual;
+    public int spellId;
+    public int spellInvocationId;
 }
 
 /// <summary>
@@ -35,7 +38,7 @@ public static class AttackEntityBuilder
     /// <summary>
     /// Builds a spawn payload from authoring data. Iterates behaviors and applies first of each type.
     /// </summary>
-    public static AttackEntitySpawnPayload Build(AttackEntityData data)
+    public static AttackEntitySpawnPayload Build(AttackEntityData data, uint visualSeed = 0)
     {
         var payload = new AttackEntitySpawnPayload
         {
@@ -50,7 +53,10 @@ public static class AttackEntityBuilder
             pierce = DefaultPierce(),
             expiration = DefaultExpiration(),
             chain = DefaultChain(),
-            rehit = DefaultRehit()
+            rehit = DefaultRehit(),
+            visual = data.visual != null
+                ? data.visual.Resolve(visualSeed)
+                : new EntityVisual { frameIndex = -1, scale = 1f }
         };
 
         if (data.behaviors == null) return payload;

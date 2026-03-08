@@ -29,14 +29,15 @@ public class EnemyManager
     /// <summary>
     /// Spawns one enemy per position using the given authoring data.
     /// </summary>
-    public void CreateEnemies(List<Vector2> positions, EnemyAuthoringData authoringData, uint randomSeed = 0)
+    public void CreateEnemies(List<Vector2> positions, EnemyAuthoringData authoringData)
     {
+        int randomSeed = UnityEngine.Random.Range(0, 1000);
         if (positions == null || authoringData == null) return;
         for (int i = 0; i < positions.Count; i++)
         {
             var p = positions[i];
             var pos = new float2(p.x, p.y);
-            _enemies.Add(authoringData.CreateRuntimeEnemy(pos, _nextEntityId++, randomSeed + (uint)i));
+            _enemies.Add(authoringData.CreateRuntimeEnemy(pos, _nextEntityId++, (uint)randomSeed + (uint)i));
         }
     }
 

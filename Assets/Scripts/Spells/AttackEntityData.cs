@@ -18,4 +18,8 @@ public class AttackEntityData : ScriptableObject
     [SerializeReference]
     [AttackEntityBehaviorsList]
     public List<AttackEntityBehavior> behaviors = new List<AttackEntityBehavior>();
+
+    [Header("Visual")]
+    [Tooltip("Sprite visual for atlas-based rendering. Run Tools > BridgeOfBlood > Rebuild Sprite Rendering Data after assigning.")]
+    public SpriteProvider visual;
 }

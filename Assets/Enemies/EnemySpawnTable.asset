@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb627009a580886468fdad865b796665, type: 3}
+  m_Name: EnemySpawnTable
+  m_EditorClassIdentifier: 
+  fallbackSpawnPattern: {fileID: 0}
+  entries:
+  - enemy: {fileID: 11400000, guid: 33babe2ce1813654d889516c2cef8262, type: 2}
+    weight: 1
+    spawnPattern: {fileID: 11400000, guid: 51b2f74699635314fafbe042779258c8, type: 2}
+    positionScale: 20
+  - enemy: {fileID: 11400000, guid: 44ff14d68b01c8e4bb74ef97fdd2d6dd, type: 2}
+    weight: 0.5
+    spawnPattern: {fileID: 11400000, guid: 44a09a805fa8c32418a3616f7a94a7ac, type: 2}
+    positionScale: 20

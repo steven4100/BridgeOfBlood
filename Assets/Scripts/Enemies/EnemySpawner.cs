@@ -2,8 +2,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Spawns enemies along the left edge of a rect; returns positions with x=0, y in [0, spawnLineLength].
-/// Caller adds rect.xMin and rect.yMin to get world positions.
+/// Produces spawn event origins along the left edge of a rect. Returns one origin per event: (0, y) in local line space.
+/// Caller adds rect.xMin and rect.yMin to get world origin, then applies the spawn pattern to get positions.
 /// </summary>
 public class EnemySpawner
 {
@@ -18,10 +18,10 @@ public class EnemySpawner
     }
 
     /// <summary>
-    /// Returns new spawn positions for this frame. Each position is (0, y) with y in [0, spawnLineLength].
-    /// Add rect.xMin to x and rect.yMin to y to get rect-space coordinates.
+    /// Returns spawn event origins for this frame. Each origin is (0, y) with y in [0, spawnLineLength].
+    /// Add rect.xMin to x and rect.yMin to y to get world origin; then use SpawnPattern.GetPositions(origin, ...) for positions.
     /// </summary>
-    public List<Vector2> GetSpawnPositions(float time)
+    public List<Vector2> GetSpawnEventOrigins(float time)
     {
         int total = Mathf.FloorToInt(time * _spawnRate);
         int count = Mathf.Max(0, total - _lastTotalSpawns);

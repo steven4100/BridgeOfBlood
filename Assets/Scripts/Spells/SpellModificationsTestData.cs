@@ -19,6 +19,7 @@ namespace BridgeOfBlood.Data.Spells
 		public ParamaterModifier areaOfEffect;
 		public ParamaterModifier duration;
 		public ParamaterModifier castSpeed;
+		public ParamaterModifier numberOfProjectiles;
 
 		[Header("Damage scaling (spell attribute)")]
 		public List<SpellAttributeScalingEntry> spellAttributeDamageScaling = new List<SpellAttributeScalingEntry>();
@@ -45,13 +46,14 @@ namespace BridgeOfBlood.Data.Spells
 		{
 			var mods = new SpellModifications
 			{
-				criticalStrikeChance = criticalStrikeChance,
-				criticalStrikeMultiplier = criticalStrikeMultiplier,
-				chains = chains,
-				pierce = pierce,
-				areaOfEffect = areaOfEffect,
-				duration = duration,
-				castSpeed = castSpeed,
+				criticalStrikeChance = criticalStrikeChance?.Clone(),
+				criticalStrikeMultiplier = criticalStrikeMultiplier?.Clone(),
+				chains = chains?.Clone(),
+				pierce = pierce?.Clone(),
+				areaOfEffect = areaOfEffect?.Clone(),
+				duration = duration?.Clone(),
+				castSpeed = castSpeed?.Clone(),
+				numberOfProjectiles = numberOfProjectiles?.Clone(),
 				spellAttributeDamageScaling = BuildDictionary(spellAttributeDamageScaling),
 				damageTypeScaling = BuildDictionary(damageTypeScaling),
 				damageTypePenetration = BuildDictionary(damageTypePenetration),

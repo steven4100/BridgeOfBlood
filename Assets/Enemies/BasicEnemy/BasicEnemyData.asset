@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cc299db56a7a4dd4ab7357834400431e, type: 3}
-  m_Name: EnemyData
+  m_Name: BasicEnemyData
   m_EditorClassIdentifier: 
-  minMoveSpeed: 52.9
-  maxMoveSpeed: 60.1
+  minMoveSpeed: 50
+  maxMoveSpeed: 50
   healthPoints: 100
   corruptionFlag: 0
   elementalWeakness: 4

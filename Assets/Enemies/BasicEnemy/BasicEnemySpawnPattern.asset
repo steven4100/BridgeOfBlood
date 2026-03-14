@@ -9,9 +9,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 534f4564bf4c4054fa61536cd2f268b7, type: 3}
-  m_Name: EnemySpriteCollection
+  m_Script: {fileID: 11500000, guid: 90039b39e91f1774490356c06987f97d, type: 3}
+  m_Name: BasicEnemySpawnPattern
   m_EditorClassIdentifier: 
-  entries:
-  - {fileID: 11400000, guid: d553987990a6b304e98635e1a0e25073, type: 2}
-  scale: 32.5
+  fillShapes:
+  - type: 0
+    center: {x: 0, y: 0}
+    size: {x: 5, y: 0}
+    rotationDegrees: 0
+  spawnDensity: 0.77
+  distribution: 1
+  omissionZones: []

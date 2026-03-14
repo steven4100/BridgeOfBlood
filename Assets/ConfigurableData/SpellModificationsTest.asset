@@ -17,11 +17,11 @@ MonoBehaviour:
     percentIncreased: 0
     moreMultipliers: []
   criticalStrikeMultiplier:
-    flatAdditiveValue: 3262
+    flatAdditiveValue: 100
     percentIncreased: 0
     moreMultipliers: []
   chains:
-    flatAdditiveValue: 5
+    flatAdditiveValue: 2
     percentIncreased: 0
     moreMultipliers: []
   pierce:
@@ -37,6 +37,10 @@ MonoBehaviour:
     percentIncreased: 0
     moreMultipliers: []
   castSpeed:
+    flatAdditiveValue: 0
+    percentIncreased: 0
+    moreMultipliers: []
+  numberOfProjectiles:
     flatAdditiveValue: 0
     percentIncreased: 0
     moreMultipliers: []

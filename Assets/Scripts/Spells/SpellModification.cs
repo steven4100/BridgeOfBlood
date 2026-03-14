@@ -41,6 +41,16 @@ namespace BridgeOfBlood.Data.Spells
                 moreMultipliers.AddRange(other.moreMultipliers);
             }
         }
+
+        public ParamaterModifier Clone()
+        {
+            return new ParamaterModifier
+            {
+                flatAdditiveValue = flatAdditiveValue,
+                percentIncreased = percentIncreased,
+                moreMultipliers = moreMultipliers != null ? new List<float>(moreMultipliers) : null
+            };
+        }
     }
 
     public struct ExtraDamageAs
@@ -61,6 +71,7 @@ namespace BridgeOfBlood.Data.Spells
         public ParamaterModifier areaOfEffect;
         public ParamaterModifier duration;
         public ParamaterModifier castSpeed;
+        public ParamaterModifier numberOfProjectiles;
 
         // Damage scaling
         public Dictionary<SpellAttributeMask, ParamaterModifier> spellAttributeDamageScaling;
@@ -103,6 +114,7 @@ namespace BridgeOfBlood.Data.Spells
             MergeParam(ref areaOfEffect, other.areaOfEffect);
             MergeParam(ref duration, other.duration);
             MergeParam(ref castSpeed, other.castSpeed);
+            MergeParam(ref numberOfProjectiles, other.numberOfProjectiles);
 
             MergeDictionary(other.spellAttributeDamageScaling, ref spellAttributeDamageScaling);
             MergeDictionary(other.damageTypeScaling, ref damageTypeScaling);

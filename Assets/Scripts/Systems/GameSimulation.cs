@@ -14,7 +14,7 @@ public class SimulationConfig
     public RectTransform SimulationZone;
     public float SpawnRate = 2f;
     public float GizmoRadius = 5f;
-    public EnemyAuthoringData EnemyAuthoringData;
+    public EnemySpawnTable SpawnTable;
 }
 
 /// <summary>
@@ -25,8 +25,9 @@ public class GameSimulation
 {
     private readonly RectTransform _simulationZone;
     private readonly float _gizmoRadius;
-    private readonly EnemyAuthoringData _enemyAuthoringData;
+    private readonly EnemySpawnTable _spawnTable;
     private readonly List<int> _toRemove = new List<int>();
+    private readonly List<Vector2> _spawnPositionsBuffer = new List<Vector2>();
 
     private EnemyManager _enemyManager;
     private EnemyMovementSystemLinear _movementSystem;
@@ -62,7 +63,7 @@ public class GameSimulation
 
         _simulationZone = config.SimulationZone;
         _gizmoRadius = config.GizmoRadius;
-        _enemyAuthoringData = config.EnemyAuthoringData;
+        _spawnTable = config.SpawnTable;
 
         Rect r = _simulationZone.rect;
 
@@ -164,17 +165,38 @@ public class GameSimulation
 
     private void StepSpawnEnemies()
     {
-        List<Vector2> spawnPositions = _spawner.GetSpawnPositions(_simulationTime);
-        if (spawnPositions.Count > 0 && _enemyManager != null)
+        if (_spawnTable == null || _enemyManager == null)
+            return;
+
+        List<Vector2> origins = _spawner.GetSpawnEventOrigins(_simulationTime);
+        if (origins.Count == 0) return;
+
+        Rect r = Rect;
+        uint seed = (uint)(_simulationTime * 1000f).GetHashCode();
+        for (int i = 0; i < origins.Count; i++)
         {
-            var positionsInRect = new List<Vector2>(spawnPositions.Count);
-            Rect r = Rect;
-            for (int i = 0; i < spawnPositions.Count; i++)
+            Vector2 worldOrigin = new Vector2(r.xMin, r.yMin + origins[i].y);
+            var pick = _spawnTable.PickEnemyByWeight(seed + (uint)i);
+            if (pick.enemy == null) continue;
+
+            SpawnPattern pattern = pick.pattern != null ? pick.pattern : _spawnTable.fallbackSpawnPattern;
+            if (pattern != null)
+                pattern.GetPositions(worldOrigin, _spawnPositionsBuffer, seed + (uint)(i * 1000));
+            else
             {
-                Vector2 p = spawnPositions[i];
-                positionsInRect.Add(new Vector2(r.xMin, r.yMin + p.y));
+                _spawnPositionsBuffer.Clear();
+                _spawnPositionsBuffer.Add(worldOrigin);
             }
-            _enemyManager.CreateEnemies(positionsInRect, _enemyAuthoringData);
+            if (pick.positionScale != 1f && _spawnPositionsBuffer.Count > 0)
+            {
+                for (int j = 0; j < _spawnPositionsBuffer.Count; j++)
+                {
+                    Vector2 p = _spawnPositionsBuffer[j];
+                    _spawnPositionsBuffer[j] = worldOrigin + (p - worldOrigin) * pick.positionScale;
+                }
+            }
+            if (_spawnPositionsBuffer.Count > 0)
+                _enemyManager.CreateEnemies(_spawnPositionsBuffer, pick.enemy);
         }
     }
 

@@ -9,9 +9,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 534f4564bf4c4054fa61536cd2f268b7, type: 3}
-  m_Name: EnemySpriteCollection
+  m_Script: {fileID: 11500000, guid: cc299db56a7a4dd4ab7357834400431e, type: 3}
+  m_Name: ShieldEnemyData
   m_EditorClassIdentifier: 
-  entries:
-  - {fileID: 11400000, guid: d553987990a6b304e98635e1a0e25073, type: 2}
-  scale: 32.5
+  minMoveSpeed: 25
+  maxMoveSpeed: 25
+  healthPoints: 150
+  corruptionFlag: 0
+  elementalWeakness: 4
+  visual: {fileID: 11400000, guid: 82564afd0af389546b90020e6d9af05a, type: 2}

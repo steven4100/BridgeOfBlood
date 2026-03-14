@@ -1,12 +1,13 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
 using BridgeOfBlood.Data.Enemies;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
+using BridgeOfBlood.Effects;
 using Unity.Mathematics;
 using Debug = UnityEngine.Debug;
-using System;
 
 /// <summary>
 /// A named simulation step that can be executed, timed, and stepped through by the debug controller.
@@ -15,6 +16,12 @@ public struct SimulationStepCommand
 {
     public string Name;
     public Action Execute;
+}
+
+public struct ItemEvalResult
+{
+    public string itemName;
+    public bool applied;
 }
 
 /// <summary>
@@ -26,7 +33,7 @@ public class TestSceneManager : MonoBehaviour
     public float spawnRate = 2f;
     public RectTransform simulationZone;
     Rect rect => simulationZone != null ? simulationZone.rect : default;
-    public EnemyAuthoringData enemyAuthoringData;
+    public EnemySpawnTable spawnTable;
     public Camera renderCamera;
     public Material spriteMaterial;
     public Material attackDebugMaterial;
@@ -40,6 +47,7 @@ public class TestSceneManager : MonoBehaviour
     public float gizmoRadius = 5f;
     public bool debugLogTiming;
     public SimulationDebugController debugController;
+    public List<Item> items = new List<Item>();
 
     private Player _player;
     private GameSimulation _simulation;
@@ -50,9 +58,12 @@ public class TestSceneManager : MonoBehaviour
     private DamageNumberController _damageNumberController;
     private TelemetryAggregator _telemetryAggregator;
     private SpellCollection _spellCollection;
+    private readonly EffectContext _effectContext = new EffectContext();
+    private readonly List<ItemEvalResult> _lastItemResults = new List<ItemEvalResult>();
 
-    /// <summary>Runtime telemetry aggregator. Available after Start; used by Telemetry Viewer window and other tools.</summary>
     public TelemetryAggregator TelemetryAggregator => _telemetryAggregator;
+    public IReadOnlyList<ItemEvalResult> LastItemResults => _lastItemResults;
+    public GameSimulation Simulation => _simulation;
 
     void Start()
     {
@@ -73,7 +84,7 @@ public class TestSceneManager : MonoBehaviour
             SimulationZone = simulationZone,
             SpawnRate = spawnRate,
             GizmoRadius = gizmoRadius,
-            EnemyAuthoringData = enemyAuthoringData
+            SpawnTable = spawnTable
         };
         _simulation = new GameSimulation(config);
 
@@ -97,7 +108,10 @@ public class TestSceneManager : MonoBehaviour
         _player.Update(Time.deltaTime, rect);
 
         bool castRequested = Input.GetKeyDown(castInputKey);
-        var mods = castModifications != null ? castModifications.GetModifications() : null;
+        var mods = castModifications != null ? castModifications.GetModifications() : new SpellModifications();
+
+        EvaluateItems(mods);
+
         SpellCastResult castResult = _loopedSpellCaster.AttemptToCastNextSpell(_simulation.SimulationTime, _player.Position, _spellCollection.AuthoringData, castRequested, mods);
         _loopedSpellCaster.Update(_simulation.SimulationTime, -1 * GetCastForward());
 
@@ -147,6 +161,29 @@ public class TestSceneManager : MonoBehaviour
 
         if (debugLogTiming)
             Debug.Log($"[Timing] Total: {totalMs}ms");
+    }
+
+    void EvaluateItems(SpellModifications mods)
+    {
+        _effectContext.frameMetrics = _telemetryAggregator.CurrentFrame.aggregate;
+        _effectContext.spellCastMetrics = _telemetryAggregator.CurrentSpellCast.aggregate;
+        _effectContext.spellLoopMetrics = _telemetryAggregator.CurrentSpellLoop.aggregate;
+        _effectContext.roundMetrics = _telemetryAggregator.CurrentRound.aggregate;
+        _effectContext.gameMetrics = _telemetryAggregator.Game.aggregate;
+        _effectContext.spellModifications = mods;
+
+        _lastItemResults.Clear();
+        for (int i = 0; i < items.Count; i++)
+        {
+            var item = items[i];
+            if (item == null) continue;
+
+            _lastItemResults.Add(new ItemEvalResult
+            {
+                itemName = item.name,
+                applied = item.Apply(_effectContext)
+            });
+        }
     }
 
     float2 GetCastForward()

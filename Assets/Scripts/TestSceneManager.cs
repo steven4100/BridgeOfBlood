@@ -142,10 +142,16 @@ public class TestSceneManager : MonoBehaviour
         }
 
         float frameDt = hasController ? debugController.DeltaTime : Time.deltaTime;
-        _telemetryAggregator.ProcessFrame(_simulation.GetDamageEvents(), frameDt, _simulation.SimulationTime, castResult);
+        _telemetryAggregator.ProcessFrame(
+            _simulation.GetDamageEvents(),
+            _simulation.GetStatusAilmentAppliedEvents(),
+            frameDt,
+            _simulation.SimulationTime,
+            castResult);
 
         _damageNumberController.SpawnFromDamageEvents(_simulation.GetDamageEvents(), _simulation.GetEnemies());
         _simulation.ClearDamageEvents();
+        _simulation.ClearStatusAilmentAppliedEvents();
 
         if (advanceTime)
             _damageNumberController.Update(hasController ? debugController.DeltaTime : Time.deltaTime);

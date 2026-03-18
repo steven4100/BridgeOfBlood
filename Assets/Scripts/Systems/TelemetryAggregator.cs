@@ -83,16 +83,21 @@ public class TelemetryAggregator
     /// (so damage from a newly-cast spell starts a fresh window), then iterates the DamageEvent
     /// list to build the frame snapshot and accumulates into all higher-level metrics.
     /// </summary>
-    public void ProcessFrame(NativeArray<DamageEvent> damageEvents, float deltaTime, float simulationTime, SpellCastResult castResult)
+    public void ProcessFrame(
+        NativeArray<DamageEvent> damageEvents,
+        NativeArray<StatusAilmentAppliedEvent> statusAilmentEvents,
+        float deltaTime,
+        float simulationTime,
+        SpellCastResult castResult)
     {
         if (castResult.didCast)
             OnSpellCast(castResult);
 
-        BuildFrameSnapshot(damageEvents, deltaTime, simulationTime);
+        BuildFrameSnapshot(damageEvents, statusAilmentEvents, deltaTime, simulationTime);
         AccumulateFrameIntoHigherLevels();
     }
 
-    private void BuildFrameSnapshot(NativeArray<DamageEvent> damageEvents, float deltaTime, float simulationTime)
+    private void BuildFrameSnapshot(NativeArray<DamageEvent> damageEvents, NativeArray<StatusAilmentAppliedEvent> statusAilmentEvents, float deltaTime, float simulationTime)
     {
         _framePerSpell.Clear();
         var metrics = new CombatMetrics { duration = deltaTime };
@@ -116,6 +121,14 @@ public class TelemetryAggregator
             }
 
             AccumulateEventIntoDict(_framePerSpell, in evt);
+        }
+
+        for (int i = 0; i < statusAilmentEvents.Length; i++)
+        {
+            StatusAilmentAppliedEvent saEvt = statusAilmentEvents[i];
+            metrics.statusAilmentsApplied++;
+            metrics.statusAilmentsAppliedFlags |= saEvt.ailmentFlag;
+            AccumulateAilmentEventIntoDict(_framePerSpell, in saEvt);
         }
 
         _currentFrame = new FrameSnapshot
@@ -190,6 +203,15 @@ public class TelemetryAggregator
             existing.overkillDamage += evt.overkillDamage;
         }
 
+        dict[key] = existing;
+    }
+
+    private static void AccumulateAilmentEventIntoDict(Dictionary<int, CombatMetrics> dict, in StatusAilmentAppliedEvent evt)
+    {
+        int key = evt.spellId;
+        dict.TryGetValue(key, out CombatMetrics existing);
+        existing.statusAilmentsApplied++;
+        existing.statusAilmentsAppliedFlags |= evt.ailmentFlag;
         dict[key] = existing;
     }
 

@@ -45,6 +45,11 @@ public class AttackEntityManager
     private NativeList<PiercePolicyRuntime> _piercePolicies;
     private NativeList<ExpirationPolicyRuntime> _expirationPolicies;
     private NativeList<RehitPolicyRuntime> _rehitPolicies;
+    private NativeList<FrozenApplierRuntime> _frozenAppliers;
+    private NativeList<IgnitedApplierRuntime> _ignitedAppliers;
+    private NativeList<ShockedApplierRuntime> _shockedAppliers;
+    private NativeList<PoisonedApplierRuntime> _poisonedAppliers;
+    private NativeList<StunnedApplierRuntime> _stunnedAppliers;
     private int _nextEntityId;
 
     public AttackEntityManager()
@@ -54,6 +59,11 @@ public class AttackEntityManager
         _piercePolicies = new NativeList<PiercePolicyRuntime>(Allocator.Persistent);
         _expirationPolicies = new NativeList<ExpirationPolicyRuntime>(Allocator.Persistent);
         _rehitPolicies = new NativeList<RehitPolicyRuntime>(Allocator.Persistent);
+        _frozenAppliers = new NativeList<FrozenApplierRuntime>(Allocator.Persistent);
+        _ignitedAppliers = new NativeList<IgnitedApplierRuntime>(Allocator.Persistent);
+        _shockedAppliers = new NativeList<ShockedApplierRuntime>(Allocator.Persistent);
+        _poisonedAppliers = new NativeList<PoisonedApplierRuntime>(Allocator.Persistent);
+        _stunnedAppliers = new NativeList<StunnedApplierRuntime>(Allocator.Persistent);
         _nextEntityId = 0;
     }
 
@@ -88,6 +98,11 @@ public class AttackEntityManager
         _piercePolicies.Add(payload.pierce);
         _expirationPolicies.Add(payload.expiration);
         _rehitPolicies.Add(payload.rehit);
+        _frozenAppliers.Add(payload.frozenApplier);
+        _ignitedAppliers.Add(payload.ignitedApplier);
+        _shockedAppliers.Add(payload.shockedApplier);
+        _poisonedAppliers.Add(payload.poisonedApplier);
+        _stunnedAppliers.Add(payload.stunnedApplier);
         return id;
     }
 
@@ -131,6 +146,12 @@ public class AttackEntityManager
         return _rehitPolicies.AsArray();
     }
 
+    public NativeArray<FrozenApplierRuntime> GetFrozenAppliers() => _frozenAppliers.AsArray();
+    public NativeArray<IgnitedApplierRuntime> GetIgnitedAppliers() => _ignitedAppliers.AsArray();
+    public NativeArray<ShockedApplierRuntime> GetShockedAppliers() => _shockedAppliers.AsArray();
+    public NativeArray<PoisonedApplierRuntime> GetPoisonedAppliers() => _poisonedAppliers.AsArray();
+    public NativeArray<StunnedApplierRuntime> GetStunnedAppliers() => _stunnedAppliers.AsArray();
+
     public int EntityCount => _entities.Length;
 
     /// <summary>
@@ -148,6 +169,16 @@ public class AttackEntityManager
             throw new InvalidOperationException($"AttackEntityManager: expirationPolicies.Length ({_expirationPolicies.Length}) != entities.Length ({n}).");
         if (_rehitPolicies.Length != n)
             throw new InvalidOperationException($"AttackEntityManager: rehitPolicies.Length ({_rehitPolicies.Length}) != entities.Length ({n}).");
+        if (_frozenAppliers.Length != n)
+            throw new InvalidOperationException($"AttackEntityManager: frozenAppliers.Length ({_frozenAppliers.Length}) != entities.Length ({n}).");
+        if (_ignitedAppliers.Length != n)
+            throw new InvalidOperationException($"AttackEntityManager: ignitedAppliers.Length ({_ignitedAppliers.Length}) != entities.Length ({n}).");
+        if (_shockedAppliers.Length != n)
+            throw new InvalidOperationException($"AttackEntityManager: shockedAppliers.Length ({_shockedAppliers.Length}) != entities.Length ({n}).");
+        if (_poisonedAppliers.Length != n)
+            throw new InvalidOperationException($"AttackEntityManager: poisonedAppliers.Length ({_poisonedAppliers.Length}) != entities.Length ({n}).");
+        if (_stunnedAppliers.Length != n)
+            throw new InvalidOperationException($"AttackEntityManager: stunnedAppliers.Length ({_stunnedAppliers.Length}) != entities.Length ({n}).");
     }
 
     /// <summary>
@@ -207,6 +238,11 @@ public class AttackEntityManager
                 _piercePolicies.RemoveAtSwapBack(i);
                 _expirationPolicies.RemoveAtSwapBack(i);
                 _rehitPolicies.RemoveAtSwapBack(i);
+                _frozenAppliers.RemoveAtSwapBack(i);
+                _ignitedAppliers.RemoveAtSwapBack(i);
+                _shockedAppliers.RemoveAtSwapBack(i);
+                _poisonedAppliers.RemoveAtSwapBack(i);
+                _stunnedAppliers.RemoveAtSwapBack(i);
                 return;
             }
         }
@@ -222,19 +258,24 @@ public class AttackEntityManager
         _piercePolicies.Clear();
         _expirationPolicies.Clear();
         _rehitPolicies.Clear();
+        _frozenAppliers.Clear();
+        _ignitedAppliers.Clear();
+        _shockedAppliers.Clear();
+        _poisonedAppliers.Clear();
+        _stunnedAppliers.Clear();
     }
 
     public void Dispose()
     {
-        if (_entities.IsCreated)
-            _entities.Dispose();
-        if (_chainPolicies.IsCreated)
-            _chainPolicies.Dispose();
-        if (_piercePolicies.IsCreated)
-            _piercePolicies.Dispose();
-        if (_expirationPolicies.IsCreated)
-            _expirationPolicies.Dispose();
-        if (_rehitPolicies.IsCreated)
-            _rehitPolicies.Dispose();
+        if (_entities.IsCreated) _entities.Dispose();
+        if (_chainPolicies.IsCreated) _chainPolicies.Dispose();
+        if (_piercePolicies.IsCreated) _piercePolicies.Dispose();
+        if (_expirationPolicies.IsCreated) _expirationPolicies.Dispose();
+        if (_rehitPolicies.IsCreated) _rehitPolicies.Dispose();
+        if (_frozenAppliers.IsCreated) _frozenAppliers.Dispose();
+        if (_ignitedAppliers.IsCreated) _ignitedAppliers.Dispose();
+        if (_shockedAppliers.IsCreated) _shockedAppliers.Dispose();
+        if (_poisonedAppliers.IsCreated) _poisonedAppliers.Dispose();
+        if (_stunnedAppliers.IsCreated) _stunnedAppliers.Dispose();
     }
 }

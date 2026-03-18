@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using BridgeOfBlood.Data.Enemies;
 using BridgeOfBlood.Data.Shared;
 using Unity.Collections;
+using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -43,6 +44,11 @@ public class GameSimulation
     private DeadEnemyRemovalSystem _deadEnemyRemovalSystem;
     private PierceSystem _pierceSystem;
     private ExpirationSystem _expirationSystem;
+    private FrozenApplicationSystem _frozenSystem;
+    private IgnitedApplicationSystem _ignitedSystem;
+    private ShockedApplicationSystem _shockedSystem;
+    private PoisonedApplicationSystem _poisonedSystem;
+    private StunnedApplicationSystem _stunnedSystem;
 
     private NativeList<CollisionEvent> _rawCollisionEvents;
     private NativeList<HitEvent> _resolvedHits;
@@ -50,6 +56,7 @@ public class GameSimulation
     private NativeList<EnemyHitEvent> _hitEvents;
     private NativeList<EnemyKilledEvent> _killEvents;
     private NativeList<DamageEvent> _damageEvents;
+    private NativeList<StatusAilmentAppliedEvent> _statusAilmentAppliedEvents;
 
     private SimulationStepCommand[] _steps;
     private float _simulationTime;
@@ -82,6 +89,11 @@ public class GameSimulation
         _deadEnemyRemovalSystem = new DeadEnemyRemovalSystem();
         _pierceSystem = new PierceSystem();
         _expirationSystem = new ExpirationSystem();
+        _frozenSystem = new FrozenApplicationSystem();
+        _ignitedSystem = new IgnitedApplicationSystem();
+        _shockedSystem = new ShockedApplicationSystem();
+        _poisonedSystem = new PoisonedApplicationSystem();
+        _stunnedSystem = new StunnedApplicationSystem();
 
         _rawCollisionEvents = new NativeList<CollisionEvent>(64, Allocator.Persistent);
         _resolvedHits = new NativeList<HitEvent>(64, Allocator.Persistent);
@@ -89,6 +101,7 @@ public class GameSimulation
         _hitEvents = new NativeList<EnemyHitEvent>(64, Allocator.Persistent);
         _killEvents = new NativeList<EnemyKilledEvent>(16, Allocator.Persistent);
         _damageEvents = new NativeList<DamageEvent>(64, Allocator.Persistent);
+        _statusAilmentAppliedEvents = new NativeList<StatusAilmentAppliedEvent>(32, Allocator.Persistent);
 
         _debugDrawables.Add(_enemyManager.Grid);
         _debugDrawables.Add(new EnemyManagerGizmoDrawer(_enemyManager, _gizmoRadius));
@@ -147,6 +160,12 @@ public class GameSimulation
     /// <summary>Clears damage events after the caller has consumed them (e.g. spawned damage numbers).</summary>
     public void ClearDamageEvents() => _damageEvents.Clear();
 
+    /// <summary>Status ailment applied events from the last StepDamage.</summary>
+    public NativeArray<StatusAilmentAppliedEvent> GetStatusAilmentAppliedEvents() => _statusAilmentAppliedEvents.AsArray();
+
+    /// <summary>Clears status ailment applied events after the caller has consumed them.</summary>
+    public void ClearStatusAilmentAppliedEvents() => _statusAilmentAppliedEvents.Clear();
+
     public IReadOnlyList<IDebugDrawable> GetDebugDrawables() => _debugDrawables;
 
     public void Dispose()
@@ -161,6 +180,7 @@ public class GameSimulation
         if (_hitEvents.IsCreated) _hitEvents.Dispose();
         if (_killEvents.IsCreated) _killEvents.Dispose();
         if (_damageEvents.IsCreated) _damageEvents.Dispose();
+        if (_statusAilmentAppliedEvents.IsCreated) _statusAilmentAppliedEvents.Dispose();
     }
 
     private void StepSpawnEnemies()
@@ -254,6 +274,7 @@ public class GameSimulation
     {
         _hitEvents.Clear();
         _killEvents.Clear();
+        _statusAilmentAppliedEvents.Clear();
 
         if (_rawCollisionEvents.Length > 0)
         {
@@ -262,13 +283,12 @@ public class GameSimulation
             NativeArray<ChainPolicyRuntime> chainPolicies = _attackEntityManager.GetChainPolicies();
 
             // ── Combat pipeline ──
-            // ReadOnly params enforce read-only access at compile time.
-            // Mutable NativeArray / NativeList params indicate the system writes to that buffer.
             //   _rawCollisionEvents
             //       → [HitResolver]  → _resolvedHits              (mutates rehitPolicies)
             //       → [ChainSystem]                                (mutates attackEntities, chainPolicies)
             //       → [DamageSystem] → _hitEvents, _killEvents,    (mutates attackEntities, enemies)
             //                          _damageEvents
+            //       → [StatusAilmentApplication]                   (parallel decide jobs + sequential apply, mutates enemies)
             //       → [RecordRehit]                                (mutates internal rehit records)
 
             _attackEntityManager.ValidateParallelLists();
@@ -286,6 +306,43 @@ public class GameSimulation
             _chainSystem.ResolveChains(resolvedHitsRO, attackEntities, chainPolicies, _enemyManager.Grid, enemies.AsReadOnly());
 
             _damageSystem.ProcessHits(resolvedHitsRO, attackEntities, enemies, _hitEvents, _killEvents, _damageEvents);
+
+            int hitCount = _resolvedHits.Length;
+            if (hitCount > 0)
+            {
+                NativeArray<HitEvent> hitsArray = _resolvedHits.AsArray();
+                uint ailmentSeed = (uint)(_simulationTime * 10000f).GetHashCode();
+                int batchSize = Math.Max(1, hitCount / 32);
+
+                var frozenDecisions = new NativeArray<StatusAilmentFlag>(hitCount, Allocator.TempJob);
+                var ignitedDecisions = new NativeArray<StatusAilmentFlag>(hitCount, Allocator.TempJob);
+                var shockedDecisions = new NativeArray<StatusAilmentFlag>(hitCount, Allocator.TempJob);
+                var poisonedDecisions = new NativeArray<StatusAilmentFlag>(hitCount, Allocator.TempJob);
+                var stunnedDecisions = new NativeArray<StatusAilmentFlag>(hitCount, Allocator.TempJob);
+
+                JobHandle h0 = _frozenSystem.ScheduleDecide(hitsArray, attackEntities, _attackEntityManager.GetFrozenAppliers(), frozenDecisions, ailmentSeed, batchSize);
+                JobHandle h1 = _ignitedSystem.ScheduleDecide(hitsArray, attackEntities, _attackEntityManager.GetIgnitedAppliers(), ignitedDecisions, ailmentSeed + 10000u, batchSize);
+                JobHandle h2 = _shockedSystem.ScheduleDecide(hitsArray, attackEntities, _attackEntityManager.GetShockedAppliers(), shockedDecisions, ailmentSeed + 20000u, batchSize);
+                JobHandle h3 = _poisonedSystem.ScheduleDecide(hitsArray, attackEntities, _attackEntityManager.GetPoisonedAppliers(), poisonedDecisions, ailmentSeed + 30000u, batchSize);
+                JobHandle h4 = _stunnedSystem.ScheduleDecide(hitsArray, attackEntities, _attackEntityManager.GetStunnedAppliers(), stunnedDecisions, ailmentSeed + 40000u, batchSize);
+
+                JobHandle combined = JobHandle.CombineDependencies(
+                    JobHandle.CombineDependencies(h0, h1, h2),
+                    JobHandle.CombineDependencies(h3, h4));
+                combined.Complete();
+
+                _frozenSystem.ApplyDecisions(hitsArray, frozenDecisions, attackEntities, enemies, _statusAilmentAppliedEvents);
+                _ignitedSystem.ApplyDecisions(hitsArray, ignitedDecisions, attackEntities, enemies, _statusAilmentAppliedEvents);
+                _shockedSystem.ApplyDecisions(hitsArray, shockedDecisions, attackEntities, enemies, _statusAilmentAppliedEvents);
+                _poisonedSystem.ApplyDecisions(hitsArray, poisonedDecisions, attackEntities, enemies, _statusAilmentAppliedEvents);
+                _stunnedSystem.ApplyDecisions(hitsArray, stunnedDecisions, attackEntities, enemies, _statusAilmentAppliedEvents);
+
+                frozenDecisions.Dispose();
+                ignitedDecisions.Dispose();
+                shockedDecisions.Dispose();
+                poisonedDecisions.Dispose();
+                stunnedDecisions.Dispose();
+            }
 
             _attackEntityManager.RecordRehitHits(resolvedHitsRO, attackEntities.AsReadOnly(), enemies.AsReadOnly());
 

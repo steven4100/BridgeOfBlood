@@ -16,6 +16,8 @@ namespace BridgeOfBlood.Data.Shared
 		public float lightningDamage;
 		public float overkillDamage;
 		public int attackEntitiesExpired;
+		public int statusAilmentsApplied;
+		public StatusAilmentFlag statusAilmentsAppliedFlags;
 		public float duration;
 
 		public float DPS => duration > 0f ? totalDamage / duration : 0f;
@@ -32,6 +34,8 @@ namespace BridgeOfBlood.Data.Shared
 			lightningDamage += other.lightningDamage;
 			overkillDamage += other.overkillDamage;
 			attackEntitiesExpired += other.attackEntitiesExpired;
+			statusAilmentsApplied += other.statusAilmentsApplied;
+			statusAilmentsAppliedFlags |= other.statusAilmentsAppliedFlags;
 			duration += other.duration;
 		}
 

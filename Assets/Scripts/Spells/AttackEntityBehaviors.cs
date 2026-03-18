@@ -1,4 +1,5 @@
 using System;
+using BridgeOfBlood.Data.Shared;
 using Unity.Collections;
 using UnityEngine;
 
@@ -148,6 +149,105 @@ public struct ExpirationPolicyRuntime
     public float maxTimeAlive;
     /// <summary>Max distance travelled. 0 = no limit.</summary>
     public float maxDistanceTravelled;
+}
+
+// ─── Status ailment applier behaviors ─────────────────────────────────────────
+
+[Serializable]
+public class ApplyFrozenBehavior : AttackEntityBehavior
+{
+    [Tooltip("When false, frozen application is skipped for this entity.")]
+    public bool isActive = true;
+
+    [Range(0f, 1f)]
+    [Tooltip("Probability of applying Frozen per hit. 1 = always.")]
+    public float applyChance = 1f;
+
+    public FrozenApplierRuntime ToRuntime() => new FrozenApplierRuntime { isActive = isActive, applyChance = applyChance };
+}
+
+[Serializable]
+public class ApplyIgnitedBehavior : AttackEntityBehavior
+{
+    [Tooltip("When false, ignited application is skipped for this entity.")]
+    public bool isActive = true;
+
+    [Range(0f, 1f)]
+    [Tooltip("Probability of applying Ignited per hit. 1 = always.")]
+    public float applyChance = 1f;
+
+    public IgnitedApplierRuntime ToRuntime() => new IgnitedApplierRuntime { isActive = isActive, applyChance = applyChance };
+}
+
+[Serializable]
+public class ApplyShockedBehavior : AttackEntityBehavior
+{
+    [Tooltip("When false, shocked application is skipped for this entity.")]
+    public bool isActive = true;
+
+    [Range(0f, 1f)]
+    [Tooltip("Probability of applying Shocked per hit. 1 = always.")]
+    public float applyChance = 1f;
+
+    public ShockedApplierRuntime ToRuntime() => new ShockedApplierRuntime { isActive = isActive, applyChance = applyChance };
+}
+
+[Serializable]
+public class ApplyPoisonedBehavior : AttackEntityBehavior
+{
+    [Tooltip("When false, poisoned application is skipped for this entity.")]
+    public bool isActive = true;
+
+    [Range(0f, 1f)]
+    [Tooltip("Probability of applying Poisoned per hit. 1 = always.")]
+    public float applyChance = 1f;
+
+    public PoisonedApplierRuntime ToRuntime() => new PoisonedApplierRuntime { isActive = isActive, applyChance = applyChance };
+}
+
+[Serializable]
+public class ApplyStunnedBehavior : AttackEntityBehavior
+{
+    [Tooltip("When false, stunned application is skipped for this entity.")]
+    public bool isActive = true;
+
+    [Range(0f, 1f)]
+    [Tooltip("Probability of applying Stunned per hit. 1 = always.")]
+    public float applyChance = 1f;
+
+    public StunnedApplierRuntime ToRuntime() => new StunnedApplierRuntime { isActive = isActive, applyChance = applyChance };
+}
+
+// ─── Status ailment applier runtime structs (blittable, per attack entity) ───
+
+public struct FrozenApplierRuntime
+{
+    public bool isActive;
+    public float applyChance;
+}
+
+public struct IgnitedApplierRuntime
+{
+    public bool isActive;
+    public float applyChance;
+}
+
+public struct ShockedApplierRuntime
+{
+    public bool isActive;
+    public float applyChance;
+}
+
+public struct PoisonedApplierRuntime
+{
+    public bool isActive;
+    public float applyChance;
+}
+
+public struct StunnedApplierRuntime
+{
+    public bool isActive;
+    public float applyChance;
 }
 
 // ─── Rehit cooldown (seconds before same enemy can be hit again) ─────────────────────────────

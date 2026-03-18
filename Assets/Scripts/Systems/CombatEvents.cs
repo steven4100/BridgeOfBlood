@@ -1,3 +1,4 @@
+using BridgeOfBlood.Data.Shared;
 using Unity.Mathematics;
 
 /// <summary>
@@ -53,4 +54,17 @@ public struct DamageEvent
     public int spellInvocationId;
     public bool wasKill;
     public float overkillDamage;
+}
+
+/// <summary>
+/// Emitted by per-ailment application systems when a status ailment is applied to an enemy.
+/// One event per ailment per hit (so a hit that triggers two ailments emits two events).
+/// Blittable for NativeList.
+/// </summary>
+public struct StatusAilmentAppliedEvent
+{
+    public int spellId;
+    public int spellInvocationId;
+    public int enemyIndex;
+    public StatusAilmentFlag ailmentFlag;
 }

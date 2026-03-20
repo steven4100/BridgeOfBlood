@@ -81,36 +81,12 @@ namespace BridgeOfBlood.Data.Spells
 		{
 			if (source == null) return new List<AttackEntityBehavior>();
 			var list = new List<AttackEntityBehavior>(source.Count);
-			float chainMult = ResolveToMultiplier(mods.chains);
-			int chainFlat = GetFlatAdditive(mods.chains);
-			float pierceMult = ResolveToMultiplier(mods.pierce);
-			int pierceFlat = GetFlatAdditive(mods.pierce);
-
 			foreach (var b in source)
 			{
 				if (b == null) continue;
-				if (b is PierceBehavior pb)
-				{
-					var c = new PierceBehavior { isActive = pb.isActive, maxEnemiesHit = Mathf.Max(0, (int)(pb.maxEnemiesHit * pierceMult) + pierceFlat) };
-					list.Add(c);
-				}
-				else if (b is ChainBehavior cb)
-				{
-					var c = new ChainBehavior
-					{
-						isActive = cb.isActive,
-						mode = cb.mode,
-						chainCount = Mathf.Max(0, (int)(cb.chainCount * chainMult) + chainFlat),
-						chainRange = cb.chainRange,
-						targetSelect = cb.targetSelect,
-						excludePreviouslyHit = cb.excludePreviouslyHit
-					};
-					list.Add(c);
-				}
-				else if (b is ExpirationBehavior eb)
-				{
-					list.Add(new ExpirationBehavior { isActive = eb.isActive, maxTimeAlive = eb.maxTimeAlive, maxDistanceTravelled = eb.maxDistanceTravelled });
-				}
+				var cloned = b.Clone();
+				cloned.ApplyModifications(mods);
+				list.Add(cloned);
 			}
 			return list;
 		}
@@ -126,7 +102,7 @@ namespace BridgeOfBlood.Data.Spells
 			return additive * more;
 		}
 
-		static int GetFlatAdditive(ParamaterModifier mod) => mod?.flatAdditiveValue ?? 0;
+		public static int GetFlatAdditive(ParamaterModifier mod) => mod?.flatAdditiveValue ?? 0;
 
 		static ParamaterModifier Get(Dictionary<DamageType, ParamaterModifier> d, DamageType t)
 		{

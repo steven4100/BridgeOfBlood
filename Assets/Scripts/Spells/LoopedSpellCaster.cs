@@ -49,6 +49,16 @@ public class LoopedSpellCaster
     public int LoopCount => _loopCount;
 
     /// <summary>
+    /// True when the SpellInvoker has active casts that haven't finished firing keyframes.
+    /// </summary>
+    public bool HasActiveCasts => _spellInvoker != null && _spellInvoker.HasActiveCasts;
+
+    /// <summary>
+    /// True when the SpellEmissionHandler has pending delayed spawns.
+    /// </summary>
+    public bool HasPendingSpawns => _emissionHandler != null && _emissionHandler.HasPendingSpawns;
+
+    /// <summary>
     /// Creates a spell caster that owns the given emission handler and an internal SpellInvoker.
     /// </summary>
     public LoopedSpellCaster(IReadOnlyList<Spell> spells, ISpellEmissionHandler emissionHandler)
@@ -141,5 +151,14 @@ public class LoopedSpellCaster
         _indexOfLastCast = -1;
         _timeOfLastCast = -1000.0;
         _loopCount = 0;
+    }
+
+    /// <summary>
+    /// Clears all active casts and pending spawns.
+    /// </summary>
+    public void ClearCastState()
+    {
+        _spellInvoker?.ClearActiveCasts();
+        _emissionHandler?.ClearPendingSpawns();
     }
 }

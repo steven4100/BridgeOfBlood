@@ -17,6 +17,14 @@ public class Player
     }
 
     /// <summary>
+    /// Snaps the player to the right side of the given bounds (vertically centered).
+    /// </summary>
+    public void PlaceAtRightSide(Rect bounds, float margin = 10f)
+    {
+        Position = new float2(bounds.xMax - margin, bounds.center.y);
+    }
+
+    /// <summary>
     /// Reads WASD / arrow key input, moves the player, and clamps to the given bounds.
     /// </summary>
     public void Update(float deltaTime, Rect bounds)

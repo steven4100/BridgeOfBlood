@@ -30,6 +30,10 @@ public class SpellEmissionHandler : ISpellEmissionHandler
 
     private readonly List<PendingSpawn> _pending = new List<PendingSpawn>();
 
+    public bool HasPendingSpawns => _pending.Count > 0;
+
+    public void ClearPendingSpawns() => _pending.Clear();
+
     public SpellEmissionHandler(
         AttackEntityManager attackEntityManager,
         ISpellPayloadModifier payloadModifier = null)

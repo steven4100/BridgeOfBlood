@@ -10,6 +10,10 @@ public interface ISpellEmissionHandler
     void OnKeyframeFired(SpellKeyFrame keyFrame, float2 origin, float2 forward, SpellAuthoringData spellData, float keyframeFireTime, int spellId, int spellInvocationId);
     /// <summary>Process any pending time-delayed spawns. Call each frame after the invoker.</summary>
     void Update(float simulationTime);
+    /// <summary>True when there are pending time-delayed spawns that haven't fired yet.</summary>
+    bool HasPendingSpawns { get; }
+    /// <summary>Removes all pending spawns. Use when resetting between rounds.</summary>
+    void ClearPendingSpawns();
 }
 
 /// <summary>
@@ -31,6 +35,8 @@ public class SpellInvoker
     }
 
     private readonly List<ActiveCast> _activeCasts = new List<ActiveCast>();
+
+    public bool HasActiveCasts => _activeCasts.Count > 0;
 
     public SpellInvoker(ISpellEmissionHandler emissionHandler)
     {
@@ -89,5 +95,13 @@ public class SpellInvoker
             else
                 _activeCasts[c] = cast;
         }
+    }
+
+    /// <summary>
+    /// Removes all active casts. Use when resetting between rounds.
+    /// </summary>
+    public void ClearActiveCasts()
+    {
+        _activeCasts.Clear();
     }
 }

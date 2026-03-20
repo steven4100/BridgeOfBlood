@@ -28,6 +28,8 @@ public struct AttackEntity
     public HitBoxData hitBox;
     public float currentHitBoxScale;
     public EntityVisual visual;
+    public EffectSpriteConfigRuntime onHitEffect;
+    public EffectSpriteConfigRuntime onKillEffect;
     public int spellId;
     public int spellInvocationId;
 }
@@ -91,6 +93,8 @@ public class AttackEntityManager
             hitBox = payload.hitBoxData,
             currentHitBoxScale = 1f,
             visual = payload.visual,
+            onHitEffect = payload.onHitEffect,
+            onKillEffect = payload.onKillEffect,
             spellId = payload.spellId,
             spellInvocationId = payload.spellInvocationId
         });

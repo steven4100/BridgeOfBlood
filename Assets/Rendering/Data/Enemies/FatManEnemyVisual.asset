@@ -14,4 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sprite: {fileID: 21300000, guid: d8d660b07ced49a448ad04e727657f46, type: 3}
   scale: 30
-  bakedFrameIndex: 0
+  bakedFrameIndex: 2

@@ -21,6 +21,14 @@ public class EnemySpawner
     /// Returns spawn event origins for this frame. Each origin is (0, y) with y in [0, spawnLineLength].
     /// Add rect.xMin to x and rect.yMin to y to get world origin; then use SpawnPattern.GetPositions(origin, ...) for positions.
     /// </summary>
+    /// <summary>
+    /// Resets spawn tracking so next GetSpawnEventOrigins starts fresh (e.g. on new round).
+    /// </summary>
+    public void Reset()
+    {
+        _lastTotalSpawns = 0;
+    }
+
     public List<Vector2> GetSpawnEventOrigins(float time)
     {
         int total = Mathf.FloorToInt(time * _spawnRate);

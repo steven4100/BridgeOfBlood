@@ -17,7 +17,11 @@ public class AttackEntityData : ScriptableObject
     [Tooltip("Optional behaviors (pierce, expiration, chain). Only present behaviors are serialized.")]
     [SerializeReference]
     [AttackEntityBehaviorsList]
-    public List<AttackEntityBehavior> behaviors = new List<AttackEntityBehavior>();
+    public List<AttackEntityBehavior> behaviors = new List<AttackEntityBehavior>
+    {
+        new OnHitEffectBehavior(),
+        new OnKillEffectBehavior()
+    };
 
     [Header("Visual")]
     [Tooltip("Sprite visual for atlas-based rendering. Run Tools > BridgeOfBlood > Rebuild Sprite Rendering Data after assigning.")]

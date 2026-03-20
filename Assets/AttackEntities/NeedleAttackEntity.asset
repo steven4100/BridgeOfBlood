@@ -28,6 +28,9 @@ MonoBehaviour:
   rehitCooldownSeconds: 1169.57
   behaviors:
   - rid: 72257236218675262
+  - rid: 4884261957644320828
+  - rid: 4884261957644320832
+  - rid: 4884261957644320833
   visual: {fileID: 11400000, guid: 6a89cbba6c71e5440a3a15edec0394fe, type: 2}
   references:
     version: 2
@@ -41,3 +44,16 @@ MonoBehaviour:
         chainRange: 97.77
         targetSelect: 0
         excludePreviouslyHit: 1
+    - rid: 4884261957644320828
+      type: {class: ApplyFrozenBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        isActive: 1
+        applyChance: 1
+    - rid: 4884261957644320832
+      type: {class: OnHitEffectBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        config: {fileID: 11400000, guid: 0f5b616e3aa80fc4cb4aac8f28c08762, type: 2}
+    - rid: 4884261957644320833
+      type: {class: OnKillEffectBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        config: {fileID: 11400000, guid: 469335601d0786d4ea6b11cc3dd255c1, type: 2}

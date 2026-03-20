@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
+  m_Name: FireballAttackEntity
+  m_EditorClassIdentifier: 
+  physicalDamage: 0
+  coldDamage: 0
+  fireDamage: 99
+  lightningDamage: 0
+  critChance: 0
+  critDamageMultiplier: 0
+  entityVelocity: {x: -250.14, y: 0}
+  hitBoxData:
+    isSphere: 1
+    isRect: 0
+    rectDimension: {x: 0, y: 0}
+    sphereRadius: 21.76
+    scaleGrowthRate: 0
+  rehitCooldownSeconds: 100
+  behaviors:
+  - rid: 72257236218675258
+  - rid: 72257236218675259
+  - rid: 4884261957644320834
+  - rid: 4884261957644320835
+  visual: {fileID: 11400000, guid: 6c03777a1f3524145980b04cac24ecd0, type: 2}
+  references:
+    version: 2
+    RefIds:
+    - rid: 72257236218675258
+      type: {class: ExpirationBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        isActive: 1
+        maxTimeAlive: 3
+        maxDistanceTravelled: 0
+    - rid: 72257236218675259
+      type: {class: PierceBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        isActive: 1
+        maxEnemiesHit: 63
+    - rid: 4884261957644320834
+      type: {class: OnHitEffectBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        config: {fileID: 11400000, guid: 0f5b616e3aa80fc4cb4aac8f28c08762, type: 2}
+    - rid: 4884261957644320835
+      type: {class: OnKillEffectBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        config: {fileID: 11400000, guid: 469335601d0786d4ea6b11cc3dd255c1, type: 2}

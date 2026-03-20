@@ -17,6 +17,6 @@ MonoBehaviour:
     center: {x: 0, y: 0}
     size: {x: 3, y: 10}
     rotationDegrees: 0
-  spawnDensity: 0.77
+  spawnDensity: 0.5
   distribution: 1
   omissionZones: []

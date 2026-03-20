@@ -147,6 +147,17 @@ namespace BridgeOfBlood.Editor
 			EditorGUILayout.LabelField("Lightning", m.lightningDamage.ToString("F1"));
 			EditorGUILayout.LabelField("Overkill", m.overkillDamage.ToString("F1"));
 			EditorGUILayout.LabelField("Attack Entities Expired", m.attackEntitiesExpired.ToString());
+
+			int totalAilments = m.TotalAilmentsApplied;
+			EditorGUILayout.LabelField("Ailments Applied", totalAilments.ToString());
+			EditorGUI.indentLevel++;
+			EditorGUILayout.LabelField("Frozen", m.frozenApplied.ToString());
+			EditorGUILayout.LabelField("Ignited", m.ignitedApplied.ToString());
+			EditorGUILayout.LabelField("Shocked", m.shockedApplied.ToString());
+			EditorGUILayout.LabelField("Poisoned", m.poisonedApplied.ToString());
+			EditorGUILayout.LabelField("Stunned", m.stunnedApplied.ToString());
+			EditorGUI.indentLevel--;
+
 			EditorGUILayout.LabelField("Duration (s)", m.duration.ToString("F2"));
 			EditorGUILayout.LabelField("DPS", m.DPS.ToString("F1"));
 		}

@@ -104,6 +104,35 @@ Hierarchical aggregation at five time scales: Frame > Spell Cast > Spell Loop > 
 
 ---
 
+## Session state machine
+
+High-level session flow managed by `SessionStateMachine` (plain class); `TestSceneManager` reads the current state each frame and dispatches accordingly.
+
+- **States**: `Pregame` → `Round` → `Shop` or `Lose`. Pregame waits for Space/Return to start. Shop waits for N to begin next round. Lose waits for R to retry from round 1.
+- **Transitions**: `RequestStart()`, `OnRoundEnded(quotaMet)`, `RequestNextRound()`, `RequestRetry()`. Each returns `bool` for whether the transition occurred.
+- **Round controller**: `RoundController` (plain class) encapsulates one frame of round gameplay (player move, cast gating, items, casting, simulation steps, telemetry, damage/effect spawn, rendering, phase evaluation). Returns `RoundTickResult { roundEnded, quotaMet }`. `TestSceneManager` delegates to it when session state == Round.
+- **GameState**: `GameState.sessionState` carries the current `SessionState` so UI can display Pregame/Round/Shop/Lose.
+
+**Key types**: `SessionState` (enum), `SessionStateMachine`, `RoundController`, `RoundControllerConfig`, `RoundTickResult`.
+
+---
+
+## Game loop / rounds
+
+Round-internal phase management by `RoundController`; session-level transitions handled by `SessionStateMachine` above.
+
+- **Config**: `RoundConfig` (serializable class, embedded in `TestSceneManager`): `bloodQuota` (float), `spellLoopsPerRound` (int).
+- **Phase flow**: `Playing` → (loops exhausted) → `AwaitingDespawn` → (no active casts, no pending spawns, no attack entities) → `RoundEnd` → session state machine transitions to `Shop` or `Lose`.
+- **Blood tracking**: `DamageEvent.bloodExtracted` (currently `damageDealt + overkillDamage`). Aggregated through `CombatMetrics.bloodExtracted` at all telemetry levels. Quota comparison uses `TelemetryAggregator.CurrentRound.aggregate.bloodExtracted`.
+- **Round end**: `TelemetryAggregator.EndRound()` is called on RoundEnd, then `RoundController.EvaluateRoundEnd()` compares blood to quota.
+- **Spell loop cap**: `LoopedSpellCaster` reports `LoopCount`; `RoundController` compares against `RoundConfig.spellLoopsPerRound` externally.
+- **Round reset**: `GameSimulation.ResetForNewRound()` clears enemies, attack entities, spawner, simulation time, event buffers. `LoopedSpellCaster.Reset()` + `ClearCastState()`. Player placed at right side of simulation zone.
+- **Placeholders**: Shop = press N to start next round. Lose = press R to retry from round 1.
+
+**Key types**: `RoundConfig`, `GameLoopPhase` (enum).
+
+---
+
 ## Key data splits
 
 - **Authoring (ScriptableObject)**: `SpellAuthoringData`, `AttackEntityData`, `EnemyAuthoringData`, `EnemySpawnTable`, `SpawnPattern`, `IdolAuthoringData`, `SpellModificationsTestData`, `SpriteEntityVisual`, `SpriteRenderDatabase`. Lives in project; not mutated at runtime for "baked" values.

@@ -25,6 +25,8 @@ public struct AttackEntitySpawnPayload
     public PoisonedApplierRuntime poisonedApplier;
     public StunnedApplierRuntime stunnedApplier;
     public EntityVisual visual;
+    public EffectSpriteConfigRuntime onHitEffect;
+    public EffectSpriteConfigRuntime onKillEffect;
     public int spellId;
     public int spellInvocationId;
 }
@@ -35,16 +37,6 @@ public struct AttackEntitySpawnPayload
 /// </summary>
 public static class AttackEntityBuilder
 {
-    static PiercePolicyRuntime DefaultPierce() => new PiercePolicyRuntime { isActive = false, maxEnemiesHit = 0 };
-    static ExpirationPolicyRuntime DefaultExpiration() => new ExpirationPolicyRuntime { isActive = false, maxTimeAlive = 0f, maxDistanceTravelled = 0f };
-    static ChainPolicyRuntime DefaultChain() => new ChainPolicyRuntime { isActive = false, enabled = false, chainCount = 0, chainRange = 0f };
-    static RehitPolicyRuntime DefaultRehit() => new RehitPolicyRuntime { rehitCooldownSeconds = 0f };
-    static FrozenApplierRuntime DefaultFrozenApplier() => new FrozenApplierRuntime { isActive = false, applyChance = 0f };
-    static IgnitedApplierRuntime DefaultIgnitedApplier() => new IgnitedApplierRuntime { isActive = false, applyChance = 0f };
-    static ShockedApplierRuntime DefaultShockedApplier() => new ShockedApplierRuntime { isActive = false, applyChance = 0f };
-    static PoisonedApplierRuntime DefaultPoisonedApplier() => new PoisonedApplierRuntime { isActive = false, applyChance = 0f };
-    static StunnedApplierRuntime DefaultStunnedApplier() => new StunnedApplierRuntime { isActive = false, applyChance = 0f };
-
     /// <summary>
     /// Builds a spawn payload from authoring data. Iterates behaviors and applies first of each type.
     /// </summary>
@@ -60,18 +52,20 @@ public static class AttackEntityBuilder
             critDamageMultiplier = data.critDamageMultiplier > 0f ? data.critDamageMultiplier : 1f,
             velocity = new float2(data.entityVelocity.x, data.entityVelocity.y),
             hitBoxData = data.hitBoxData,
-            pierce = DefaultPierce(),
-            expiration = DefaultExpiration(),
-            chain = DefaultChain(),
-            rehit = DefaultRehit(),
-            frozenApplier = DefaultFrozenApplier(),
-            ignitedApplier = DefaultIgnitedApplier(),
-            shockedApplier = DefaultShockedApplier(),
-            poisonedApplier = DefaultPoisonedApplier(),
-            stunnedApplier = DefaultStunnedApplier(),
+            pierce = PiercePolicyRuntime.Default(),
+            expiration = ExpirationPolicyRuntime.Default(),
+            chain = ChainPolicyRuntime.Default(),
+            rehit = RehitPolicyRuntime.Default(),
+            frozenApplier = FrozenApplierRuntime.Default(),
+            ignitedApplier = IgnitedApplierRuntime.Default(),
+            shockedApplier = ShockedApplierRuntime.Default(),
+            poisonedApplier = PoisonedApplierRuntime.Default(),
+            stunnedApplier = StunnedApplierRuntime.Default(),
             visual = data.visual != null
                 ? data.visual.Resolve(visualSeed)
-                : new EntityVisual { frameIndex = -1, scale = 1f }
+                : new EntityVisual { frameIndex = -1, scale = 1f },
+            onHitEffect = EffectSpriteConfigRuntime.Default(),
+            onKillEffect = EffectSpriteConfigRuntime.Default()
         };
 
         if (data.behaviors == null) return payload;
@@ -80,23 +74,7 @@ public static class AttackEntityBuilder
         {
             var b = data.behaviors[i];
             if (b == null) continue;
-
-            if (b is PierceBehavior pb)
-                payload.pierce = pb.ToRuntime();
-            else if (b is ExpirationBehavior eb)
-                payload.expiration = eb.ToRuntime();
-            else if (b is ChainBehavior cb)
-                payload.chain = cb.ToRuntime();
-            else if (b is ApplyFrozenBehavior fb)
-                payload.frozenApplier = fb.ToRuntime();
-            else if (b is ApplyIgnitedBehavior ib)
-                payload.ignitedApplier = ib.ToRuntime();
-            else if (b is ApplyShockedBehavior sb)
-                payload.shockedApplier = sb.ToRuntime();
-            else if (b is ApplyPoisonedBehavior pob)
-                payload.poisonedApplier = pob.ToRuntime();
-            else if (b is ApplyStunnedBehavior stb)
-                payload.stunnedApplier = stb.ToRuntime();
+            b.ApplyTo(ref payload);
         }
 
         payload.rehit.rehitCooldownSeconds = data.rehitCooldownSeconds;

@@ -31,14 +31,14 @@ MonoBehaviour:
         modifier:
           property: 4
           operation: 0
-          value: 20
+          value: 100
     - rid: 4884261778024038400
       type: {class: CombatMetricCondition, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
         scope: 1
         property: 0
         comparison: 0
-        value: 15
+        value: 5
     - rid: 4884261816470863931
       type: {class: SpellModificationEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:

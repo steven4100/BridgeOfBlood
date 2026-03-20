@@ -1,13 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using UnityEngine;
-using BridgeOfBlood.Data.Enemies;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
+using BridgeOfBlood.Data.Enemies;
 using BridgeOfBlood.Effects;
 using Unity.Mathematics;
-using Debug = UnityEngine.Debug;
 
 /// <summary>
 /// A named simulation step that can be executed, timed, and stepped through by the debug controller.
@@ -25,29 +23,41 @@ public struct ItemEvalResult
 }
 
 /// <summary>
-/// Scene runner: owns the simulation zone, player, input, rendering, and debug controls.
-/// Delegates all simulation logic to GameSimulation.
+/// Thin scene runner: creates all systems, delegates round simulation to <see cref="RoundController"/>,
+/// and uses <see cref="SessionStateMachine"/> to broker high-level transitions (Pregame/Round/Shop/Lose).
 /// </summary>
 public class TestSceneManager : MonoBehaviour
 {
+    [Header("Simulation")]
     public float spawnRate = 2f;
     public RectTransform simulationZone;
     Rect rect => simulationZone != null ? simulationZone.rect : default;
     public EnemySpawnTable spawnTable;
+    public float gizmoRadius = 5f;
+
+    [Header("Rendering")]
     public Camera renderCamera;
     public Material spriteMaterial;
     public Material attackDebugMaterial;
     public Material damageNumberMaterial;
     public SpriteRenderDatabase spriteRenderDatabase;
+
+    [Header("Player")]
     public float playerMoveSpeed = 100f;
     public PlayerRenderer playerRenderer;
+
+    [Header("Spells & Items")]
     public List<SpellAuthoringData> spells = new List<SpellAuthoringData>();
     public KeyCode castInputKey = KeyCode.Space;
     public SpellModificationsTestData castModifications;
-    public float gizmoRadius = 5f;
+    public List<Item> items = new List<Item>();
+
+    [Header("Round")]
+    public RoundConfig roundConfig = new RoundConfig();
+
+    [Header("Debug")]
     public bool debugLogTiming;
     public SimulationDebugController debugController;
-    public List<Item> items = new List<Item>();
 
     private Player _player;
     private GameSimulation _simulation;
@@ -56,37 +66,44 @@ public class TestSceneManager : MonoBehaviour
     private SpriteInstanceBuilder _spriteInstanceBuilder;
     private AttackEntityDebugRenderer _attackDebugRenderer;
     private DamageNumberController _damageNumberController;
+    private EffectSpriteController _effectSpriteController;
     private TelemetryAggregator _telemetryAggregator;
     private SpellCollection _spellCollection;
-    private readonly EffectContext _effectContext = new EffectContext();
-    private readonly List<ItemEvalResult> _lastItemResults = new List<ItemEvalResult>();
+    private SessionStateMachine _session;
+    private RoundController _roundController;
+    private ShopController _shopController;
+    private GameState _currentGameState;
 
     public TelemetryAggregator TelemetryAggregator => _telemetryAggregator;
-    public IReadOnlyList<ItemEvalResult> LastItemResults => _lastItemResults;
+    public GameState CurrentGameState => _currentGameState;
+    public IReadOnlyList<ItemEvalResult> LastItemResults => _roundController?.LastItemResults;
     public GameSimulation Simulation => _simulation;
+    public RoundController RoundController => _roundController;
+    public SessionStateMachine Session => _session;
 
     void Start()
     {
         _spriteRenderer = new SpriteInstancedRenderer(spriteMaterial);
         _spriteInstanceBuilder = new SpriteInstanceBuilder(spriteRenderDatabase);
         _damageNumberController = new DamageNumberController(damageNumberMaterial);
+        _effectSpriteController = new EffectSpriteController();
 
         Rect r = rect;
         _player = new Player(
-            new float2(r.center.x, r.center.y),
+            new float2(r.xMax - 10f, r.center.y),
             playerMoveSpeed);
 
         if (playerRenderer != null)
             playerRenderer.Player = _player;
 
-        var config = new SimulationConfig
+        var simConfig = new SimulationConfig
         {
             SimulationZone = simulationZone,
             SpawnRate = spawnRate,
             GizmoRadius = gizmoRadius,
             SpawnTable = spawnTable
         };
-        _simulation = new GameSimulation(config);
+        _simulation = new GameSimulation(simConfig);
 
         var emissionHandler = new SpellEmissionHandler(_simulation.GetAttackEntityManager());
         _spellCollection = new SpellCollection(spells);
@@ -95,106 +112,119 @@ public class TestSceneManager : MonoBehaviour
         _attackDebugRenderer = new AttackEntityDebugRenderer(_simulation.GetAttackEntityManager(), attackDebugMaterial);
         _telemetryAggregator = new TelemetryAggregator(_spellCollection.Count);
 
+        _session = new SessionStateMachine();
+
+        var roundCfg = new RoundControllerConfig
+        {
+            castInputKey = castInputKey,
+            debugLogTiming = debugLogTiming,
+            roundConfig = roundConfig,
+            castModifications = castModifications,
+            items = items,
+            debugController = debugController
+        };
+        _roundController = new RoundController(
+            _player, _simulation, _loopedSpellCaster,
+            _telemetryAggregator, _spellCollection,
+            _damageNumberController, _effectSpriteController,
+            _spriteInstanceBuilder, _spriteRenderer,
+            _attackDebugRenderer, roundCfg);
+        _shopController = new ShopController();
+
         if (debugController != null)
             debugController.Initialize(_simulation.StepCount);
     }
 
     void Update()
     {
-        bool hasController = debugController != null;
-        if (hasController)
-            debugController.ProcessInput();
-
-        _player.Update(Time.deltaTime, rect);
-
-        bool castRequested = Input.GetKeyDown(castInputKey);
-        var mods = castModifications != null ? castModifications.GetModifications() : new SpellModifications();
-
-        EvaluateItems(mods);
-
-        SpellCastResult castResult = _loopedSpellCaster.AttemptToCastNextSpell(_simulation.SimulationTime, _player.Position, _spellCollection.AuthoringData, castRequested, mods);
-        _loopedSpellCaster.Update(_simulation.SimulationTime, -1 * GetCastForward());
-
-        bool advanceTime = !hasController || debugController.ShouldAdvanceTime;
-        if (advanceTime)
+        switch (_session.CurrentState)
         {
-            float dt = hasController ? debugController.DeltaTime : Time.deltaTime;
-            _simulation.AdvanceTime(dt);
+            case SessionState.Pregame:
+                UpdatePregame();
+                break;
+
+            case SessionState.Round:
+                UpdateRound();
+                break;
+
+            case SessionState.Shop:
+                UpdateShop();
+                break;
+
+            case SessionState.Lose:
+                UpdateLose();
+                break;
         }
 
-        Stopwatch sw = debugLogTiming ? new Stopwatch() : null;
-        long totalMs = 0;
+        _currentGameState = BuildGameState();
+    }
 
-        for (int i = 0; i < _simulation.StepCount; i++)
+    void UpdatePregame()
+    {
+        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Space))
         {
-            if (!hasController || debugController.ShouldRunPhase(i, _simulation.GetStepName(i)))
+            if (_session.RequestStart())
+                ResetForNewRound();
+        }
+    }
+
+    void UpdateRound()
+    {
+        Camera cam = renderCamera != null ? renderCamera : Camera.main;
+        RoundTickResult result = _roundController.Tick(Time.deltaTime, rect, cam, simulationZone);
+
+        if (result.roundEnded)
+            _session.OnRoundEnded(result.quotaMet);
+    }
+
+    void UpdateShop()
+    {
+        ShopTickResult result = _shopController.Tick();
+        if (result.requestedNextRound && _session.RequestNextRound())
+        {
+            _roundController.StartNextRound();
+            ResetForNewRound();
+        }
+    }
+
+    void UpdateLose()
+    {
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            if (_session.RequestRetry())
             {
-                sw?.Restart();
-                _simulation.ExecuteStep(i);
-                if (sw != null)
-                {
-                    long ms = sw.ElapsedMilliseconds;
-                    totalMs += ms;
-                    if (debugLogTiming)
-                        Debug.Log($"[Timing] {_simulation.GetStepName(i)}: {ms}ms");
-                }
+                _roundController.Retry();
+                ResetForNewRound();
             }
         }
-
-        float frameDt = hasController ? debugController.DeltaTime : Time.deltaTime;
-        _telemetryAggregator.ProcessFrame(
-            _simulation.GetDamageEvents(),
-            _simulation.GetStatusAilmentAppliedEvents(),
-            frameDt,
-            _simulation.SimulationTime,
-            castResult);
-
-        _damageNumberController.SpawnFromDamageEvents(_simulation.GetDamageEvents(), _simulation.GetEnemies());
-        _simulation.ClearDamageEvents();
-        _simulation.ClearStatusAilmentAppliedEvents();
-
-        if (advanceTime)
-            _damageNumberController.Update(hasController ? debugController.DeltaTime : Time.deltaTime);
-
-        Camera cam = renderCamera != null ? renderCamera : Camera.main;
-        _spriteInstanceBuilder.Build(_simulation.GetEnemies(), _simulation.GetAttackEntities());
-        _spriteRenderer.Render(_spriteInstanceBuilder.Buffer, _spriteInstanceBuilder.Count, simulationZone, cam);
-        _attackDebugRenderer.Render(_simulation.GetAttackEntities(), simulationZone, cam);
-        _damageNumberController.Render(simulationZone, cam);
-
-        if (hasController)
-            debugController.NotifyFrameComplete();
-
-        if (debugLogTiming)
-            Debug.Log($"[Timing] Total: {totalMs}ms");
     }
 
-    void EvaluateItems(SpellModifications mods)
+    void ResetForNewRound()
     {
-        _effectContext.frameMetrics = _telemetryAggregator.CurrentFrame.aggregate;
-        _effectContext.spellCastMetrics = _telemetryAggregator.CurrentSpellCast.aggregate;
-        _effectContext.spellLoopMetrics = _telemetryAggregator.CurrentSpellLoop.aggregate;
-        _effectContext.roundMetrics = _telemetryAggregator.CurrentRound.aggregate;
-        _effectContext.gameMetrics = _telemetryAggregator.Game.aggregate;
-        _effectContext.spellModifications = mods;
+        _simulation.ResetForNewRound();
+        _loopedSpellCaster.Reset();
+        _loopedSpellCaster.ClearCastState();
+        _player.PlaceAtRightSide(rect);
+    }
 
-        _lastItemResults.Clear();
-        for (int i = 0; i < items.Count; i++)
+    GameState BuildGameState()
+    {
+        var round = _telemetryAggregator.CurrentRound;
+        return new GameState
         {
-            var item = items[i];
-            if (item == null) continue;
-
-            _lastItemResults.Add(new ItemEvalResult
-            {
-                itemName = item.name,
-                applied = item.Apply(_effectContext)
-            });
-        }
-    }
-
-    float2 GetCastForward()
-    {
-        return new float2(1f, 0f);
+            sessionState = _session.CurrentState,
+            phase = _roundController.Phase,
+            roundNumber = _roundController.RoundNumber,
+            bloodQuota = _roundController.BloodQuota,
+            bloodExtracted = _roundController.BloodExtractedThisRound,
+            quotaMet = _roundController.QuotaMet,
+            spellLoopsPerRound = _roundController.SpellLoopsPerRound,
+            loopsCompleted = _loopedSpellCaster.LoopCount,
+            roundMetrics = round.aggregate,
+            simulationTime = _simulation.SimulationTime,
+            enemyCount = _simulation.GetEnemies().Length,
+            attackEntityCount = _simulation.GetAttackEntityManager().EntityCount
+        };
     }
 
     void OnDestroy()
@@ -202,6 +232,7 @@ public class TestSceneManager : MonoBehaviour
         _simulation?.Dispose();
         _spriteRenderer?.Dispose();
         _damageNumberController?.Dispose();
+        _effectSpriteController?.Dispose();
     }
 
     void OnDrawGizmos()

@@ -112,6 +112,8 @@ public class TelemetryAggregator
             metrics.coldDamage += evt.coldDamage;
             metrics.lightningDamage += evt.lightningDamage;
 
+            metrics.bloodExtracted += evt.bloodExtracted;
+
             if (evt.isCrit)
                 metrics.crits++;
             if (evt.wasKill)
@@ -126,8 +128,6 @@ public class TelemetryAggregator
         for (int i = 0; i < statusAilmentEvents.Length; i++)
         {
             StatusAilmentAppliedEvent saEvt = statusAilmentEvents[i];
-            metrics.statusAilmentsApplied++;
-            metrics.statusAilmentsAppliedFlags |= saEvt.ailmentFlag;
             AccumulateAilmentEventIntoDict(_framePerSpell, in saEvt);
         }
 
@@ -196,6 +196,7 @@ public class TelemetryAggregator
         existing.fireDamage += evt.fireDamage;
         existing.coldDamage += evt.coldDamage;
         existing.lightningDamage += evt.lightningDamage;
+        existing.bloodExtracted += evt.bloodExtracted;
         if (evt.isCrit) existing.crits++;
         if (evt.wasKill)
         {
@@ -210,9 +211,17 @@ public class TelemetryAggregator
     {
         int key = evt.spellId;
         dict.TryGetValue(key, out CombatMetrics existing);
-        existing.statusAilmentsApplied++;
-        existing.statusAilmentsAppliedFlags |= evt.ailmentFlag;
+        AccumulateAilmentIntoMetrics(ref existing, evt.ailmentFlag);
         dict[key] = existing;
+    }
+
+    private static void AccumulateAilmentIntoMetrics(ref CombatMetrics metrics, StatusAilmentFlag flag)
+    {
+        if ((flag & StatusAilmentFlag.Frozen) != 0) metrics.frozenApplied++;
+        if ((flag & StatusAilmentFlag.Ignited) != 0) metrics.ignitedApplied++;
+        if ((flag & StatusAilmentFlag.Shocked) != 0) metrics.shockedApplied++;
+        if ((flag & StatusAilmentFlag.Poisoned) != 0) metrics.poisonedApplied++;
+        if ((flag & StatusAilmentFlag.Stunned) != 0) metrics.stunnedApplied++;
     }
 
     private static void MergePerSpellFrom(Dictionary<int, CombatMetrics> target, Dictionary<int, CombatMetrics> source)

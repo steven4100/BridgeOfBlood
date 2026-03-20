@@ -65,6 +65,14 @@ public class EnemyManager
         return _enemies.AsArray();
     }
 
+    /// <summary>
+    /// Removes all enemies without disposing the underlying list.
+    /// </summary>
+    public void Clear()
+    {
+        _enemies.Clear();
+    }
+
     public int EnemyCount => _enemies.Length;
 
     public GridSpatialPartition Grid => _grid;

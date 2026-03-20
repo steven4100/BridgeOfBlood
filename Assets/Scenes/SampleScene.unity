@@ -904,26 +904,30 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 04e02f0386b6d374398cac082da0060c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  spawnRate: 0.5
+  spawnRate: 8
   simulationZone: {fileID: 1669307496}
   spawnTable: {fileID: 11400000, guid: accb87cdda325fa4faafbbe633ce99b5, type: 2}
+  gizmoRadius: 1.04
   renderCamera: {fileID: 330585545}
   spriteMaterial: {fileID: 2100000, guid: a92ed9fb1b4f64f479758fe54c528761, type: 2}
   attackDebugMaterial: {fileID: 2100000, guid: 5cb69cd1c6441e44496eaf809f96136c, type: 2}
   damageNumberMaterial: {fileID: 0}
   spriteRenderDatabase: {fileID: 11400000, guid: 77a5fc279edf81d4c9cb56cd88810a36, type: 2}
-  playerMoveSpeed: 100
+  playerMoveSpeed: 300
   playerRenderer: {fileID: 22834934}
   spells:
   - {fileID: 11400000, guid: be1f8095bd6b208419dcaeae500cd1fa, type: 2}
   - {fileID: 11400000, guid: 59ef9384f24cdc3468994b4de0e80511, type: 2}
+  - {fileID: 11400000, guid: 41f330be07da5944d8a78091cb0d9386, type: 2}
   castInputKey: 32
   castModifications: {fileID: 11400000, guid: 9641dd6fe2f6c5d4b9f5db999c5e4695, type: 2}
-  gizmoRadius: 1.04
-  debugLogTiming: 0
-  debugController: {fileID: 1770549542}
   items:
   - {fileID: 11400000, guid: c7c2307d0f9612a459297e9bb4db4c2b, type: 2}
+  roundConfig:
+    bloodQuota: 1000
+    spellLoopsPerRound: 3
+  debugLogTiming: 0
+  debugController: {fileID: 1770549542}
 --- !u!4 &1770549541
 Transform:
   m_ObjectHideFlags: 0

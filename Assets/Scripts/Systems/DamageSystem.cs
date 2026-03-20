@@ -61,6 +61,7 @@ public class DamageSystem
                     position = hit.hitPosition,
                     damageDealt = totalDamage,
                     enemyIndex = hit.enemyIndex,
+                    attackEntityIndex = hit.attackEntityIndex,
                     isCrit = isCrit,
                     physicalDamage = physical,
                     fireDamage = fire,
@@ -69,7 +70,8 @@ public class DamageSystem
                     spellId = atk.spellId,
                     spellInvocationId = atk.spellInvocationId,
                     wasKill = killed,
-                    overkillDamage = overkill
+                    overkillDamage = overkill,
+                    bloodExtracted = totalDamage + overkill
                 });
             }
 

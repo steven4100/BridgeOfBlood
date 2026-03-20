@@ -15,11 +15,16 @@ namespace BridgeOfBlood.Data.Shared
 		public float coldDamage;
 		public float lightningDamage;
 		public float overkillDamage;
+		public float bloodExtracted;
 		public int attackEntitiesExpired;
-		public int statusAilmentsApplied;
-		public StatusAilmentFlag statusAilmentsAppliedFlags;
+		public int frozenApplied;
+		public int ignitedApplied;
+		public int shockedApplied;
+		public int poisonedApplied;
+		public int stunnedApplied;
 		public float duration;
 
+		public int TotalAilmentsApplied => frozenApplied + ignitedApplied + shockedApplied + poisonedApplied + stunnedApplied;
 		public float DPS => duration > 0f ? totalDamage / duration : 0f;
 
 		public void Accumulate(in CombatMetrics other)
@@ -33,9 +38,13 @@ namespace BridgeOfBlood.Data.Shared
 			coldDamage += other.coldDamage;
 			lightningDamage += other.lightningDamage;
 			overkillDamage += other.overkillDamage;
+			bloodExtracted += other.bloodExtracted;
 			attackEntitiesExpired += other.attackEntitiesExpired;
-			statusAilmentsApplied += other.statusAilmentsApplied;
-			statusAilmentsAppliedFlags |= other.statusAilmentsAppliedFlags;
+			frozenApplied += other.frozenApplied;
+			ignitedApplied += other.ignitedApplied;
+			shockedApplied += other.shockedApplied;
+			poisonedApplied += other.poisonedApplied;
+			stunnedApplied += other.stunnedApplied;
 			duration += other.duration;
 		}
 

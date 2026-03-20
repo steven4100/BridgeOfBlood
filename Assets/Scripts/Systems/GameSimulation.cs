@@ -44,6 +44,7 @@ public class GameSimulation
     private DeadEnemyRemovalSystem _deadEnemyRemovalSystem;
     private PierceSystem _pierceSystem;
     private ExpirationSystem _expirationSystem;
+    private AttackEntityCullingSystem _attackEntityCullingSystem;
     private FrozenApplicationSystem _frozenSystem;
     private IgnitedApplicationSystem _ignitedSystem;
     private ShockedApplicationSystem _shockedSystem;
@@ -89,6 +90,7 @@ public class GameSimulation
         _deadEnemyRemovalSystem = new DeadEnemyRemovalSystem();
         _pierceSystem = new PierceSystem();
         _expirationSystem = new ExpirationSystem();
+        _attackEntityCullingSystem = new AttackEntityCullingSystem();
         _frozenSystem = new FrozenApplicationSystem();
         _ignitedSystem = new IgnitedApplicationSystem();
         _shockedSystem = new ShockedApplicationSystem();
@@ -165,6 +167,27 @@ public class GameSimulation
 
     /// <summary>Clears status ailment applied events after the caller has consumed them.</summary>
     public void ClearStatusAilmentAppliedEvents() => _statusAilmentAppliedEvents.Clear();
+
+    /// <summary>
+    /// Clears all enemies, attack entities, event buffers, and resets simulation time for a fresh round.
+    /// Does not dispose NativeLists; just clears them.
+    /// </summary>
+    public void ResetForNewRound()
+    {
+        _enemyManager.Clear();
+        _attackEntityManager.Clear();
+        _spawner.Reset();
+        _simulationTime = 0f;
+        _frameDeltaTime = 0f;
+
+        _rawCollisionEvents.Clear();
+        _resolvedHits.Clear();
+        _attackRemovalEvents.Clear();
+        _hitEvents.Clear();
+        _killEvents.Clear();
+        _damageEvents.Clear();
+        _statusAilmentAppliedEvents.Clear();
+    }
 
     public IReadOnlyList<IDebugDrawable> GetDebugDrawables() => _debugDrawables;
 
@@ -359,6 +382,7 @@ public class GameSimulation
 
         _attackEntityManager.ValidateParallelLists();
         NativeArray<AttackEntity> entities = _attackEntityManager.GetEntities();
+        _attackEntityCullingSystem.CollectRemovals(entities, Rect, _attackRemovalEvents);
         _pierceSystem.CollectRemovals(entities, _attackEntityManager.GetPiercePolicies(), _attackRemovalEvents);
         _expirationSystem.CollectRemovals(entities, _attackEntityManager.GetExpirationPolicies(), _attackRemovalEvents);
         _chainSystem.CollectRemovals(entities, _attackEntityManager.GetChainPolicies(), _attackRemovalEvents);

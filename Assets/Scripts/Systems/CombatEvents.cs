@@ -20,7 +20,8 @@ public enum AttackEntityRemovalReason
     PierceLimitReached,
     ExpiredByTime,
     ExpiredByDistance,
-    ChainLimitReached
+    ChainLimitReached,
+    CulledOffScreen
 }
 
 /// <summary>
@@ -44,6 +45,8 @@ public struct DamageEvent
     public float damageDealt;
     /// <summary>Index into the enemies array at emit time (so consumers can look up target for presentation, e.g. velocity).</summary>
     public int enemyIndex;
+    /// <summary>Index into the attack entities array at emit time (so consumers can look up source for VFX config).</summary>
+    public int attackEntityIndex;
     public bool isCrit;
 
     public float physicalDamage;
@@ -54,6 +57,8 @@ public struct DamageEvent
     public int spellInvocationId;
     public bool wasKill;
     public float overkillDamage;
+    /// <summary>Blood collected from this hit. Currently damageDealt + overkillDamage; future blood multipliers apply here.</summary>
+    public float bloodExtracted;
 }
 
 /// <summary>

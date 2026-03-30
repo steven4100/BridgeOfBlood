@@ -12,9 +12,9 @@ Short reference for where systems live and how data flows. Update when adding ma
 | `Assets/Scripts/Spells/` | Spell authoring, cast flow, attack entities, modifications |
 | `Assets/Scripts/Systems/` | Combat pipeline: collision, hit resolve, chain, damage, pierce, expiration, damage numbers, telemetry aggregation |
 | `Assets/Scripts/Enemies/` | Enemy manager, movement, culling, spawner, grid, render |
-| `Assets/Scripts/Data/` | Shared enums, runtime/authoring structs (Enemies, Idols, Shared) |
+| `Assets/Scripts/Data/` | Shared enums, runtime/authoring structs (Enemies, Idols, Shared, Shop) |
 | `Assets/Scripts/Player/` | Player, PlayerRenderer, Stats |
-| `Assets/Scripts/Editor/` | Unity editors/drawers (e.g. AttackEntityData) |
+| `Assets/Scripts/Editor/` | Unity editors/drawers (e.g. AttackEntityData, `ScriptableObjectImplementsDrawer`, Probability Editor) |
 | `Assets/Shaders/` | DamageNumberUnlit, EnemyIndirectUnlit |
 | `Assets/Rendering/` | Sprite rendering system (atlas-based GPU instanced) |
 | `Assets/Rendering/Authoring/` | `SpriteEntityVisual` ScriptableObject (designer-facing, references Sprite) |
@@ -121,29 +121,54 @@ High-level session flow managed by `SessionStateMachine` (plain class); `TestSce
 
 Round-internal phase management by `RoundController`; session-level transitions handled by `SessionStateMachine` above.
 
-- **Config**: `RoundConfig` (serializable class, embedded in `TestSceneManager`): `bloodQuota` (float), `spellLoopsPerRound` (int).
+- **Config**: `GameConfig` (ScriptableObject): authoring asset holds round tuning + wallet/inventory **templates**. At session start (and Lose → Retry), `GameConfig.CreateRuntimeCopy` **`Instantiate`s** the whole config plus unique wallet/inventory clones; gameplay reads **`runtimeGameConfig.playerWallet`**, **`playerInventory`**, and scaling fields from that **one** session clone (`GameConfig.DestroyRuntimeCopy` on teardown / rebuild).
+- **Per-round quota**: `RoundController` sets `BloodQuota` from `gameConfig.bloodQuotaScaling.BuildForRound(RoundNumber)` on construct, `StartNextRound`, and `Retry`.
 - **Phase flow**: `Playing` → (loops exhausted) → `AwaitingDespawn` → (no active casts, no pending spawns, no attack entities) → `RoundEnd` → session state machine transitions to `Shop` or `Lose`.
 - **Blood tracking**: `DamageEvent.bloodExtracted` (currently `damageDealt + overkillDamage`). Aggregated through `CombatMetrics.bloodExtracted` at all telemetry levels. Quota comparison uses `TelemetryAggregator.CurrentRound.aggregate.bloodExtracted`.
 - **Round end**: `TelemetryAggregator.EndRound()` is called on RoundEnd, then `RoundController.EvaluateRoundEnd()` compares blood to quota.
-- **Spell loop cap**: `LoopedSpellCaster` reports `LoopCount`; `RoundController` compares against `RoundConfig.spellLoopsPerRound` externally.
+- **Spell loop cap**: `LoopedSpellCaster` reports `LoopCount`; `RoundController` compares against `SpellLoopsPerRound` (from `GameConfig.maxSpellLoopsPerRound`).
 - **Round reset**: `GameSimulation.ResetForNewRound()` clears enemies, attack entities, spawner, simulation time, event buffers. `LoopedSpellCaster.Reset()` + `ClearCastState()`. Player placed at right side of simulation zone.
+- **Session start / retry**: `TestSceneManager` replaces `_runtimeGameConfig` via `GameConfig.CreateRuntimeCopy`; `RoundController` receives the clone and uses `gameConfig.playerInventory` for items. Lose → Retry calls `RoundController.SetGameConfig` with the new clone.
 - **Placeholders**: Shop = press N to start next round. Lose = press R to retry from round 1.
 
-**Key types**: `RoundConfig`, `GameLoopPhase` (enum).
+**Key types**: `GameConfig`, `BloodQuotaScaling`, `RoundRuntimeData`, `GameLoopPhase` (enum).
+
+---
+
+## Shop system
+
+Shop item definitions, weighted selection, and purchase flow.
+
+- **Data**: `Assets/Scripts/Data/Shop/` (namespace `BridgeOfBlood.Data.Shop`). `ShopItemDefinition` (ScriptableObject, implements `IRandomElement`): display name, description, price, currency type, resell value, rarity, shop item type, weight, and a reference to an `IPurchasable` payload. `ShopConfig` (ScriptableObject): per-`ShopItemType` spawn weights via `ShopItemTypeWeight` entries (also `IRandomElement`). `IPurchasable` interface: `OnPurchase(PurchaseContext)`.
+- **Repository**: `ShopRepository` (plain class): loads all `ShopItemDefinition` assets from `Resources/ShopItems/`, groups by `ShopItemType`, exposes `GetAll()` and `PickItem(typeRoll, itemRoll)` for two-step weighted selection (type first, then item within type).
+- **Assets**: `Assets/Resources/ShopItems/` holds `ShopItemDefinition` assets for `Resources.LoadAll` discovery.
+
+**Key types**: `ShopItemDefinition`, `ShopConfig`, `ShopRepository`, `IPurchasable`, `PurchaseContext`, `ShopItemType`, `Rarity`, `CurrencyType`.
+
+---
+
+## Weighted selection (generic probability)
+
+Reusable probability primitives in `BridgeOfBlood.Data.Shared`.
+
+- **`IRandomElement`**: interface with `float Weight { get; set; }`. Implemented by `ShopItemDefinition`, `ShopConfig.ShopItemTypeWeight`, and any future weighted asset.
+- **`WeightedSelection`**: static utility with `Pick`, `TotalWeight`, `Normalize` operating on any `IReadOnlyList<T> where T : IRandomElement`.
+- **Editor**: `ProbabilityEditorWindow` (menu: Tools > Bridge of Blood > Probability Editor): folder picker, weight editing, percentage display, normalize button. `ScriptableObjectImplementsDrawer` + `ScriptableObjectImplementsPickerWindow`: filtered asset list for `[ScriptableObjectImplements(typeof(I))]` fields (Unity's object picker cannot filter by interface).
 
 ---
 
 ## Key data splits
 
-- **Authoring (ScriptableObject)**: `SpellAuthoringData`, `AttackEntityData`, `EnemyAuthoringData`, `EnemySpawnTable`, `SpawnPattern`, `IdolAuthoringData`, `SpellModificationsTestData`, `SpriteEntityVisual`, `SpriteRenderDatabase`. Lives in project; not mutated at runtime for "baked" values.
+- **Authoring (ScriptableObject)**: `GameConfig`, `PlayerWallet`, `PlayerInventory`, `SpellAuthoringData`, `AttackEntityData`, `EnemyAuthoringData`, `EnemySpawnTable`, `SpawnPattern`, `IdolAuthoringData`, `SpellModificationsTestData`, `SpriteEntityVisual`, `SpriteRenderDatabase`, `ShopItemDefinition`, `ShopConfig`. Lives in project; session uses **`Instantiate`** copies of wallet/inventory templates so templates stay read-only on disk.
 - **Runtime (structs / NativeList)**: `AttackEntity`, `Enemy`, `HitEvent`, `DamageEvent`, `DamageNumber`, chain/pierce/expiration/rehit policy structs, `EntityVisual`, `SpriteFrame`, `SpriteInstanceData`, `CombatMetrics`, `SpellCastResult`. Simulation-only, no MonoBehaviours in hot path.
-- **Enums / shared**: `DamageType`, `SpellAttributeMask` in `Data/Shared/Enums.cs`.
+- **Enums / shared**: `DamageType`, `SpellAttributeMask`, `Rarity`, `CurrencyType`, `ShopItemType` in `Data/Shared/Enums.cs`. `IRandomElement`, `WeightedSelection` in `Data/Shared/`.
 
 ---
 
 ## Namespaces
 
 - `BridgeOfBlood.Data.Spells`: spell/modification types, resolver, applicator, SpellAuthoringData, ResolvedKeyframe, etc.
-- `BridgeOfBlood.Data.Shared`: enums, GameContext, `CombatMetrics`, snapshot structs (`FrameSnapshot`, `SpellCastSnapshot`, etc.).
+- `BridgeOfBlood.Data.Shared`: enums, `GameConfig`, `BloodQuotaScaling`, `RoundRuntimeData`, GameContext, `CombatMetrics`, snapshot structs (`FrameSnapshot`, `SpellCastSnapshot`, etc.).
 - `BridgeOfBlood.Data.Enemies` / `BridgeOfBlood.Data.Idols`: runtime/authoring for enemies and idols.
+- `BridgeOfBlood.Data.Shop`: shop item definitions, config, repository, `IPurchasable`.
 - Top-level (no namespace): many systems, CombatEvents, AttackEntity*, DamageNumber*, SpellInvoker, LoopedSpellCaster, SpriteInstancedRenderer, SpriteInstanceBuilder, etc.

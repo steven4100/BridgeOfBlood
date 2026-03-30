@@ -1,0 +1,13 @@
+---
+description: Prefer failing fast on missing required data over defensive null checks in game logic.
+alwaysApply: true
+---
+
+# Invariants over null guards
+
+For **domain data that must exist** for a feature to work (session config, shop listings, inventory payloads during purchase, `ShopItemDefinition` on shop `IPurchasable` assets, etc.), **do not** add defensive `if (x == null) return` / optional chaining that hides misconfiguration.
+
+- Assume callers and authoring satisfy invariants; use direct member access and let failures surface immediately if data is wrong.
+- Reserve null checks for **true optionals** (e.g. Unity `GetComponent` may be absent, optional UI wiring) or **external boundaries** where null is part of the contract.
+
+When adding code, avoid expanding null-tolerant paths for required game state; fix authoring or call sites instead.

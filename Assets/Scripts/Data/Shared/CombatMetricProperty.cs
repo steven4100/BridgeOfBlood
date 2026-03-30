@@ -35,8 +35,7 @@ namespace BridgeOfBlood.Data.Shared
 				CombatMetricProperty.OverkillDamage => metrics.overkillDamage,
 				CombatMetricProperty.AttackEntitiesExpired => metrics.attackEntitiesExpired,
 				CombatMetricProperty.Duration => metrics.duration,
-				CombatMetricProperty.DPS => metrics.DPS,
-				_ => throw new ArgumentOutOfRangeException(nameof(property), property, null)
+				CombatMetricProperty.DPS => metrics.DPS
 			};
 		}
 	}

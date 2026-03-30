@@ -7,7 +7,7 @@ using Unity.Mathematics;
 /// </summary>
 public interface ISpellPayloadModifier
 {
-    void Apply(ref AttackEntitySpawnPayload payload, SpellAuthoringData spellData, SpellKeyFrame keyFrame);
+    void Apply(ref AttackEntitySpawnPayload payload, RuntimeSpell runtime, SpellKeyFrame keyFrame);
 }
 
 /// <summary>
@@ -42,12 +42,12 @@ public class SpellEmissionHandler : ISpellEmissionHandler
         _payloadModifier = payloadModifier;
     }
 
-    public void OnKeyframeFired(SpellKeyFrame keyFrame, float2 origin, float2 forward, SpellAuthoringData spellData, float keyframeFireTime, int spellId, int spellInvocationId)
+    public void OnKeyframeFired(SpellKeyFrame keyFrame, float2 origin, float2 forward, RuntimeSpell runtime, float keyframeFireTime, int spellId, int spellInvocationId)
     {
         if (keyFrame?.attackEntityEmitter == null || keyFrame.attackEntityData == null)
             return;
 
-        int count = GetEmitCount(keyFrame, spellData);
+        int count = GetEmitCount(keyFrame, runtime);
         var emitPoints = keyFrame.attackEntityEmitter.GetEmitPoints(origin, forward, count);
         if (emitPoints.Count == 0)
             return;
@@ -55,7 +55,7 @@ public class SpellEmissionHandler : ISpellEmissionHandler
         AttackEntitySpawnPayload basePayload = AttackEntityBuilder.Build(keyFrame.attackEntityData);
         basePayload.spellId = spellId;
         basePayload.spellInvocationId = spellInvocationId;
-        _payloadModifier?.Apply(ref basePayload, spellData, keyFrame);
+        _payloadModifier?.Apply(ref basePayload, runtime, keyFrame);
 
         float speed = keyFrame.attackEntityEmitter.speed;
         if (speed < 0.0001f)
@@ -84,17 +84,13 @@ public class SpellEmissionHandler : ISpellEmissionHandler
 
             var pending = _pending[i];
             var payload = pending.basePayload;
-            // Use emitter direction per point (so spread/fan works) with magnitude from authored velocity.
             payload.velocity = pending.point.direction * pending.speed;
             _attackEntityManager.Spawn(payload, pending.point.position);
             _pending.RemoveAt(i);
         }
     }
 
-    /// <summary>
-    /// Number of emit points per keyframe. Uses emitter's baseEmitCount; override to add spell/item modifiers later.
-    /// </summary>
-    protected virtual int GetEmitCount(SpellKeyFrame keyFrame, SpellAuthoringData spellData)
+    protected virtual int GetEmitCount(SpellKeyFrame keyFrame, RuntimeSpell runtime)
     {
         int baseCount = keyFrame.attackEntityEmitter != null ? keyFrame.attackEntityEmitter.baseEmitCount : 1;
         return baseCount < 1 ? 1 : baseCount;

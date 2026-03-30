@@ -1,0 +1,11 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:Style src="ShopPanel.uss" />
+    <ui:VisualElement name="shop-root" class="shop-root">
+        <ui:Label name="title" text="Shop" class="shop-title" />
+        <ui:Label name="gold-label" text="Gold: 0" class="shop-gold" />
+        <ui:ScrollView name="item-scroll" class="shop-scroll">
+            <ui:VisualElement name="item-list" class="shop-item-list" />
+        </ui:ScrollView>
+        <ui:Button name="continue-button" text="Next round (N)" class="shop-continue" />
+    </ui:VisualElement>
+</ui:UXML>

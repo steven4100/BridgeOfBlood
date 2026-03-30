@@ -5,20 +5,19 @@ using UnityEngine;
 /// </summary>
 public struct ShopTickResult
 {
-    public bool requestedNextRound;
+	public bool requestedNextRound;
 }
 
 /// <summary>
-/// Handles the shop phase: reads input, manages item purchasing (future),
-/// and signals when the player is ready to proceed to the next round.
+/// Shop phase placeholder: advance to the next round on N. Offerings and purchases come in a later iteration.
 /// </summary>
 public class ShopController
 {
-    public ShopTickResult Tick()
-    {
-        if (Input.GetKeyDown(KeyCode.N))
-            return new ShopTickResult { requestedNextRound = true };
+	public ShopTickResult Tick()
+	{
+		if (Input.GetKeyDown(KeyCode.N))
+			return new ShopTickResult { requestedNextRound = true };
 
-        return default;
-    }
+		return default;
+	}
 }

@@ -1,0 +1,16 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI/Round/RoundPanel.uss?fileID=7433441132597879392&amp;guid=e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4&amp;type=3#RoundPanel"/>
+    <ui:VisualElement name="round-root" class="round-root" style="width: 0.2px; height: 100%;">
+        <ui:VisualElement name="spell-loop-area" class="round-spell-area">
+            <ui:VisualElement name="spell-loop-track" class="round-spell-track"/>
+            <ui:VisualElement name="spell-loop-marker" class="round-spell-marker"/>
+        </ui:VisualElement>
+        <ui:VisualElement class="round-stats-row">
+            <ui:Label name="quota-label" text="Quota: 0" class="round-stat"/>
+            <ui:Label name="blood-label" text="Blood: 0" class="round-stat"/>
+            <ui:Label name="loops-label" text="Loops left: 0" class="round-stat"/>
+        </ui:VisualElement>
+        <ui:Label text="Items" class="round-items-heading"/>
+        <ui:VisualElement name="item-strip" class="round-item-strip"/>
+    </ui:VisualElement>
+</ui:UXML>

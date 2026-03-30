@@ -52,6 +52,7 @@ public class SpellCastTester
             return;
 
         int spellId = _testSpellData.GetInstanceID();
-        _spellInvoker.StartCast(_testSpellData, new float2(localPoint.x, localPoint.y), simulationTime, spellId, spellInvocationId: 0);
+        var runtime = new RuntimeSpell(_testSpellData);
+        _spellInvoker.StartCast(runtime, _testSpellData, new float2(localPoint.x, localPoint.y), simulationTime, spellId, spellInvocationId: 0);
     }
 }

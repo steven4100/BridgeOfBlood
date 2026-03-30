@@ -14,6 +14,11 @@ This project prioritizes:
 
 All generated systems must reinforce these principles.
 
+## Architecture / Control flow
+
+- **Simulation** (combat, entities, spell loop stepping, round tick): use **procedural** `Tick` / step loops that advance deterministic state.
+- **Session / meta-game** (pregame, shop, lose, transitions, UI visibility): use **state-driven** flow — one phase type per `SessionState`, with **Enter** / **Exit** / **Tick**, and transitions initiated from the active phase (or the session flow controller), not a separate “transition broker” class unless shared validation is truly required.
+
 ---
 
 # Core Gameplay Pillars

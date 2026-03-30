@@ -4,7 +4,6 @@ using UnityEngine;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
 using BridgeOfBlood.Data.Enemies;
-using BridgeOfBlood.Effects;
 using Unity.Mathematics;
 
 /// <summary>
@@ -24,7 +23,7 @@ public struct ItemEvalResult
 
 /// <summary>
 /// Thin scene runner: creates all systems, delegates round simulation to <see cref="RoundController"/>,
-/// and uses <see cref="SessionStateMachine"/> to broker high-level transitions (Pregame/Round/Shop/Lose).
+/// and drives high-level session flow via <see cref="SessionFlowController"/>.
 /// </summary>
 public class TestSceneManager : MonoBehaviour
 {
@@ -47,17 +46,18 @@ public class TestSceneManager : MonoBehaviour
     public PlayerRenderer playerRenderer;
 
     [Header("Spells & Items")]
-    public List<SpellAuthoringData> spells = new List<SpellAuthoringData>();
+    [Tooltip("Authoring asset on disk. A runtime clone is created via GameConfig.CreateRuntimeCopy.")]
+    [SerializeField] GameConfig gameConfig;
     public KeyCode castInputKey = KeyCode.Space;
     public SpellModificationsTestData castModifications;
-    public List<Item> items = new List<Item>();
-
-    [Header("Round")]
-    public RoundConfig roundConfig = new RoundConfig();
 
     [Header("Debug")]
     public bool debugLogTiming;
     public SimulationDebugController debugController;
+
+    [Header("UI")]
+    [SerializeField] ShopPanelPresenter shopPanel;
+    [SerializeField] RoundPanelPresenter roundPanel;
 
     private Player _player;
     private GameSimulation _simulation;
@@ -69,17 +69,19 @@ public class TestSceneManager : MonoBehaviour
     private EffectSpriteController _effectSpriteController;
     private TelemetryAggregator _telemetryAggregator;
     private SpellCollection _spellCollection;
-    private SessionStateMachine _session;
+    private SessionFlowController _sessionFlow;
     private RoundController _roundController;
     private ShopController _shopController;
     private GameState _currentGameState;
+    /// <summary>Session-owned config (wallet, inventory, round tuning); destroyed when rebuilding session.</summary>
+    GameConfig _runtimeGameConfig;
 
     public TelemetryAggregator TelemetryAggregator => _telemetryAggregator;
     public GameState CurrentGameState => _currentGameState;
     public IReadOnlyList<ItemEvalResult> LastItemResults => _roundController?.LastItemResults;
     public GameSimulation Simulation => _simulation;
     public RoundController RoundController => _roundController;
-    public SessionStateMachine Session => _session;
+    public SessionFlowController SessionFlow => _sessionFlow;
 
     void Start()
     {
@@ -106,101 +108,75 @@ public class TestSceneManager : MonoBehaviour
         _simulation = new GameSimulation(simConfig);
 
         var emissionHandler = new SpellEmissionHandler(_simulation.GetAttackEntityManager());
-        _spellCollection = new SpellCollection(spells);
+
+        CreateRuntimeGameConfigCopy();
+
+        _spellCollection = new SpellCollection(null);
+        _spellCollection.SyncSpellLoopFromInventory(_runtimeGameConfig.playerInventory.GetSpellLoopAuthoring());
         _loopedSpellCaster = new LoopedSpellCaster(_spellCollection.RuntimeSpells, emissionHandler);
 
         _attackDebugRenderer = new AttackEntityDebugRenderer(_simulation.GetAttackEntityManager(), attackDebugMaterial);
-        _telemetryAggregator = new TelemetryAggregator(_spellCollection.Count);
+        int initialSpellCount = Mathf.Max(8, _spellCollection.Count);
+        _telemetryAggregator = new TelemetryAggregator(initialSpellCount);
 
-        _session = new SessionStateMachine();
+        _shopController = new ShopController();
 
         var roundCfg = new RoundControllerConfig
         {
             castInputKey = castInputKey,
             debugLogTiming = debugLogTiming,
-            roundConfig = roundConfig,
+            gameConfig = _runtimeGameConfig,
             castModifications = castModifications,
-            items = items,
             debugController = debugController
         };
         _roundController = new RoundController(
             _player, _simulation, _loopedSpellCaster,
-            _telemetryAggregator, _spellCollection,
+            _telemetryAggregator,
             _damageNumberController, _effectSpriteController,
             _spriteInstanceBuilder, _spriteRenderer,
             _attackDebugRenderer, roundCfg);
-        _shopController = new ShopController();
 
         if (debugController != null)
             debugController.Initialize(_simulation.StepCount);
+
+        var sessionContext = new SessionFlowContext(
+            () => _runtimeGameConfig,
+            _roundController,
+            shopPanel,
+            _shopController,
+            _spellCollection,
+            ResetForNewRound,
+            CreateRuntimeGameConfigCopy,
+            () => rect,
+            simulationZone,
+            () => renderCamera != null ? renderCamera : Camera.main);
+
+        _sessionFlow = new SessionFlowController(sessionContext,
+            new PregameSessionPhase(NoOpStatePresenter.Instance),
+            new RoundSessionPhase(roundPanel),
+            new ShopSessionPhase(shopPanel),
+            new LoseSessionPhase(NoOpStatePresenter.Instance));
     }
 
     void Update()
     {
-        switch (_session.CurrentState)
-        {
-            case SessionState.Pregame:
-                UpdatePregame();
-                break;
-
-            case SessionState.Round:
-                UpdateRound();
-                break;
-
-            case SessionState.Shop:
-                UpdateShop();
-                break;
-
-            case SessionState.Lose:
-                UpdateLose();
-                break;
-        }
-
+        _sessionFlow.Tick(Time.deltaTime);
         _currentGameState = BuildGameState();
     }
 
-    void UpdatePregame()
+    /// <summary>
+    /// Replaces <see cref="_runtimeGameConfig"/> with a new <see cref="GameConfig.CreateRuntimeCopy"/> of the serialized template.
+    /// </summary>
+    void CreateRuntimeGameConfigCopy()
     {
-        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Space))
-        {
-            if (_session.RequestStart())
-                ResetForNewRound();
-        }
-    }
-
-    void UpdateRound()
-    {
-        Camera cam = renderCamera != null ? renderCamera : Camera.main;
-        RoundTickResult result = _roundController.Tick(Time.deltaTime, rect, cam, simulationZone);
-
-        if (result.roundEnded)
-            _session.OnRoundEnded(result.quotaMet);
-    }
-
-    void UpdateShop()
-    {
-        ShopTickResult result = _shopController.Tick();
-        if (result.requestedNextRound && _session.RequestNextRound())
-        {
-            _roundController.StartNextRound();
-            ResetForNewRound();
-        }
-    }
-
-    void UpdateLose()
-    {
-        if (Input.GetKeyDown(KeyCode.R))
-        {
-            if (_session.RequestRetry())
-            {
-                _roundController.Retry();
-                ResetForNewRound();
-            }
-        }
+        GameConfig.DestroyRuntimeCopy(_runtimeGameConfig);
+        _runtimeGameConfig = GameConfig.CreateRuntimeCopy(gameConfig);
     }
 
     void ResetForNewRound()
     {
+        // Not per-frame: spell loop sync + runtime counters; full rebuild only if inventory spells changed.
+        _spellCollection.SyncSpellLoopFromInventory(_runtimeGameConfig.playerInventory.GetSpellLoopAuthoring());
         _simulation.ResetForNewRound();
         _loopedSpellCaster.Reset();
         _loopedSpellCaster.ClearCastState();
@@ -212,7 +188,7 @@ public class TestSceneManager : MonoBehaviour
         var round = _telemetryAggregator.CurrentRound;
         return new GameState
         {
-            sessionState = _session.CurrentState,
+            sessionState = _sessionFlow.CurrentState,
             phase = _roundController.Phase,
             roundNumber = _roundController.RoundNumber,
             bloodQuota = _roundController.BloodQuota,
@@ -229,6 +205,9 @@ public class TestSceneManager : MonoBehaviour
 
     void OnDestroy()
     {
+        _sessionFlow?.Shutdown();
+        GameConfig.DestroyRuntimeCopy(_runtimeGameConfig);
+        _runtimeGameConfig = null;
         _simulation?.Dispose();
         _spriteRenderer?.Dispose();
         _damageNumberController?.Dispose();

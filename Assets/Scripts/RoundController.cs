@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
+using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
 using BridgeOfBlood.Effects;
@@ -35,9 +36,9 @@ public class RoundControllerConfig
 {
     public KeyCode castInputKey;
     public bool debugLogTiming;
-    public RoundConfig roundConfig;
+    /// <summary>Session clone from <see cref="GameConfig.CreateRuntimeCopy"/>; use <see cref="GameConfig.playerInventory"/> for items.</summary>
+    public GameConfig gameConfig;
     public SpellModificationsTestData castModifications;
-    public List<Item> items;
     public SimulationDebugController debugController;
 }
 
@@ -53,7 +54,6 @@ public class RoundController
     private readonly GameSimulation _simulation;
     private readonly LoopedSpellCaster _loopedSpellCaster;
     private readonly TelemetryAggregator _telemetryAggregator;
-    private readonly SpellCollection _spellCollection;
     private readonly DamageNumberController _damageNumberController;
     private readonly EffectSpriteController _effectSpriteController;
     private readonly SpriteInstanceBuilder _spriteInstanceBuilder;
@@ -72,12 +72,17 @@ public class RoundController
 
     public IReadOnlyList<ItemEvalResult> LastItemResults => _lastItemResults;
 
+    public int SpellLoopSlotCount => _loopedSpellCaster.SpellCount;
+
+    public int IndexOfLastCastInLoop => _loopedSpellCaster.IndexOfLastCast;
+
+    public int LoopsCompletedThisRound => _loopedSpellCaster.LoopCount;
+
     public RoundController(
         Player player,
         GameSimulation simulation,
         LoopedSpellCaster loopedSpellCaster,
         TelemetryAggregator telemetryAggregator,
-        SpellCollection spellCollection,
         DamageNumberController damageNumberController,
         EffectSpriteController effectSpriteController,
         SpriteInstanceBuilder spriteInstanceBuilder,
@@ -89,7 +94,6 @@ public class RoundController
         _simulation = simulation;
         _loopedSpellCaster = loopedSpellCaster;
         _telemetryAggregator = telemetryAggregator;
-        _spellCollection = spellCollection;
         _damageNumberController = damageNumberController;
         _effectSpriteController = effectSpriteController;
         _spriteInstanceBuilder = spriteInstanceBuilder;
@@ -97,10 +101,17 @@ public class RoundController
         _attackDebugRenderer = attackDebugRenderer;
         _config = config;
 
-        BloodQuota = config.roundConfig.bloodQuota;
-        SpellLoopsPerRound = config.roundConfig.spellLoopsPerRound;
         RoundNumber = 1;
         Phase = GameLoopPhase.Playing;
+        ApplyRoundRuntimeFromConfig();
+    }
+
+    /// <summary>
+    /// Swap the active runtime config (e.g. Lose → Retry builds a new <see cref="GameConfig.CreateRuntimeCopy"/>).
+    /// </summary>
+    public void SetGameConfig(GameConfig runtime)
+    {
+        _config.gameConfig = runtime;
     }
 
     /// <summary>
@@ -115,7 +126,7 @@ public class RoundController
 
         _player.Update(deltaTime, rect);
 
-        bool loopsExhausted = _loopedSpellCaster.LoopCount >= _config.roundConfig.spellLoopsPerRound;
+        bool loopsExhausted = _loopedSpellCaster.LoopCount >= SpellLoopsPerRound;
         bool allowCasting = Phase == GameLoopPhase.Playing && !loopsExhausted;
         bool castRequested = allowCasting && Input.GetKeyDown(_config.castInputKey);
         var mods = _config.castModifications != null
@@ -125,8 +136,7 @@ public class RoundController
         EvaluateItems(mods);
 
         SpellCastResult castResult = _loopedSpellCaster.AttemptToCastNextSpell(
-            _simulation.SimulationTime, _player.Position,
-            _spellCollection.AuthoringData, castRequested, mods);
+            _simulation.SimulationTime, _player.Position, castRequested, mods);
         _loopedSpellCaster.Update(_simulation.SimulationTime, new float2(-1f, 0f));
 
         bool advanceTime = !hasController || debugCtrl.ShouldAdvanceTime;
@@ -213,6 +223,7 @@ public class RoundController
         BloodExtractedThisRound = 0f;
         QuotaMet = false;
         Phase = GameLoopPhase.Playing;
+        ApplyRoundRuntimeFromConfig();
         Debug.Log($"[RoundController] Starting round {RoundNumber}. Quota: {BloodQuota:F0}, Loops: {SpellLoopsPerRound}");
     }
 
@@ -225,7 +236,15 @@ public class RoundController
         BloodExtractedThisRound = 0f;
         QuotaMet = false;
         Phase = GameLoopPhase.Playing;
+        ApplyRoundRuntimeFromConfig();
         Debug.Log($"[RoundController] Retrying from round 1. Quota: {BloodQuota:F0}, Loops: {SpellLoopsPerRound}");
+    }
+
+    void ApplyRoundRuntimeFromConfig()
+    {
+        GameConfig gc = _config.gameConfig;
+        BloodQuota = gc.bloodQuotaScaling.BuildForRound(RoundNumber).bloodRequirement;
+        SpellLoopsPerRound = Mathf.Max(0, gc.maxSpellLoopsPerRound);
     }
 
     bool UpdatePhase(bool loopsExhausted, bool hasActiveCasts, bool hasPendingSpawns, int attackEntityCount)
@@ -265,8 +284,7 @@ public class RoundController
         _effectContext.spellModifications = mods;
 
         _lastItemResults.Clear();
-        var items = _config.items;
-        if (items == null) return;
+        var items = _config.gameConfig.playerInventory.GetPassiveItems();
         for (int i = 0; i < items.Count; i++)
         {
             var item = items[i];

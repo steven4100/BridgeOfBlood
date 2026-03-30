@@ -1,18 +1,29 @@
-using System;
 using System.Collections.Generic;
 using BridgeOfBlood.Data.Shared;
 using UnityEngine;
+using BridgeOfBlood.Data.Inventory;
+using BridgeOfBlood.Data.Shop;
 
 namespace BridgeOfBlood.Data.Spells
 {
 	[CreateAssetMenu(fileName = "SpellData", menuName = "BridgeOfBlood/Spells/Spell Authoring Data")]
-	public class SpellAuthoringData : ScriptableObject
+	public class SpellAuthoringData : ScriptableObject, IPurchasable, IInventoryItem
 	{
+		[SerializeField] ShopItemDefinition shopItemDefinition;
+
 		public SpellAnimation SpellAnimation;
 		public int baseMultiplier = 1;
 		public float castCompletionDuration = 1f;
 		public float castTime = 0.5f;
 		public SpellAttributeMask attributeMask;
+
+		public ShopItemDefinition ShopItemDefinition => shopItemDefinition;
+
+		float IRandomElement.Weight
+		{
+			get => ((IRandomElement)shopItemDefinition).Weight;
+			set => ((IRandomElement)shopItemDefinition).Weight = value;
+		}
 
 		/// <summary>
 		/// Returns a runtime clone of this spell with the given modifications baked in (damage, chains, pierce, area).
@@ -45,6 +56,7 @@ namespace BridgeOfBlood.Data.Spells
 				return this;
 
 			var clone = CreateInstance<SpellAuthoringData>();
+			clone.shopItemDefinition = shopItemDefinition;
 			clone.baseMultiplier = baseMultiplier;
 			clone.castCompletionDuration = castCompletionDuration;
 			clone.castTime = castTime;
@@ -75,7 +87,12 @@ namespace BridgeOfBlood.Data.Spells
 
 			return clone;
 		}
-	}
+
+		public void OnPurchase(PurchaseContext context)
+		{
+			context.AddPurchasedPayload(this);
+		}
+    }
 
     [System.Serializable]
 	public class SpellAnimation

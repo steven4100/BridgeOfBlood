@@ -1,0 +1,84 @@
+.shop-root {
+    flex-grow: 1;
+    flex-direction: column;
+    padding: 24px;
+    background-color: rgb(24, 24, 28);
+    min-width: 420px;
+    max-width: 560px;
+    align-self: center;
+    margin-top: 40px;
+    margin-bottom: 40px;
+    border-radius: 6px;
+}
+
+.shop-title {
+    font-size: 22px;
+    -unity-font-style: bold;
+    margin-bottom: 8px;
+    color: rgb(230, 230, 235);
+}
+
+.shop-gold {
+    font-size: 16px;
+    margin-bottom: 12px;
+    color: rgb(200, 180, 90);
+}
+
+.shop-scroll {
+    flex-grow: 1;
+    min-height: 180px;
+    max-height: 420px;
+}
+
+.shop-item-list {
+    flex-direction: column;
+}
+
+.shop-row {
+    flex-direction: column;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    background-color: rgb(36, 36, 42);
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: rgb(55, 55, 62);
+}
+
+.shop-row-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.shop-row-name {
+    font-size: 15px;
+    -unity-font-style: bold;
+    color: rgb(220, 220, 225);
+}
+
+.shop-row-price {
+    font-size: 14px;
+    color: rgb(180, 200, 140);
+}
+
+.shop-row-desc {
+    font-size: 12px;
+    white-space: normal;
+    color: rgb(160, 160, 170);
+    margin-bottom: 8px;
+}
+
+.shop-row-actions {
+    flex-direction: row;
+    justify-content: flex-end;
+}
+
+.shop-buy {
+    min-width: 72px;
+}
+
+.shop-continue {
+    margin-top: 16px;
+    min-height: 36px;
+}

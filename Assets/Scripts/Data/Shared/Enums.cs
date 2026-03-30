@@ -99,5 +99,20 @@ namespace BridgeOfBlood.Data.Shared
 		OverkillThreshold = 6,
 		SpellLoopCompleted = 7
 	}
+
+	public enum Rarity : byte
+	{
+		Common = 0,
+		Uncommon = 1,
+		Rare = 2,
+		Epic = 3,
+		Legendary = 4
+	}
+
+	public enum ShopItemType : byte
+	{
+		Spell = 0,
+		Joker = 1
+	}
 }
 

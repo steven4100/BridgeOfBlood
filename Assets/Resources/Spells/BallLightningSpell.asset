@@ -10,32 +10,32 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a91d9a7cd051d784ca72e1667be296bb, type: 3}
-  m_Name: NeedleSpell
+  m_Name: BallLightningSpell
   m_EditorClassIdentifier: 
   shopItemDefinition:
-    displayName: Needle
-    description: sharp needle
-    price: 3
+    displayName: BallLightning
+    description: 
+    price: 2
     resellValue: 1
     isResellable: 1
     rarity: 0
     shopItemType: 0
-    weight: 0.33333334
+    weight: 1
   SpellAnimation:
     keyFrames:
     - time: 0
       attackEntityEmitter:
         targetMode: 0
-        spreadDegrees: 80
-        forwardDegrees: -180
+        spreadDegrees: 0
+        forwardDegrees: 0
         emitDuration: 0
-        baseEmitCount: 2
-        speed: 666.2
+        baseEmitCount: 1
+        speed: 50
         relativeToPlayerSpawnCriteria:
           offsetFromPlayer: {x: 0, y: 0}
-        targetRange: 5
-      attackEntityData: {fileID: 11400000, guid: 50324512e9bd0cb40878029ea472497b, type: 2}
-  baseMultiplier: -1
+        targetRange: 0
+      attackEntityData: {fileID: 11400000, guid: 98b504ab4d34b0745b34abccceeb3197, type: 2}
+  baseMultiplier: 1
   castCompletionDuration: 1
-  castTime: 0
-  attributeMask: 2
+  castTime: 0.5
+  attributeMask: 0

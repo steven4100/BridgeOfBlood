@@ -48,32 +48,18 @@ namespace BridgeOfBlood.Editor
 		{
 			var r = position;
 
-			var types = SerializeReferenceListHelper.GetConcreteTypes(baseType);
 			string currentName = property.managedReferenceValue != null
-				? property.managedReferenceValue.GetType().Name
+				? ObjectNames.NicifyVariableName(property.managedReferenceValue.GetType().Name)
 				: "(None)";
 
-			var names = new List<string> { "(None)" };
-			int selected = 0;
-			for (int i = 0; i < types.Count; i++)
-			{
-				names.Add(ObjectNames.NicifyVariableName(types[i].Name));
-				if (property.managedReferenceValue != null && property.managedReferenceValue.GetType() == types[i])
-					selected = i + 1;
-			}
+			var labelRect = new Rect(r.x, r.y, EditorGUIUtility.labelWidth, EditorGUIUtility.singleLineHeight);
+			EditorGUI.LabelField(labelRect, label);
 
-			var typeRect = new Rect(r.x, r.y, r.width, EditorGUIUtility.singleLineHeight);
-			int newSelected = EditorGUI.Popup(typeRect, label.text, selected, names.ToArray());
+			var buttonRect = new Rect(r.x + EditorGUIUtility.labelWidth, r.y,
+				r.width - EditorGUIUtility.labelWidth, EditorGUIUtility.singleLineHeight);
 
-			if (newSelected != selected)
-			{
-				if (newSelected == 0)
-					property.managedReferenceValue = null;
-				else
-					property.managedReferenceValue = Activator.CreateInstance(types[newSelected - 1]);
-
-				property.serializedObject.ApplyModifiedProperties();
-			}
+			if (EditorGUI.DropdownButton(buttonRect, new GUIContent(currentName), FocusType.Keyboard))
+				ShowSingleFieldMenu(property, baseType);
 
 			r.y += EditorGUIUtility.singleLineHeight + Spacing;
 
@@ -84,6 +70,40 @@ namespace BridgeOfBlood.Editor
 				EditorGUI.PropertyField(new Rect(r.x, r.y, r.width, propHeight), property, GUIContent.none, true);
 				EditorGUI.indentLevel--;
 			}
+		}
+
+		static void ShowSingleFieldMenu(SerializedProperty property, Type baseType)
+		{
+			var so = property.serializedObject;
+			var path = property.propertyPath;
+
+			var menu = new GenericMenu();
+			menu.AddItem(new GUIContent("(None)"), property.managedReferenceValue == null, () =>
+			{
+				so.Update();
+				var prop = so.FindProperty(path);
+				prop.managedReferenceValue = null;
+				so.ApplyModifiedProperties();
+			});
+
+			menu.AddSeparator("");
+
+			var types = SerializeReferenceListHelper.GetConcreteTypes(baseType);
+			foreach (var type in types)
+			{
+				var captured = type;
+				bool isActive = property.managedReferenceValue != null
+					&& property.managedReferenceValue.GetType() == captured;
+				menu.AddItem(new GUIContent(SerializeReferenceListHelper.GetMenuLabel(captured)), isActive, () =>
+				{
+					so.Update();
+					var prop = so.FindProperty(path);
+					prop.managedReferenceValue = Activator.CreateInstance(captured);
+					so.ApplyModifiedProperties();
+				});
+			}
+
+			menu.ShowAsContext();
 		}
 
 		static Type GetBaseType(FieldInfo fi)

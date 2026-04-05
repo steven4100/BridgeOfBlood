@@ -13,15 +13,15 @@ MonoBehaviour:
   m_Name: SpellModificationsTest
   m_EditorClassIdentifier: 
   criticalStrikeChance:
-    flatAdditiveValue: 50
+    flatAdditiveValue: 0
     percentIncreased: 0
     moreMultipliers: []
   criticalStrikeMultiplier:
-    flatAdditiveValue: 100
+    flatAdditiveValue: 0
     percentIncreased: 0
     moreMultipliers: []
   chains:
-    flatAdditiveValue: 2
+    flatAdditiveValue: 0
     percentIncreased: 0
     moreMultipliers: []
   pierce:

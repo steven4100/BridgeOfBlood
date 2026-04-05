@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
 using Unity.Mathematics;
 
@@ -33,15 +34,41 @@ public class LoopedSpellCaster
     private double _timeOfLastCast;
     private int _loopCount;
 
+    public IReadOnlyList<RuntimeSpell> Spells => _spells;
+
     public int SpellCount => _spells?.Count ?? 0;
 
     public int IndexOfLastCast => _indexOfLastCast;
 
     public int LoopCount => _loopCount;
 
+    public int NextCastIndex => _spells != null && _spells.Count > 0
+        ? (_indexOfLastCast + 1) % _spells.Count
+        : -1;
+
+    public int TotalInvocationCount
+    {
+        get
+        {
+            if (_spells == null) return 0;
+            int total = 0;
+            for (int i = 0; i < _spells.Count; i++)
+                total += _spells[i].invocationCount;
+            return total;
+        }
+    }
+
     public bool HasActiveCasts => _spellInvoker != null && _spellInvoker.HasActiveCasts;
 
     public bool HasPendingSpawns => _emissionHandler != null && _emissionHandler.HasPendingSpawns;
+
+    public SpellAttributeMask GetSpellAttributeMask(int loopIndex)
+    {
+        if (_spells == null || loopIndex < 0 || loopIndex >= _spells.Count)
+            return SpellAttributeMask.None;
+        var def = _spells[loopIndex].Definition;
+        return def != null ? def.attributeMask : SpellAttributeMask.None;
+    }
 
     public LoopedSpellCaster(IReadOnlyList<RuntimeSpell> spells, ISpellEmissionHandler emissionHandler)
     {

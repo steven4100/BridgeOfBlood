@@ -8,6 +8,8 @@ public sealed class ShopSessionPhase : SessionPhaseBase<ShopSessionViewData>
 {
 	readonly ShopPanelPresenter _shopPanel;
 	Action _onPurchase;
+	Action _onContinue;
+	bool _continueRequested;
 
 	public ShopSessionPhase(ShopPanelPresenter shopPanel)
 		: base(shopPanel != null ? shopPanel : ShopSessionNoOpPresenter.Instance)
@@ -22,10 +24,14 @@ public sealed class ShopSessionPhase : SessionPhaseBase<ShopSessionViewData>
 			context.SpellCollection.SyncSpellLoopFromInventory(context.RuntimeGameConfig.playerInventory.GetSpellLoopAuthoring());
 		};
 
+		_onContinue = () => { _continueRequested = true; };
+		_continueRequested = false;
+
 		if (_shopPanel != null)
 		{
 			_shopPanel.BindSession(context.RuntimeGameConfig);
 			_shopPanel.OnSuccessfulPurchase += _onPurchase;
+			_shopPanel.OnContinueClicked += _onContinue;
 			_shopPanel.SetShopVisible(true);
 		}
 	}
@@ -35,23 +41,21 @@ public sealed class ShopSessionPhase : SessionPhaseBase<ShopSessionViewData>
 		if (_shopPanel != null)
 		{
 			_shopPanel.OnSuccessfulPurchase -= _onPurchase;
+			_shopPanel.OnContinueClicked -= _onContinue;
 			_shopPanel.SetShopVisible(false);
 		}
 		_onPurchase = null;
+		_onContinue = null;
+		_continueRequested = false;
 	}
 
 	protected override ShopSessionViewData TickAndBuildViewData(SessionFlowContext context, float deltaTime)
 	{
-		bool requestNext = context.ShopController.Tick().requestedNextRound;
-		if (_shopPanel != null && _shopPanel.ConsumeContinueRequested())
-			requestNext = true;
+		bool requestNext = UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.N) || _continueRequested;
+		_continueRequested = false;
 
 		if (requestNext)
-		{
 			context.Flow.SetState(SessionState.Round);
-			context.RoundController.StartNextRound();
-			context.ResetForNewRound();
-		}
 
 		return BuildShopViewData(context);
 	}

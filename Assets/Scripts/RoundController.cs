@@ -16,7 +16,6 @@ public enum GameLoopPhase
     Playing,
     AwaitingDespawn,
     RoundEnd,
-    Shop,
     Lose
 }
 
@@ -215,9 +214,28 @@ public class RoundController
     }
 
     /// <summary>
-    /// Advances to the next round. Call from Shop → Round transition.
+    /// Clears simulation, spell caster, and repositions the player for a fresh round.
+    /// Called by <see cref="RoundSessionPhase.Enter"/> after spell-loop sync.
     /// </summary>
-    public void StartNextRound()
+    public void ResetForNewRound(Rect simulationRect)
+    {
+        _simulation.ResetForNewRound();
+        _loopedSpellCaster.Reset();
+        _loopedSpellCaster.ClearCastState();
+        _player.PlaceAtRightSide(simulationRect);
+    }
+
+    /// <summary>
+    /// If the last round ended with quota met, advances round index and reapplies runtime tuning;
+    /// otherwise no-op on round index (e.g. opening shop before round 1).
+    /// </summary>
+    public void PrepareForRoundAfterShop()
+    {
+        if (Phase == GameLoopPhase.RoundEnd)
+            AdvanceToNextRoundAfterWin();
+    }
+
+    void AdvanceToNextRoundAfterWin()
     {
         RoundNumber++;
         BloodExtractedThisRound = 0f;
@@ -270,7 +288,9 @@ public class RoundController
     void EvaluateRoundEnd()
     {
         QuotaMet = BloodExtractedThisRound >= BloodQuota;
-        Phase = QuotaMet ? GameLoopPhase.Shop : GameLoopPhase.Lose;
+        if (!QuotaMet)
+            Phase = GameLoopPhase.Lose;
+        // Quota met: stay on RoundEnd until session shop → PrepareForRoundAfterShop.
         Debug.Log($"[RoundController] Round {RoundNumber} ended. Blood: {BloodExtractedThisRound:F0} / {BloodQuota:F0} — {(QuotaMet ? "QUOTA MET" : "QUOTA FAILED")}");
     }
 
@@ -282,6 +302,16 @@ public class RoundController
         _effectContext.roundMetrics = _telemetryAggregator.CurrentRound.aggregate;
         _effectContext.gameMetrics = _telemetryAggregator.Game.aggregate;
         _effectContext.spellModifications = mods;
+
+        _effectContext.spellInvocation = new SpellInvocationContext
+        {
+            totalSpellsCasted = _loopedSpellCaster.TotalInvocationCount,
+            spellLoopNumber = _loopedSpellCaster.LoopCount + 1,
+            spellSlotNumber = _loopedSpellCaster.NextCastIndex + 1,
+            spellLoopSlotCount = _loopedSpellCaster.SpellCount,
+            spellLoopsPerRound = SpellLoopsPerRound,
+            spells = _loopedSpellCaster.Spells,
+        };
 
         _lastItemResults.Clear();
         var items = _config.gameConfig.playerInventory.GetPassiveItems();

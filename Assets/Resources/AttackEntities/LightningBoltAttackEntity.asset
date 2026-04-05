@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
-  m_Name: EarthquakeAttackEntity
+  m_Name: LightningBoltAttackEntity
   m_EditorClassIdentifier: 
-  physicalDamage: 50
+  physicalDamage: 0
   coldDamage: 0
   fireDamage: 0
-  lightningDamage: 0
+  lightningDamage: 5
   critChance: 0
   critDamageMultiplier: 0
   entityVelocity: {x: 0, y: 0}
@@ -23,28 +23,34 @@ MonoBehaviour:
     isSphere: 1
     isRect: 0
     rectDimension: {x: 0, y: 0}
-    sphereRadius: 100
+    sphereRadius: 10
     scaleGrowthRate: 0
-  rehitCooldownSeconds: 100
+  rehitCooldownSeconds: 100000
   behaviors:
-  - rid: 4884261957644320836
-  - rid: 4884261957644320837
-  - rid: 4884261957644320838
+  - rid: 4044631629293158462
+  - rid: 4044631629293158463
+  - rid: 4044631629293158465
+  - rid: 4044631629293158466
   visual: {fileID: 0}
   references:
     version: 2
     RefIds:
-    - rid: 4884261957644320836
+    - rid: 4044631629293158462
       type: {class: OnHitEffectBehavior, ns: , asm: Assembly-CSharp}
       data:
-        config: {fileID: 11400000, guid: 0f5b616e3aa80fc4cb4aac8f28c08762, type: 2}
-    - rid: 4884261957644320837
+        config: {fileID: 11400000, guid: 469335601d0786d4ea6b11cc3dd255c1, type: 2}
+    - rid: 4044631629293158463
       type: {class: OnKillEffectBehavior, ns: , asm: Assembly-CSharp}
       data:
-        config: {fileID: 11400000, guid: 469335601d0786d4ea6b11cc3dd255c1, type: 2}
-    - rid: 4884261957644320838
+        config: {fileID: 11400000, guid: 0f5b616e3aa80fc4cb4aac8f28c08762, type: 2}
+    - rid: 4044631629293158465
+      type: {class: PierceBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        isActive: 1
+        maxEnemiesHit: 2
+    - rid: 4044631629293158466
       type: {class: ExpirationBehavior, ns: , asm: Assembly-CSharp}
       data:
         isActive: 1
         maxTimeAlive: 0.2
-        maxDistanceTravelled: 0
+        maxDistanceTravelled: 10000000

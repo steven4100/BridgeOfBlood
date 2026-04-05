@@ -34,6 +34,10 @@ namespace BridgeOfBlood.Data.Enemies
 
 		public SpawnDistribution distribution = SpawnDistribution.Random;
 
+		[Tooltip("Grid only: random offset per point as a fraction of cell step. 0 = strict grid.")]
+		[Min(0f)]
+		public float gridJitter = 0.4f;
+
 		[Header("Omission zones")]
 		[Tooltip("Points inside any of these shapes are discarded.")]
 		public List<SpawnShape> omissionZones = new List<SpawnShape>();
@@ -119,7 +123,7 @@ namespace BridgeOfBlood.Data.Enemies
 			float step = (unionArea > 0f && totalCount > 0) ? Mathf.Sqrt(unionArea / totalCount) : 1f;
 			int nx = Mathf.Max(1, Mathf.RoundToInt(w / step));
 			int ny = Mathf.Max(1, Mathf.RoundToInt(h / step));
-			float jitter = step * 0.4f;
+			float jitter = step * gridJitter;
 
 			for (int iy = 0; iy < ny; iy++)
 			{

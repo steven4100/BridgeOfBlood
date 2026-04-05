@@ -7,15 +7,21 @@ using UnityEngine;
 public sealed class RoundSessionPhase : SessionPhaseBase<RoundSessionViewData>
 {
 	readonly RoundPanelPresenter _roundPanel;
+	readonly Camera _camera;
 
-	public RoundSessionPhase(RoundPanelPresenter roundPanel)
+	public RoundSessionPhase(RoundPanelPresenter roundPanel, Camera camera)
 		: base(roundPanel != null ? roundPanel : RoundSessionNoOpPresenter.Instance)
 	{
 		_roundPanel = roundPanel;
+		_camera = camera;
 	}
 
 	public override void Enter(SessionFlowContext context)
 	{
+		context.RoundController.PrepareForRoundAfterShop();
+		context.SpellCollection.SyncSpellLoopFromInventory(
+			context.RuntimeGameConfig.playerInventory.GetSpellLoopAuthoring());
+		context.RoundController.ResetForNewRound(context.SimulationZone.rect);
 		_roundPanel?.SetRoundVisible(true);
 	}
 
@@ -26,11 +32,10 @@ public sealed class RoundSessionPhase : SessionPhaseBase<RoundSessionViewData>
 
 	protected override RoundSessionViewData TickAndBuildViewData(SessionFlowContext context, float deltaTime)
 	{
-		Camera cam = context.GetCamera();
 		RoundTickResult result = context.RoundController.Tick(
 			deltaTime,
-			context.GetSimulationRect(),
-			cam,
+			context.SimulationZone.rect,
+			_camera,
 			context.SimulationZone);
 
 		if (result.roundEnded)

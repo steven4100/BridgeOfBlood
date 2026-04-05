@@ -1,8 +1,18 @@
+using System;
+using BridgeOfBlood.Data.Shared;
 using UnityEngine;
 
 public sealed class LoseSessionPhase : SessionPhaseBase<EmptySessionViewData>
 {
-	public LoseSessionPhase(IStatePresenter<EmptySessionViewData> presenter) : base(presenter) { }
+	readonly Func<GameConfig> _createRuntimeGameConfigCopy;
+
+	public LoseSessionPhase(
+		IStatePresenter<EmptySessionViewData> presenter,
+		Func<GameConfig> createRuntimeGameConfigCopy)
+		: base(presenter)
+	{
+		_createRuntimeGameConfigCopy = createRuntimeGameConfigCopy;
+	}
 
 	protected override EmptySessionViewData TickAndBuildViewData(SessionFlowContext context, float deltaTime)
 	{
@@ -10,10 +20,9 @@ public sealed class LoseSessionPhase : SessionPhaseBase<EmptySessionViewData>
 			return default;
 
 		context.Flow.SetState(SessionState.Round);
-		context.CreateRuntimeGameConfigCopy();
+		context.RuntimeGameConfig = _createRuntimeGameConfigCopy();
 		context.RoundController.SetGameConfig(context.RuntimeGameConfig);
 		context.RoundController.Retry();
-		context.ResetForNewRound();
 		return default;
 	}
 }

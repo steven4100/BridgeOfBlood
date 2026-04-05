@@ -155,6 +155,7 @@ public class GameSimulation
     public NativeArray<Enemy> GetEnemies() => _enemyManager?.GetEnemies() ?? default;
     public NativeArray<AttackEntity> GetAttackEntities() => _attackEntityManager?.GetEntities() ?? default;
     public AttackEntityManager GetAttackEntityManager() => _attackEntityManager;
+    public EnemyManager GetEnemyManager() => _enemyManager;
 
     /// <summary>Damage events from the last StepDamage. Call ClearDamageEvents after consuming (e.g. spawning damage numbers).</summary>
     public NativeArray<DamageEvent> GetDamageEvents() => _damageEvents.AsArray();

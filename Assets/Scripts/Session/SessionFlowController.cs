@@ -17,7 +17,7 @@ public sealed class SessionFlowController
 	{
 		_context = context;
 		context.Flow = this;
-		_currentState = SessionState.Pregame;
+		_currentState = SessionState.Shop;
 		_phases[SessionState.Pregame] = pregame;
 		_phases[SessionState.Round] = round;
 		_phases[SessionState.Shop] = shop;

@@ -45,7 +45,7 @@ MonoBehaviour:
       type: {class: PierceBehavior, ns: , asm: Assembly-CSharp}
       data:
         isActive: 1
-        maxEnemiesHit: 63
+        maxEnemiesHit: 5
     - rid: 4884261957644320834
       type: {class: OnHitEffectBehavior, ns: , asm: Assembly-CSharp}
       data:

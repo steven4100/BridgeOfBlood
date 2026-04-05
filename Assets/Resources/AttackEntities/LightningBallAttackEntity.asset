@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
+  m_Name: LightningBallAttackEntity
+  m_EditorClassIdentifier: 
+  physicalDamage: 0
+  coldDamage: 0
+  fireDamage: 0
+  lightningDamage: 10
+  critChance: 0
+  critDamageMultiplier: 0
+  entityVelocity: {x: 0, y: 0}
+  hitBoxData:
+    isSphere: 1
+    isRect: 0
+    rectDimension: {x: 0, y: 0}
+    sphereRadius: 20
+    scaleGrowthRate: 0
+  rehitCooldownSeconds: 1
+  behaviors:
+  - rid: 4044631629293158459
+  - rid: 4044631629293158460
+  - rid: 4044631629293158461
+  - rid: 4044631629293158464
+  visual: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: 4044631629293158459
+      type: {class: OnHitEffectBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        config: {fileID: 11400000, guid: 469335601d0786d4ea6b11cc3dd255c1, type: 2}
+    - rid: 4044631629293158460
+      type: {class: OnKillEffectBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        config: {fileID: 11400000, guid: 0f5b616e3aa80fc4cb4aac8f28c08762, type: 2}
+    - rid: 4044631629293158461
+      type: {class: SubEmitterBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        subEmitter:
+          targetMode: 1
+          spreadDegrees: 0
+          forwardDegrees: 0
+          emitDuration: 0.2
+          baseEmitCount: 5
+          speed: 1
+          relativeToPlayerSpawnCriteria:
+            offsetFromPlayer: {x: 0, y: 0}
+          targetRange: 100
+        subAttackEntityData: {fileID: 11400000, guid: 5704594117d87014b962d79249ce969a, type: 2}
+        emitInterval: 0.3333
+        startDelay: 0.2
+    - rid: 4044631629293158464
+      type: {class: ExpirationBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        isActive: 1
+        maxTimeAlive: 3
+        maxDistanceTravelled: 100000

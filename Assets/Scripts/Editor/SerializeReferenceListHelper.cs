@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 
@@ -119,6 +120,13 @@ namespace BridgeOfBlood.Editor
 			EditorGUI.indentLevel--;
 		}
 
+		public static string GetMenuLabel(Type type)
+		{
+			var attr = type.GetCustomAttribute<MenuPathAttribute>();
+			string displayName = ObjectNames.NicifyVariableName(type.Name);
+			return attr != null ? $"{attr.Path}/{displayName}" : displayName;
+		}
+
 		static void ShowAddMenu(SerializedProperty listProp, Type baseType)
 		{
 			var so = listProp.serializedObject;
@@ -137,7 +145,7 @@ namespace BridgeOfBlood.Editor
 			foreach (var type in types)
 			{
 				var captured = type;
-				menu.AddItem(new GUIContent(ObjectNames.NicifyVariableName(captured.Name)), false, () =>
+				menu.AddItem(new GUIContent(GetMenuLabel(captured)), false, () =>
 				{
 					if (so == null || so.targetObject == null)
 						return;

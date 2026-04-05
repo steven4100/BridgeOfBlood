@@ -5,8 +5,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 
 /// <summary>
-/// Minimal UI Toolkit shop: lists items from <see cref="ShopRepository"/>, purchases via <see cref="ShopPurchase"/>,
-/// and exposes Continue for the next round (same as <see cref="ShopController"/> N key).
+/// Minimal UI Toolkit shop: lists items from <see cref="ShopRepository"/>, purchases via <see cref="ShopPurchase"/>.
 /// </summary>
 public class ShopPanelPresenter : MonoBehaviour, IStatePresenter<ShopSessionViewData>
 {
@@ -23,7 +22,6 @@ public class ShopPanelPresenter : MonoBehaviour, IStatePresenter<ShopSessionView
 	bool _ownsPanelSettings;
 	VisualElement _shopRoot;
 
-	bool _pendingContinue;
 	bool _continueBound;
 
 	/// <summary>
@@ -33,6 +31,7 @@ public class ShopPanelPresenter : MonoBehaviour, IStatePresenter<ShopSessionView
 	ShopSessionViewData _lastRenderedSnapshot;
 
 	public event Action OnSuccessfulPurchase;
+	public event Action OnContinueClicked;
 
 	public void BindSession(GameConfig runtime)
 	{
@@ -83,14 +82,6 @@ public class ShopPanelPresenter : MonoBehaviour, IStatePresenter<ShopSessionView
 			if (ra.DisplayName != rb.DisplayName || ra.Description != rb.Description)
 				return false;
 		}
-		return true;
-	}
-
-	public bool ConsumeContinueRequested()
-	{
-		if (!_pendingContinue)
-			return false;
-		_pendingContinue = false;
 		return true;
 	}
 
@@ -148,7 +139,7 @@ public class ShopPanelPresenter : MonoBehaviour, IStatePresenter<ShopSessionView
 	{
 		if (_continueBound || _continueButton == null)
 			return;
-		_continueButton.clicked += () => { _pendingContinue = true; };
+		_continueButton.clicked += () => OnContinueClicked?.Invoke();
 		_continueBound = true;
 	}
 

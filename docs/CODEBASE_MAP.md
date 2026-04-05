@@ -92,13 +92,25 @@ Hierarchical aggregation at five time scales: Frame > Spell Cast > Spell Loop > 
 - **Application**: `SpellModificationsApplicator.CloneAndApply(AttackEntityData, spellAttributeMask, mods)` -- clones entity data via `Object.Instantiate` (copies all serialized fields including `visual`) and applies all mods (damage, crit chance/mult, area, behaviors for chain/pierce). Used only from `SpellAuthoringData.Modify(modifications)` when building the spell to cast.
 - **Test data**: `SpellModificationsTestData` (ScriptableObject) holds list-based authoring and `GetModifications()` builds runtime `SpellModifications`.
 
+### Item conditions and values (Effects/)
+
+Items use `ICondition` / `IEffect` / `IValue<float>` (all in `BridgeOfBlood.Effects`). Composable building blocks:
+
+- **Generic condition**: `ValueCondition` (`IValue<float>` lhs + `Comparison` + `IValue<float>` rhs). Replaces all domain-specific condition classes.
+- **Combat metric values**: `CombatMetricValue` (scope + property + coefficient). Reads `CombatMetrics` from `EffectContext` at frame/cast/loop/round/game scopes.
+- **Spell invocation values**: `SpellInvocationValue` (property + coefficient) for scalar loop counters. `SpellSlotCountValue` (attributeFilter + coefficient) counts slots matching an attribute. `SpellCastCountByAttributeValue` (attributeFilter) counts casts of spells matching an attribute. `SlotAttributeCheckValue` (slot reference + attributeFilter) returns 1/0 for whether previous/current slot matches.
+- **Spell invocation context**: `SpellInvocationContext` carries scalar counters plus `IReadOnlyList<RuntimeSpell> spells` (the full spell loop inventory). Populated each frame by `RoundController.EvaluateItems()` from `LoopedSpellCaster` state. Slot numbers are 1-based.
+- **Shared**: `ConstantValue` (literal float), `ConditionalEffect` (AND conditions, then run effects), `ConditionEvaluator.Compare` for numeric comparisons.
+
+**Key types**: `ValueCondition`, `SpellInvocationContext`, `SpellInvocationProperty`, `SpellInvocationResolver`, `SpellInvocationValue`, `SpellSlotCountValue`, `SpellCastCountByAttributeValue`, `SlotAttributeCheckValue`, `CombatMetricValue` (see `Effect.cs`, `Value.cs`).
+
 ---
 
 ## Enemy spawning
 
 - **Config**: `SimulationConfig.SpawnTable` (`EnemySpawnTable`) only. TestSceneManager assigns spawn table; no spawns if null. Spawn pattern is provided by the table (per entry or table fallback).
 - **Spawner**: `EnemySpawner.GetSpawnEventOrigins(time)` returns event origins (left edge, random Y in local line space). Caller converts to world and applies pattern.
-- **Per event**: For each origin, `EnemySpawnTable.PickEnemyByWeight(seed)` returns `EnemySpawnPick` (enemy + optional pattern). Pattern is tethered per table entry (`EnemySpawnEntry.spawnPattern`); if null, table `fallbackSpawnPattern` is used; if both null, one position at origin. `SpawnPattern.GetPositions(origin, list, seed)` fills positions; `EnemyManager.CreateEnemies(positions, authoring)`.
+- **Per event**: For each origin, `EnemySpawnTable.PickEnemyByWeight(seed)` returns `EnemySpawnPick` (enemy + optional pattern). Pattern is chosen uniformly from `EnemySpawnEntry.spawnPatterns` per pick; if empty, table `fallbackSpawnPattern` is used; if both empty, one position at origin. `SpawnPattern.GetPositions(origin, list, seed)` fills positions; `EnemyManager.CreateEnemies(positions, authoring)`.
 - **Pattern**: `SpawnPattern` (ScriptableObject): fill shape (circle/rectangle/triangle), spawn density (points per unit area), distribution (Random | Grid), optional omission zones. `SpawnShape` struct: type, center, size, rotation; helpers `GetArea()`, `Contains(point)`.
 - **Editor**: `SpawnPatternEditor` (CustomEditor): edit shape/density/omissions, preview point count and points; Scene view draws fill and omission shapes plus preview points when asset is selected.
 

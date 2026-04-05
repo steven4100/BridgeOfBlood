@@ -34,12 +34,14 @@ namespace BridgeOfBlood.Data.Spells
 			if (source == null) return null;
 			var clone = new AttackEntityEmitter
 			{
+				targetMode = source.targetMode,
 				spreadDegrees = source.spreadDegrees,
 				forwardDegrees = source.forwardDegrees,
 				emitDuration = source.emitDuration,
 				baseEmitCount = source.baseEmitCount,
 				speed = source.speed,
-				relativeToPlayerSpawnCriteria = source.relativeToPlayerSpawnCriteria
+				relativeToPlayerSpawnCriteria = source.relativeToPlayerSpawnCriteria,
+				targetRange = source.targetRange
 			};
 			if (mods?.numberOfProjectiles != null)
 			{
@@ -126,8 +128,3 @@ public struct RelativeToPlayerSpawnCriteria
 {
     public Vector2 offsetFromPlayer;
 }
-
-/// <summary>
-/// Attribute for custom drawer: List of AttackEntityBehavior with Add Pierce/Expiration/Chain.
-/// </summary>
-public class AttackEntityBehaviorsListAttribute : PropertyAttribute { }

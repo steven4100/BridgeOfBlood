@@ -71,8 +71,8 @@ public class TestSceneManager : MonoBehaviour
     private SpellCollection _spellCollection;
     private SessionFlowController _sessionFlow;
     private RoundController _roundController;
-    private ShopController _shopController;
     private GameState _currentGameState;
+    private EnemyEmissionTargetProvider _emissionTargetProvider;
     /// <summary>Session-owned config (wallet, inventory, round tuning); destroyed when rebuilding session.</summary>
     GameConfig _runtimeGameConfig;
 
@@ -107,7 +107,8 @@ public class TestSceneManager : MonoBehaviour
         };
         _simulation = new GameSimulation(simConfig);
 
-        var emissionHandler = new SpellEmissionHandler(_simulation.GetAttackEntityManager());
+        _emissionTargetProvider = new EnemyEmissionTargetProvider(_simulation.GetEnemyManager());
+        var emissionHandler = new SpellEmissionHandler(_simulation.GetAttackEntityManager(), _emissionTargetProvider);
 
         CreateRuntimeGameConfigCopy();
 
@@ -118,8 +119,6 @@ public class TestSceneManager : MonoBehaviour
         _attackDebugRenderer = new AttackEntityDebugRenderer(_simulation.GetAttackEntityManager(), attackDebugMaterial);
         int initialSpellCount = Mathf.Max(8, _spellCollection.Count);
         _telemetryAggregator = new TelemetryAggregator(initialSpellCount);
-
-        _shopController = new ShopController();
 
         var roundCfg = new RoundControllerConfig
         {
@@ -140,22 +139,17 @@ public class TestSceneManager : MonoBehaviour
             debugController.Initialize(_simulation.StepCount);
 
         var sessionContext = new SessionFlowContext(
-            () => _runtimeGameConfig,
+            _runtimeGameConfig,
             _roundController,
             shopPanel,
-            _shopController,
             _spellCollection,
-            ResetForNewRound,
-            CreateRuntimeGameConfigCopy,
-            () => rect,
-            simulationZone,
-            () => renderCamera != null ? renderCamera : Camera.main);
+            simulationZone);
 
         _sessionFlow = new SessionFlowController(sessionContext,
             new PregameSessionPhase(NoOpStatePresenter.Instance),
-            new RoundSessionPhase(roundPanel),
+            new RoundSessionPhase(roundPanel, renderCamera != null ? renderCamera : Camera.main),
             new ShopSessionPhase(shopPanel),
-            new LoseSessionPhase(NoOpStatePresenter.Instance));
+            new LoseSessionPhase(NoOpStatePresenter.Instance, CreateRuntimeGameConfigCopy));
     }
 
     void Update()
@@ -167,20 +161,11 @@ public class TestSceneManager : MonoBehaviour
     /// <summary>
     /// Replaces <see cref="_runtimeGameConfig"/> with a new <see cref="GameConfig.CreateRuntimeCopy"/> of the serialized template.
     /// </summary>
-    void CreateRuntimeGameConfigCopy()
+    GameConfig CreateRuntimeGameConfigCopy()
     {
         GameConfig.DestroyRuntimeCopy(_runtimeGameConfig);
         _runtimeGameConfig = GameConfig.CreateRuntimeCopy(gameConfig);
-    }
-
-    void ResetForNewRound()
-    {
-        // Not per-frame: spell loop sync + runtime counters; full rebuild only if inventory spells changed.
-        _spellCollection.SyncSpellLoopFromInventory(_runtimeGameConfig.playerInventory.GetSpellLoopAuthoring());
-        _simulation.ResetForNewRound();
-        _loopedSpellCaster.Reset();
-        _loopedSpellCaster.ClearCastState();
-        _player.PlaceAtRightSide(rect);
+        return _runtimeGameConfig;
     }
 
     GameState BuildGameState()
@@ -209,6 +194,7 @@ public class TestSceneManager : MonoBehaviour
         GameConfig.DestroyRuntimeCopy(_runtimeGameConfig);
         _runtimeGameConfig = null;
         _simulation?.Dispose();
+        _emissionTargetProvider?.Dispose();
         _spriteRenderer?.Dispose();
         _damageNumberController?.Dispose();
         _effectSpriteController?.Dispose();

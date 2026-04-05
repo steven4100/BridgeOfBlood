@@ -4,6 +4,13 @@ using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public class MenuPathAttribute : Attribute
+{
+	public string Path { get; }
+	public MenuPathAttribute(string path) => Path = path;
+}
+
 namespace BridgeOfBlood.Effects
 {
 	public interface ICondition
@@ -25,6 +32,16 @@ namespace BridgeOfBlood.Effects
 		Game
 	}
 
+	public struct SpellInvocationContext
+	{
+		public int totalSpellsCasted;
+		public int spellLoopNumber;
+		public int spellSlotNumber;
+		public int spellLoopSlotCount;
+		public int spellLoopsPerRound;
+		public IReadOnlyList<RuntimeSpell> spells;
+	}
+
 	public class EffectContext
 	{
 		public CombatMetrics frameMetrics;
@@ -33,6 +50,7 @@ namespace BridgeOfBlood.Effects
 		public CombatMetrics roundMetrics;
 		public CombatMetrics gameMetrics;
 		public SpellModifications spellModifications;
+		public SpellInvocationContext spellInvocation;
 
 		public CombatMetrics GetMetrics(MetricsScope scope) => scope switch
 		{
@@ -43,6 +61,23 @@ namespace BridgeOfBlood.Effects
 			MetricsScope.Game => gameMetrics,
 			_ => throw new ArgumentOutOfRangeException(nameof(scope), scope, null)
 		};
+	}
+
+	[Serializable]
+	public class ValueCondition : ICondition
+	{
+		[SerializeReference, SerializeInterface]
+		public IValue<float> lhs;
+
+		public Comparison comparison;
+
+		[SerializeReference, SerializeInterface]
+		public IValue<float> rhs;
+
+		public bool Evaluate(EffectContext context)
+		{
+			return ConditionEvaluator.Compare(lhs.Resolve(context), comparison, rhs.Resolve(context));
+		}
 	}
 
 	[Serializable]

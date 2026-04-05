@@ -16,9 +16,12 @@ MonoBehaviour:
   entries:
   - enemy: {fileID: 11400000, guid: 33babe2ce1813654d889516c2cef8262, type: 2}
     weight: 1
-    spawnPattern: {fileID: 11400000, guid: 51b2f74699635314fafbe042779258c8, type: 2}
+    spawnPatterns:
+    - {fileID: 11400000, guid: 51b2f74699635314fafbe042779258c8, type: 2}
+    - {fileID: 11400000, guid: f59c177d83e2a3f4a92f142d70dc2792, type: 2}
     positionScale: 20
   - enemy: {fileID: 11400000, guid: 44ff14d68b01c8e4bb74ef97fdd2d6dd, type: 2}
     weight: 0.5
-    spawnPattern: {fileID: 11400000, guid: 44a09a805fa8c32418a3616f7a94a7ac, type: 2}
+    spawnPatterns:
+    - {fileID: 11400000, guid: 44a09a805fa8c32418a3616f7a94a7ac, type: 2}
     positionScale: 20

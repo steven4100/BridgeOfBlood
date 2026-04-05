@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using BridgeOfBlood.Data.Shared;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "AttackEntityData", menuName = "BridgeOfBlood/Spells/Attack Entity Data")]
@@ -16,7 +17,7 @@ public class AttackEntityData : ScriptableObject
 
     [Tooltip("Optional behaviors (pierce, expiration, chain). Only present behaviors are serialized.")]
     [SerializeReference]
-    [AttackEntityBehaviorsList]
+    [SerializeInterface]
     public List<AttackEntityBehavior> behaviors = new List<AttackEntityBehavior>
     {
         new OnHitEffectBehavior(),

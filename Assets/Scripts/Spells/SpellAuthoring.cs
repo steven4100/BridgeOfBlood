@@ -29,7 +29,7 @@ namespace BridgeOfBlood.Data.Spells
 		/// Returns a runtime clone of this spell with the given modifications baked in (damage, chains, pierce, area).
 		/// Keyframe entity data is cloned and modified values are applied so the returned spell is ready to cast as-is.
 		/// </summary>
-		static AttackEntityEmitter CloneEmitterWithProjectileMod(AttackEntityEmitter source, SpellModifications mods)
+		static AttackEntityEmitter CloneEmitterWithProjectileMod(AttackEntityEmitter source, SpellModifications mods, SpellAttributeMask spellMask)
 		{
 			if (source == null) return null;
 			var clone = new AttackEntityEmitter
@@ -43,11 +43,10 @@ namespace BridgeOfBlood.Data.Spells
 				relativeToPlayerSpawnCriteria = source.relativeToPlayerSpawnCriteria,
 				targetRange = source.targetRange
 			};
-			if (mods?.numberOfProjectiles != null)
+			if (mods != null)
 			{
-				float mult = SpellModificationsApplicator.ResolveToMultiplier(mods.numberOfProjectiles);
-				int flat = mods.numberOfProjectiles.flatAdditiveValue;
-				clone.baseEmitCount = Mathf.Max(1, (int)(source.baseEmitCount * mult) + flat);
+				var resolved = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.Projectiles, spellMask);
+				clone.baseEmitCount = Mathf.Max(1, (int)(source.baseEmitCount * resolved.Multiplier) + (int)resolved.flat);
 			}
 			return clone;
 		}
@@ -73,7 +72,7 @@ namespace BridgeOfBlood.Data.Spells
 					var entityData = kf.attackEntityData != null
 						? SpellModificationsApplicator.CloneAndApply(kf.attackEntityData, attributeMask, modifications)
 						: kf.attackEntityData;
-					var emitter = CloneEmitterWithProjectileMod(kf.attackEntityEmitter, modifications);
+					var emitter = CloneEmitterWithProjectileMod(kf.attackEntityEmitter, modifications, attributeMask);
 					clone.SpellAnimation.keyFrames.Add(new SpellKeyFrame
 					{
 						time = kf.time,

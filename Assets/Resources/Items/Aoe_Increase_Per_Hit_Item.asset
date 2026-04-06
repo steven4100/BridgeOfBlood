@@ -29,13 +29,22 @@ MonoBehaviour:
     - rid: 4044631623268302848
       type: {class: SpellModificationEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
-        property: 9
-        operation: 0
-        value:
-          rid: 4044631623268302849
+        modifier:
+          rid: 4044631623268302850
     - rid: 4044631623268302849
       type: {class: CombatMetricValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
         coefficient: 0.38
         scope: 3
         property: 0
+    - rid: 4044631623268302850
+      type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
+      data:
+        property: 4
+        filter: 0
+        flatAdditive:
+          rid: 0
+        percentIncreased:
+          rid: 4044631623268302849
+        moreMultiplier:
+          rid: 0

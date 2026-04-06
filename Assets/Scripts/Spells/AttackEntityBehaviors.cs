@@ -1,4 +1,5 @@
 using System;
+using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
 
 /// <summary>
@@ -9,5 +10,5 @@ public abstract class AttackEntityBehavior
 {
     public abstract AttackEntityBehavior Clone();
     public abstract void ApplyTo(ref AttackEntitySpawnPayload payload);
-    public virtual void ApplyModifications(SpellModifications mods) { }
+    public virtual void ApplyModifications(SpellModifications mods, SpellAttributeMask spellMask) { }
 }

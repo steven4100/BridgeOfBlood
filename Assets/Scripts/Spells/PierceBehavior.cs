@@ -1,4 +1,5 @@
 using System;
+using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
@@ -19,11 +20,10 @@ public class PierceBehavior : AttackEntityBehavior
     public override AttackEntityBehavior Clone() => new PierceBehavior { isActive = isActive, maxEnemiesHit = maxEnemiesHit };
     public override void ApplyTo(ref AttackEntitySpawnPayload payload) => payload.pierce = ToRuntime();
 
-    public override void ApplyModifications(SpellModifications mods)
+    public override void ApplyModifications(SpellModifications mods, SpellAttributeMask spellMask)
     {
-        float mult = SpellModificationsApplicator.ResolveToMultiplier(mods.pierce);
-        int flat = SpellModificationsApplicator.GetFlatAdditive(mods.pierce);
-        maxEnemiesHit = Mathf.Max(0, (int)(maxEnemiesHit * mult) + flat);
+        var resolved = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.Pierce, spellMask);
+        maxEnemiesHit = Mathf.Max(0, (int)(maxEnemiesHit * resolved.Multiplier) + (int)resolved.flat);
     }
 }
 

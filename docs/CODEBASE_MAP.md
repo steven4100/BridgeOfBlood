@@ -88,9 +88,11 @@ Hierarchical aggregation at five time scales: Frame > Spell Cast > Spell Loop > 
 
 ## Modifications (spell stats)
 
-- **Authoring**: `SpellModifications` (SpellModification.cs): ParamaterModifier for crit chance/mult, chains, pierce, area, damage type/attribute scaling, flat damage, etc. `ParamaterModifier`: flatAdditiveValue, percentIncreased, moreMultipliers (percent-based). `SpellModificationResolver` in same file: `ResolveToMultiplier`, `GetFlatAdditive` (used by applicator).
-- **Application**: `SpellModificationsApplicator.CloneAndApply(AttackEntityData, spellAttributeMask, mods)` -- clones entity data via `Object.Instantiate` (copies all serialized fields including `visual`) and applies all mods (damage, crit chance/mult, area, behaviors for chain/pierce). Used only from `SpellAuthoringData.Modify(modifications)` when building the spell to cast.
-- **Test data**: `SpellModificationsTestData` (ScriptableObject) holds list-based authoring and `GetModifications()` builds runtime `SpellModifications`.
+- **Data model**: `SpellModifications` (SpellModification.cs): `Dictionary<SpellModificationProperty, List<ParameterModifier>>` keyed by property. `ParameterModifier` (SpellModificationModifier.cs) carries `property`, `SpellAttributeMask filter`, and three `IValue<float>` fields (`flatAdditive`, `percentIncreased`, `moreMultiplier`). Structural lists for `FlatDamage`, `DamageConversion`, `ExtraDamageAs` remain separate. `SpellModificationProperty` enum covers core stats (CritChance..Projectiles), generic `DamageScaling`, per-type scaling (Physical/Cold/Fire/LightningDamageScaling), and per-type penetration.
+- **Effect → pool**: `SpellModificationEffect` serializes a `ParameterModifier` with `IValue<float>` fields. On `Apply`, it eagerly resolves (bakes) each `IValue` into a `ConstantValue` wrapper, then adds the baked modifier to `SpellModifications.Add(...)`.
+- **Resolution**: `SpellModificationsApplicator.Resolve(mods, property, mask)` returns a `ResolvedModifier` (flat, percentIncreased, moreCombined). The `Multiplier` property computes `(1 + pct/100) * moreCombined`. Used by `CloneAndApply` and behaviors (chain, pierce).
+- **Application**: `SpellModificationsApplicator.CloneAndApply(AttackEntityData, spellAttributeMask, mods)` -- clones entity data via `Object.Instantiate` and applies all resolved mods (damage scaling, crit, area, behaviors for chain/pierce).
+- **Test data**: `SpellModificationsTestData` (ScriptableObject) holds `List<ParameterModifier>` plus structural lists; `GetModifications()` builds runtime `SpellModifications`.
 
 ### Item conditions and values (Effects/)
 
@@ -179,7 +181,7 @@ Reusable probability primitives in `BridgeOfBlood.Data.Shared`.
 
 ## Namespaces
 
-- `BridgeOfBlood.Data.Spells`: spell/modification types, resolver, applicator, SpellAuthoringData, ResolvedKeyframe, etc.
+- `BridgeOfBlood.Data.Spells`: spell/modification types, applicator, SpellAuthoringData, ResolvedKeyframe, etc.
 - `BridgeOfBlood.Data.Shared`: enums, `GameConfig`, `BloodQuotaScaling`, `RoundRuntimeData`, GameContext, `CombatMetrics`, snapshot structs (`FrameSnapshot`, `SpellCastSnapshot`, etc.).
 - `BridgeOfBlood.Data.Enemies` / `BridgeOfBlood.Data.Idols`: runtime/authoring for enemies and idols.
 - `BridgeOfBlood.Data.Shop`: shop item definitions, config, repository, `IPurchasable`.

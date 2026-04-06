@@ -1,116 +1,63 @@
 using System;
+using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Effects;
+using UnityEngine;
 
 namespace BridgeOfBlood.Data.Spells
 {
-	public enum ModifierOperation : byte
-	{
-		Add = 0,
-		Subtract = 1
-	}
-
 	public enum SpellModificationProperty : byte
 	{
-		CritChanceFlatAdd,
-		CritChancePercentInc,
-		CritMultFlatAdd,
-		CritMultPercentInc,
-		ChainsFlatAdd,
-		ChainsPercentInc,
-		PierceFlatAdd,
-		PiercePercentInc,
-		AoEFlatAdd,
-		AoEPercentInc,
-		DurationFlatAdd,
-		DurationPercentInc,
-		CastSpeedFlatAdd,
-		CastSpeedPercentInc,
-		ProjectilesFlatAdd,
-		ProjectilesPercentInc,
+		CritChance = 0,
+		CritMult = 1,
+		Chains = 2,
+		Pierce = 3,
+		AreaOfEffect = 4,
+		Duration = 5,
+		CastSpeed = 6,
+		Projectiles = 7,
+
+		DamageScaling = 8,
+
+		PhysicalDamageScaling = 10,
+		ColdDamageScaling = 11,
+		FireDamageScaling = 12,
+		LightningDamageScaling = 13,
+
+		PhysicalPenetration = 20,
+		ColdPenetration = 21,
+		FirePenetration = 22,
+		LightningPenetration = 23,
 	}
 
 	[Serializable]
-	public struct SpellModificationModifier
+	public class ParameterModifier
 	{
 		public SpellModificationProperty property;
-		public ModifierOperation operation;
-		public float value;
-	}
+		public SpellAttributeMask filter;
 
-	public static class SpellModificationResolver
-	{
-		public static void Apply(in SpellModificationModifier modifier, SpellModifications target)
+		[SerializeReference, SerializeInterface]
+		public IValue<float> flatAdditive;
+
+		[SerializeReference, SerializeInterface]
+		public IValue<float> percentIncreased;
+
+		[SerializeReference, SerializeInterface]
+		public IValue<float> moreMultiplier;
+
+		public float GetFlat() => flatAdditive?.Resolve(null) ?? 0f;
+		public float GetPercent() => percentIncreased?.Resolve(null) ?? 0f;
+		public float GetMore() => moreMultiplier?.Resolve(null) ?? 0f;
+
+		public ParameterModifier Clone()
 		{
-			int delta = modifier.operation == ModifierOperation.Subtract
-				? -(int)modifier.value
-				: (int)modifier.value;
-
-			switch (modifier.property)
+			return new ParameterModifier
 			{
-				case SpellModificationProperty.CritChanceFlatAdd:
-					target.criticalStrikeChance = EnsureAndApplyFlat(target.criticalStrikeChance, delta);
-					break;
-				case SpellModificationProperty.CritChancePercentInc:
-					target.criticalStrikeChance = EnsureAndApplyPercent(target.criticalStrikeChance, delta);
-					break;
-				case SpellModificationProperty.CritMultFlatAdd:
-					target.criticalStrikeMultiplier = EnsureAndApplyFlat(target.criticalStrikeMultiplier, delta);
-					break;
-				case SpellModificationProperty.CritMultPercentInc:
-					target.criticalStrikeMultiplier = EnsureAndApplyPercent(target.criticalStrikeMultiplier, delta);
-					break;
-				case SpellModificationProperty.ChainsFlatAdd:
-					target.chains = EnsureAndApplyFlat(target.chains, delta);
-					break;
-				case SpellModificationProperty.ChainsPercentInc:
-					target.chains = EnsureAndApplyPercent(target.chains, delta);
-					break;
-				case SpellModificationProperty.PierceFlatAdd:
-					target.pierce = EnsureAndApplyFlat(target.pierce, delta);
-					break;
-				case SpellModificationProperty.PiercePercentInc:
-					target.pierce = EnsureAndApplyPercent(target.pierce, delta);
-					break;
-				case SpellModificationProperty.AoEFlatAdd:
-					target.areaOfEffect = EnsureAndApplyFlat(target.areaOfEffect, delta);
-					break;
-				case SpellModificationProperty.AoEPercentInc:
-					target.areaOfEffect = EnsureAndApplyPercent(target.areaOfEffect, delta);
-					break;
-				case SpellModificationProperty.DurationFlatAdd:
-					target.duration = EnsureAndApplyFlat(target.duration, delta);
-					break;
-				case SpellModificationProperty.DurationPercentInc:
-					target.duration = EnsureAndApplyPercent(target.duration, delta);
-					break;
-				case SpellModificationProperty.CastSpeedFlatAdd:
-					target.castSpeed = EnsureAndApplyFlat(target.castSpeed, delta);
-					break;
-				case SpellModificationProperty.CastSpeedPercentInc:
-					target.castSpeed = EnsureAndApplyPercent(target.castSpeed, delta);
-					break;
-				case SpellModificationProperty.ProjectilesFlatAdd:
-					target.numberOfProjectiles = EnsureAndApplyFlat(target.numberOfProjectiles, delta);
-					break;
-				case SpellModificationProperty.ProjectilesPercentInc:
-					target.numberOfProjectiles = EnsureAndApplyPercent(target.numberOfProjectiles, delta);
-					break;
-				default:
-					throw new ArgumentOutOfRangeException(nameof(modifier.property), modifier.property, null);
-			}
-		}
-
-		static ParamaterModifier EnsureAndApplyFlat(ParamaterModifier param, int delta)
-		{
-			param ??= new ParamaterModifier();
-			param.flatAdditiveValue += delta;
-			return param;
-		}
-
-		static ParamaterModifier EnsureAndApplyPercent(ParamaterModifier param, int delta)
-		{
-			param ??= new ParamaterModifier();
-			param.percentIncreased += delta;
-			return param;
+				property = property,
+				filter = filter,
+				flatAdditive = flatAdditive,
+				percentIncreased = percentIncreased,
+				moreMultiplier = moreMultiplier,
+			};
 		}
 	}
 }

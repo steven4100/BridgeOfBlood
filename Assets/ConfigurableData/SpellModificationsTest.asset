@@ -12,38 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2ac080d273b5ac64cb8ee52863776c33, type: 3}
   m_Name: SpellModificationsTest
   m_EditorClassIdentifier: 
-  criticalStrikeChance:
-    flatAdditiveValue: 0
-    percentIncreased: 0
-    moreMultipliers: []
-  criticalStrikeMultiplier:
-    flatAdditiveValue: 0
-    percentIncreased: 0
-    moreMultipliers: []
-  chains:
-    flatAdditiveValue: 0
-    percentIncreased: 0
-    moreMultipliers: []
-  pierce:
-    flatAdditiveValue: 0
-    percentIncreased: 0
-    moreMultipliers: []
-  areaOfEffect:
-    flatAdditiveValue: 0
-    percentIncreased: 0
-    moreMultipliers: []
-  duration:
-    flatAdditiveValue: 0
-    percentIncreased: 0
-    moreMultipliers: []
-  castSpeed:
-    flatAdditiveValue: 0
-    percentIncreased: 0
-    moreMultipliers: []
-  numberOfProjectiles:
-    flatAdditiveValue: 0
-    percentIncreased: 0
-    moreMultipliers: []
-  spellAttributeDamageScaling: []
-  damageTypeScaling: []
-  damageTypePenetration: []
+  modifiers: []

@@ -15,7 +15,7 @@ MonoBehaviour:
   physicalDamage: 0
   coldDamage: 0
   fireDamage: 0
-  lightningDamage: 5
+  lightningDamage: 3
   critChance: 0
   critDamageMultiplier: 0
   entityVelocity: {x: 0, y: 0}

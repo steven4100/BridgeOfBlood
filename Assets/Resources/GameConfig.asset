@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BridgeOfBlood.Data.Shared.GameConfig
   bloodQuotaScaling:
     baseQuota: 1000
-    multiplierPerRound: 0.33
+    multiplierPerRound: 1.33
     additivePerRound: 100
   maxSpellLoopsPerRound: 4
   playerWallet: {fileID: 11400000, guid: ae75e8a41b95a4b229c0d74926a050f1, type: 2}

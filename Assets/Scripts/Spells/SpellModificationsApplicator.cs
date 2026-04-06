@@ -4,11 +4,36 @@ using UnityEngine;
 
 namespace BridgeOfBlood.Data.Spells
 {
-	/// <summary>
-	/// Bakes SpellModifications into cloned AttackEntityData so the returned entity has modified values.
-	/// </summary>
+	public struct ResolvedModifier
+	{
+		public float flat;
+		public float percentIncreased;
+		public float moreCombined;
+
+		public float Multiplier => (1f + percentIncreased / 100f) * moreCombined;
+
+		public static readonly ResolvedModifier Identity = new() { moreCombined = 1f };
+	}
+
 	public static class SpellModificationsApplicator
 	{
+		public static ResolvedModifier Resolve(SpellModifications mods, SpellModificationProperty prop, SpellAttributeMask mask)
+		{
+			if (!mods.modifiers.TryGetValue(prop, out var list))
+				return ResolvedModifier.Identity;
+
+			float flat = 0f, pct = 0f, more = 1f;
+			foreach (var m in list)
+			{
+				if (m.filter != SpellAttributeMask.None && (mask & m.filter) == 0) continue;
+				flat += m.GetFlat();
+				pct += m.GetPercent();
+				float mv = m.GetMore();
+				if (mv != 0f) more *= (1f + mv / 100f);
+			}
+			return new ResolvedModifier { flat = flat, percentIncreased = pct, moreCombined = more };
+		}
+
 		public static AttackEntityData CloneAndApply(AttackEntityData source, SpellAttributeMask spellAttributeMask, SpellModifications mods)
 		{
 			if (source == null) return null;
@@ -16,68 +41,34 @@ namespace BridgeOfBlood.Data.Spells
 
 			var clone = Object.Instantiate(source);
 
-			float typePhys = ResolveToMultiplier(Get(mods.damageTypeScaling, DamageType.Physical));
-			float typeCold = ResolveToMultiplier(Get(mods.damageTypeScaling, DamageType.Cold));
-			float typeFire = ResolveToMultiplier(Get(mods.damageTypeScaling, DamageType.Fire));
-			float typeLightning = ResolveToMultiplier(Get(mods.damageTypeScaling, DamageType.Lightning));
+			var dmgScaling = Resolve(mods, SpellModificationProperty.DamageScaling, spellAttributeMask);
+			var typePhys = Resolve(mods, SpellModificationProperty.PhysicalDamageScaling, spellAttributeMask);
+			var typeCold = Resolve(mods, SpellModificationProperty.ColdDamageScaling, spellAttributeMask);
+			var typeFire = Resolve(mods, SpellModificationProperty.FireDamageScaling, spellAttributeMask);
+			var typeLightning = Resolve(mods, SpellModificationProperty.LightningDamageScaling, spellAttributeMask);
 
-			float attr = 1f;
-			if (mods.spellAttributeDamageScaling != null && spellAttributeMask != SpellAttributeMask.None)
-			{
-				foreach (var kvp in mods.spellAttributeDamageScaling)
-					if ((spellAttributeMask & kvp.Key) != 0)
-						attr *= ResolveToMultiplier(kvp.Value);
-			}
+			clone.physicalDamage = Mathf.Max(0f, (source.physicalDamage + typePhys.flat) * typePhys.Multiplier * dmgScaling.Multiplier);
+			clone.coldDamage = Mathf.Max(0f, (source.coldDamage + typeCold.flat) * typeCold.Multiplier * dmgScaling.Multiplier);
+			clone.fireDamage = Mathf.Max(0f, (source.fireDamage + typeFire.flat) * typeFire.Multiplier * dmgScaling.Multiplier);
+			clone.lightningDamage = Mathf.Max(0f, (source.lightningDamage + typeLightning.flat) * typeLightning.Multiplier * dmgScaling.Multiplier);
 
-			clone.physicalDamage = Mathf.Max(0f, source.physicalDamage * typePhys * attr);
-			clone.coldDamage = Mathf.Max(0f, source.coldDamage * typeCold * attr);
-			clone.fireDamage = Mathf.Max(0f, source.fireDamage * typeFire * attr);
-			clone.lightningDamage = Mathf.Max(0f, source.lightningDamage * typeLightning * attr);
+			var critChance = Resolve(mods, SpellModificationProperty.CritChance, spellAttributeMask);
+			clone.critChance = Mathf.Clamp01(source.critChance * critChance.Multiplier + critChance.flat / 100f);
 
-			if (mods.criticalStrikeChance != null)
-			{
-				float chanceMult = ResolveToMultiplier(mods.criticalStrikeChance);
-				int chanceFlat = GetFlatAdditive(mods.criticalStrikeChance);
-				clone.critChance = Mathf.Clamp01(source.critChance * chanceMult + chanceFlat / 100f);
-			}
+			var critMult = Resolve(mods, SpellModificationProperty.CritMult, spellAttributeMask);
+			clone.critDamageMultiplier = Mathf.Max(1f, source.critDamageMultiplier * critMult.Multiplier + critMult.flat / 100f);
 
-			if (mods.criticalStrikeMultiplier != null)
-			{
-				float multMult = ResolveToMultiplier(mods.criticalStrikeMultiplier);
-				int multFlat = GetFlatAdditive(mods.criticalStrikeMultiplier);
-				clone.critDamageMultiplier = Mathf.Max(1f, source.critDamageMultiplier * multMult + multFlat / 100f);
-			}
+			var aoe = Resolve(mods, SpellModificationProperty.AreaOfEffect, spellAttributeMask);
+			var h = clone.hitBoxData;
+			if (h.isSphere) h.sphereRadius = h.sphereRadius * aoe.Multiplier + aoe.flat;
+			if (h.isRect) h.rectDimension = h.rectDimension * aoe.Multiplier + new Vector2(aoe.flat, aoe.flat);
+			clone.hitBoxData = h;
 
-			if (mods.flatAddedDamage != null)
-			{
-				foreach (var flat in mods.flatAddedDamage)
-				{
-					float v = (flat.min + flat.max) * 0.5f;
-					switch (flat.type)
-					{
-						case DamageType.Physical: clone.physicalDamage += v; break;
-						case DamageType.Cold: clone.coldDamage += v; break;
-						case DamageType.Fire: clone.fireDamage += v; break;
-						case DamageType.Lightning: clone.lightningDamage += v; break;
-					}
-				}
-			}
-
-			if (mods.areaOfEffect != null)
-			{
-				float aoe = ResolveToMultiplier(mods.areaOfEffect);
-				int aoeFlat = GetFlatAdditive(mods.areaOfEffect);
-				var h = clone.hitBoxData;
-				if (h.isSphere) h.sphereRadius = h.sphereRadius * aoe + aoeFlat;
-				if (h.isRect) h.rectDimension = h.rectDimension * aoe + new Vector2(aoeFlat, aoeFlat);
-				clone.hitBoxData = h;
-			}
-
-			clone.behaviors = CloneBehaviorsAndApply(source.behaviors, mods);
+			clone.behaviors = CloneBehaviorsAndApply(source.behaviors, mods, spellAttributeMask);
 			return clone;
 		}
 
-		static List<AttackEntityBehavior> CloneBehaviorsAndApply(List<AttackEntityBehavior> source, SpellModifications mods)
+		static List<AttackEntityBehavior> CloneBehaviorsAndApply(List<AttackEntityBehavior> source, SpellModifications mods, SpellAttributeMask spellMask)
 		{
 			if (source == null) return new List<AttackEntityBehavior>();
 			var list = new List<AttackEntityBehavior>(source.Count);
@@ -85,28 +76,10 @@ namespace BridgeOfBlood.Data.Spells
 			{
 				if (b == null) continue;
 				var cloned = b.Clone();
-				cloned.ApplyModifications(mods);
+				cloned.ApplyModifications(mods, spellMask);
 				list.Add(cloned);
 			}
 			return list;
-		}
-
-		public static float ResolveToMultiplier(ParamaterModifier mod)
-		{
-			if (mod == null) return 1f;
-			float additive = 1f + mod.percentIncreased / 100f;
-			float more = 1f;
-			if (mod.moreMultipliers != null)
-				for (int i = 0; i < mod.moreMultipliers.Count; i++)
-					more *= 1f + mod.moreMultipliers[i] / 100f;
-			return additive * more;
-		}
-
-		public static int GetFlatAdditive(ParamaterModifier mod) => mod?.flatAdditiveValue ?? 0;
-
-		static ParamaterModifier Get(Dictionary<DamageType, ParamaterModifier> d, DamageType t)
-		{
-			return d != null && d.TryGetValue(t, out var m) ? m : null;
 		}
 	}
 }

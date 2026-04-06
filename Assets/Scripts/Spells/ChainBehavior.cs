@@ -37,11 +37,10 @@ public class ChainBehavior : AttackEntityBehavior
     };
     public override void ApplyTo(ref AttackEntitySpawnPayload payload) => payload.chain = ToRuntime();
 
-    public override void ApplyModifications(SpellModifications mods)
+    public override void ApplyModifications(SpellModifications mods, SpellAttributeMask spellMask)
     {
-        float mult = SpellModificationsApplicator.ResolveToMultiplier(mods.chains);
-        int flat = SpellModificationsApplicator.GetFlatAdditive(mods.chains);
-        chainCount = Mathf.Max(0, (int)(chainCount * mult) + flat);
+        var resolved = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.Chains, spellMask);
+        chainCount = Mathf.Max(0, (int)(chainCount * resolved.Multiplier) + (int)resolved.flat);
     }
 }
 

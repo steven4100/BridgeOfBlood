@@ -21,7 +21,28 @@ MonoBehaviour:
     rarity: 0
     shopItemType: 0
     weight: 1
-  effects: []
+  effects:
+  - rid: 4044631629293158489
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 4044631629293158489
+      type: {class: SpellModificationEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        modifier:
+          rid: 4044631629293158491
+    - rid: 4044631629293158490
+      type: {class: SpellCastCountByAttributeValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        attributeFilter: 32
+    - rid: 4044631629293158491
+      type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
+      data:
+        property: 0
+        filter: 0
+        flatAdditive:
+          rid: 4044631629293158490
+        percentIncreased:
+          rid: 0
+        moreMultiplier:
+          rid: 0

@@ -37,10 +37,8 @@ MonoBehaviour:
     - rid: 4884261721581813820
       type: {class: SpellModificationEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
-        property: 4
-        operation: 0
-        value:
-          rid: 4884261816470863932
+        modifier:
+          rid: 4884261816470863934
     - rid: 4884261778024038400
       type: {class: ValueCondition, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
@@ -62,10 +60,8 @@ MonoBehaviour:
     - rid: 4884261816470863931
       type: {class: SpellModificationEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
-        property: 14
-        operation: 0
-        value:
-          rid: 4884261816470863933
+        modifier:
+          rid: 4884261816470863935
     - rid: 4884261816470863932
       type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
@@ -74,3 +70,25 @@ MonoBehaviour:
       type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
         value: 20
+    - rid: 4884261816470863934
+      type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
+      data:
+        property: 2
+        filter: 0
+        flatAdditive:
+          rid: 4884261816470863932
+        percentIncreased:
+          rid: 0
+        moreMultiplier:
+          rid: 0
+    - rid: 4884261816470863935
+      type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
+      data:
+        property: 7
+        filter: 0
+        flatAdditive:
+          rid: 4884261816470863933
+        percentIncreased:
+          rid: 0
+        moreMultiplier:
+          rid: 0

@@ -904,7 +904,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 04e02f0386b6d374398cac082da0060c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  spawnRate: 1
+  spawnRate: 0.25
   simulationZone: {fileID: 1669307496}
   spawnTable: {fileID: 11400000, guid: accb87cdda325fa4faafbbe633ce99b5, type: 2}
   gizmoRadius: 1.04

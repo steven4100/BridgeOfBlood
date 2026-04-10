@@ -15,6 +15,7 @@ namespace BridgeOfBlood.Data.Enemies
 		public StatusAilmentFlag statusAilmentFlag;
 		public int entityId;
 		public EntityVisual visual;
+		public float visualTime;
 	}
 	
 	public struct EnemyHitEvent

@@ -1,0 +1,865 @@
+{
+    "m_SGVersion": 3,
+    "m_Type": "UnityEditor.ShaderGraph.GraphData",
+    "m_ObjectId": "8a350581356decbd0a5041ef6519e590",
+    "m_Properties": [
+        {
+            "m_Id": "f27a9b7c490d90e230f28ef24bebb952"
+        },
+        {
+            "m_Id": "082331f16b77bf90aefb62153bb34dcc"
+        },
+        {
+            "m_Id": "ecb6926512441c95a709828844eb38d8"
+        },
+        {
+            "m_Id": "715d071825220373ed40207bb57d8504"
+        },
+        {
+            "m_Id": "d05facd6f8d73ae83fed48a2ab3741ae"
+        },
+        {
+            "m_Id": "ff2c12d711d1a1031e39c395acdde0c9"
+        },
+        {
+            "m_Id": "5363b81d8dc315599480a478cacedaf3"
+        },
+        {
+            "m_Id": "f52c438cac9d1834b051ad994ce9322e"
+        },
+        {
+            "m_Id": "c611d642534e3617e3f7c98a786285a1"
+        },
+        {
+            "m_Id": "96213d59fa182d124594a80da35efe23"
+        },
+        {
+            "m_Id": "ddfd3e1b49dec984c7521e7830c6a2e4"
+        },
+        {
+            "m_Id": "a4a22c781e51ec548609be61e49a3f3b"
+        },
+        {
+            "m_Id": "9907b397664f9dec7341353f9290137c"
+        },
+        {
+            "m_Id": "1ce57a6df520b5e227334ae24abef38e"
+        },
+        {
+            "m_Id": "0d72bf73562783671e0b36ba5d6fbd4f"
+        },
+        {
+            "m_Id": "38381a8115989b25eaddb3e48323f718"
+        },
+        {
+            "m_Id": "be87b146a8e53069090a7772260f4d05"
+        }
+    ],
+    "m_Keywords": [],
+    "m_Dropdowns": [],
+    "m_CategoryData": [
+        {
+            "m_Id": "4b36b4e91c07fe938f9248667f2496c3"
+        }
+    ],
+    "m_Nodes": [
+        {
+            "m_Id": "c47b2587b7f1d5609aba543031a6e86a"
+        },
+        {
+            "m_Id": "0c35a93887306231acac6653f380637a"
+        },
+        {
+            "m_Id": "bc839af8e4fb6aa6ca2154484d450b37"
+        }
+    ],
+    "m_GroupDatas": [],
+    "m_StickyNoteDatas": [],
+    "m_Edges": [
+        {
+            "m_OutputSlot": {
+                "m_Node": {
+                    "m_Id": "c47b2587b7f1d5609aba543031a6e86a"
+                },
+                "m_SlotId": 0
+            },
+            "m_InputSlot": {
+                "m_Node": {
+                    "m_Id": "0c35a93887306231acac6653f380637a"
+                },
+                "m_SlotId": 0
+            }
+        },
+        {
+            "m_OutputSlot": {
+                "m_Node": {
+                    "m_Id": "0c35a93887306231acac6653f380637a"
+                },
+                "m_SlotId": 1
+            },
+            "m_InputSlot": {
+                "m_Node": {
+                    "m_Id": "bc839af8e4fb6aa6ca2154484d450b37"
+                },
+                "m_SlotId": 1
+            }
+        }
+    ],
+    "m_VertexContext": {
+        "m_Position": {
+            "x": 0,
+            "y": 0
+        },
+        "m_Blocks": []
+    },
+    "m_FragmentContext": {
+        "m_Position": {
+            "x": 0,
+            "y": 0
+        },
+        "m_Blocks": []
+    },
+    "m_PreviewData": {
+        "serializedMesh": {
+            "m_SerializedMesh": "{\"mesh\":{\"instanceID\":0}}",
+            "m_Guid": ""
+        },
+        "preventRotation": false
+    },
+    "m_Path": "BridgeOfBlood/SDF",
+    "m_GraphPrecision": 0,
+    "m_PreviewMode": 0,
+    "m_OutputNode": {
+        "m_Id": "bc839af8e4fb6aa6ca2154484d450b37"
+    },
+    "m_SubDatas": [],
+    "m_ActiveTargets": []
+}
+
+{
+    "m_SGVersion": 0,
+    "m_Type": "UnityEditor.ShaderGraph.CategoryData",
+    "m_ObjectId": "4b36b4e91c07fe938f9248667f2496c3",
+    "m_Name": "",
+    "m_ChildObjectList": [
+        {
+            "m_Id": "f27a9b7c490d90e230f28ef24bebb952"
+        },
+        {
+            "m_Id": "082331f16b77bf90aefb62153bb34dcc"
+        },
+        {
+            "m_Id": "ecb6926512441c95a709828844eb38d8"
+        },
+        {
+            "m_Id": "715d071825220373ed40207bb57d8504"
+        },
+        {
+            "m_Id": "d05facd6f8d73ae83fed48a2ab3741ae"
+        },
+        {
+            "m_Id": "ff2c12d711d1a1031e39c395acdde0c9"
+        },
+        {
+            "m_Id": "5363b81d8dc315599480a478cacedaf3"
+        },
+        {
+            "m_Id": "f52c438cac9d1834b051ad994ce9322e"
+        },
+        {
+            "m_Id": "c611d642534e3617e3f7c98a786285a1"
+        },
+        {
+            "m_Id": "96213d59fa182d124594a80da35efe23"
+        },
+        {
+            "m_Id": "ddfd3e1b49dec984c7521e7830c6a2e4"
+        },
+        {
+            "m_Id": "a4a22c781e51ec548609be61e49a3f3b"
+        },
+        {
+            "m_Id": "9907b397664f9dec7341353f9290137c"
+        },
+        {
+            "m_Id": "1ce57a6df520b5e227334ae24abef38e"
+        },
+        {
+            "m_Id": "0d72bf73562783671e0b36ba5d6fbd4f"
+        },
+        {
+            "m_Id": "38381a8115989b25eaddb3e48323f718"
+        },
+        {
+            "m_Id": "be87b146a8e53069090a7772260f4d05"
+        }
+    ]
+}
+
+{
+    "m_SGVersion": 0,
+    "m_Type": "UnityEditor.ShaderGraph.UVNode",
+    "m_ObjectId": "c47b2587b7f1d5609aba543031a6e86a",
+    "m_Group": {
+        "m_Id": ""
+    },
+    "m_Name": "UV",
+    "m_DrawState": {
+        "m_Expanded": true,
+        "m_Position": {
+            "serializedVersion": "2",
+            "x": -400,
+            "y": 0,
+            "width": 145,
+            "height": 128
+        }
+    },
+    "m_Slots": [
+        {
+            "m_Id": "14edfac0a6cb461e36defc26c7f0f5b7"
+        }
+    ],
+    "synonyms": [
+        "texcoords",
+        "coords",
+        "coordinates"
+    ],
+    "m_Precision": 0,
+    "m_PreviewExpanded": false,
+    "m_DismissedVersion": 0,
+    "m_PreviewMode": 0,
+    "m_CustomColors": {
+        "m_SerializableColors": []
+    },
+    "m_OutputChannel": 0
+}
+
+{
+    "m_SGVersion": 0,
+    "m_Type": "UnityEditor.ShaderGraph.Vector4MaterialSlot",
+    "m_ObjectId": "14edfac0a6cb461e36defc26c7f0f5b7",
+    "m_Id": 0,
+    "m_DisplayName": "Out",
+    "m_SlotType": 1,
+    "m_Hidden": false,
+    "m_ShaderOutputName": "Out",
+    "m_StageCapability": 3,
+    "m_Value": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 0
+    },
+    "m_DefaultValue": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 0
+    },
+    "m_Labels": []
+}
+
+{
+    "m_SGVersion": 1,
+    "m_Type": "UnityEditor.ShaderGraph.CustomFunctionNode",
+    "m_ObjectId": "0c35a93887306231acac6653f380637a",
+    "m_Group": {
+        "m_Id": ""
+    },
+    "m_Name": "CircleSdfMask (Custom Function)",
+    "m_DrawState": {
+        "m_Expanded": true,
+        "m_Position": {
+            "serializedVersion": "2",
+            "x": -150,
+            "y": 0,
+            "width": 260,
+            "height": 200
+        }
+    },
+    "m_Slots": [
+        {
+            "m_Id": "803a7963ff907c8ccf7173eb5bb98749"
+        },
+        {
+            "m_Id": "75e95a93ace73b580956d2c4ba5cee9b"
+        }
+    ],
+    "synonyms": [
+        "code",
+        "HLSL"
+    ],
+    "m_Precision": 0,
+    "m_PreviewExpanded": false,
+    "m_DismissedVersion": 0,
+    "m_PreviewMode": 0,
+    "m_CustomColors": {
+        "m_SerializableColors": []
+    },
+    "m_SourceType": 0,
+    "m_FunctionName": "CircleSdfMask",
+    "m_FunctionSource": "7b91e4f3c2d1408a9f6e5d4c3b2a1098",
+    "m_FunctionSourceUsePragmas": true,
+    "m_FunctionBody": "Enter function body here..."
+}
+
+{
+    "m_SGVersion": 0,
+    "m_Type": "UnityEditor.ShaderGraph.Vector2MaterialSlot",
+    "m_ObjectId": "803a7963ff907c8ccf7173eb5bb98749",
+    "m_Id": 0,
+    "m_DisplayName": "UV",
+    "m_SlotType": 0,
+    "m_Hidden": false,
+    "m_ShaderOutputName": "UV",
+    "m_StageCapability": 3,
+    "m_Value": {
+        "x": 0,
+        "y": 0
+    },
+    "m_DefaultValue": {
+        "x": 0,
+        "y": 0
+    },
+    "m_Labels": []
+}
+
+{
+    "m_SGVersion": 0,
+    "m_Type": "UnityEditor.ShaderGraph.Vector1MaterialSlot",
+    "m_ObjectId": "75e95a93ace73b580956d2c4ba5cee9b",
+    "m_Id": 1,
+    "m_DisplayName": "Mask",
+    "m_SlotType": 1,
+    "m_Hidden": false,
+    "m_ShaderOutputName": "Mask",
+    "m_StageCapability": 3,
+    "m_Value": 0,
+    "m_DefaultValue": 0,
+    "m_Labels": []
+}
+
+{
+    "m_SGVersion": 0,
+    "m_Type": "UnityEditor.ShaderGraph.SubGraphOutputNode",
+    "m_ObjectId": "bc839af8e4fb6aa6ca2154484d450b37",
+    "m_Group": {
+        "m_Id": ""
+    },
+    "m_Name": "Output",
+    "m_DrawState": {
+        "m_Expanded": true,
+        "m_Position": {
+            "serializedVersion": "2",
+            "x": 150,
+            "y": 0,
+            "width": 120,
+            "height": 77
+        }
+    },
+    "m_Slots": [
+        {
+            "m_Id": "96d431db4ef671790c009e80fbef3ee1"
+        }
+    ],
+    "synonyms": [],
+    "m_Precision": 0,
+    "m_PreviewExpanded": true,
+    "m_DismissedVersion": 0,
+    "m_PreviewMode": 0,
+    "m_CustomColors": {
+        "m_SerializableColors": []
+    },
+    "IsFirstSlotValid": true
+}
+
+{
+    "m_SGVersion": 0,
+    "m_Type": "UnityEditor.ShaderGraph.Vector1MaterialSlot",
+    "m_ObjectId": "96d431db4ef671790c009e80fbef3ee1",
+    "m_Id": 1,
+    "m_DisplayName": "Mask",
+    "m_SlotType": 0,
+    "m_Hidden": false,
+    "m_ShaderOutputName": "Mask",
+    "m_StageCapability": 3,
+    "m_Value": 0,
+    "m_DefaultValue": 0,
+    "m_Labels": []
+}
+
+{
+    "m_SGVersion": 1,
+    "m_Type": "UnityEditor.ShaderGraph.Internal.Vector1ShaderProperty",
+    "m_ObjectId": "f27a9b7c490d90e230f28ef24bebb952",
+    "m_Guid": {
+        "m_GuidSerialized": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeee1"
+    },
+    "m_Name": "Circle Count",
+    "m_DefaultRefNameVersion": 1,
+    "m_RefNameGeneratedByDisplayName": "Circle_Count",
+    "m_DefaultReferenceName": "_Circle_Count",
+    "m_OverrideReferenceName": "_CircleCount",
+    "m_GeneratePropertyBlock": true,
+    "m_UseCustomSlotLabel": false,
+    "m_CustomSlotLabel": "",
+    "m_DismissedVersion": 0,
+    "m_Precision": 0,
+    "overrideHLSLDeclaration": false,
+    "hlslDeclarationOverride": 0,
+    "m_Hidden": false,
+    "m_Value": 0,
+    "m_FloatType": 0,
+    "m_RangeValues": {
+        "x": 0,
+        "y": 16
+    }
+}
+
+{
+    "m_SGVersion": 1,
+    "m_Type": "UnityEditor.ShaderGraph.Internal.Vector4ShaderProperty",
+    "m_ObjectId": "082331f16b77bf90aefb62153bb34dcc",
+    "m_Guid": {
+        "m_GuidSerialized": "00000000-0000-4000-8000-000000100000"
+    },
+    "m_Name": "Circle 0",
+    "m_DefaultRefNameVersion": 1,
+    "m_RefNameGeneratedByDisplayName": "Circle_0",
+    "m_DefaultReferenceName": "_Circle_0",
+    "m_OverrideReferenceName": "_Circle0",
+    "m_GeneratePropertyBlock": true,
+    "m_UseCustomSlotLabel": false,
+    "m_CustomSlotLabel": "",
+    "m_DismissedVersion": 0,
+    "m_Precision": 0,
+    "overrideHLSLDeclaration": false,
+    "hlslDeclarationOverride": 0,
+    "m_Hidden": false,
+    "m_Value": {
+        "x": 0.5,
+        "y": 0.5,
+        "z": 0.2,
+        "w": 1
+    }
+}
+
+{
+    "m_SGVersion": 1,
+    "m_Type": "UnityEditor.ShaderGraph.Internal.Vector4ShaderProperty",
+    "m_ObjectId": "ecb6926512441c95a709828844eb38d8",
+    "m_Guid": {
+        "m_GuidSerialized": "00000000-0000-4000-8000-000000100001"
+    },
+    "m_Name": "Circle 1",
+    "m_DefaultRefNameVersion": 1,
+    "m_RefNameGeneratedByDisplayName": "Circle_1",
+    "m_DefaultReferenceName": "_Circle_1",
+    "m_OverrideReferenceName": "_Circle1",
+    "m_GeneratePropertyBlock": true,
+    "m_UseCustomSlotLabel": false,
+    "m_CustomSlotLabel": "",
+    "m_DismissedVersion": 0,
+    "m_Precision": 0,
+    "overrideHLSLDeclaration": false,
+    "hlslDeclarationOverride": 0,
+    "m_Hidden": false,
+    "m_Value": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+    }
+}
+
+{
+    "m_SGVersion": 1,
+    "m_Type": "UnityEditor.ShaderGraph.Internal.Vector4ShaderProperty",
+    "m_ObjectId": "715d071825220373ed40207bb57d8504",
+    "m_Guid": {
+        "m_GuidSerialized": "00000000-0000-4000-8000-000000100002"
+    },
+    "m_Name": "Circle 2",
+    "m_DefaultRefNameVersion": 1,
+    "m_RefNameGeneratedByDisplayName": "Circle_2",
+    "m_DefaultReferenceName": "_Circle_2",
+    "m_OverrideReferenceName": "_Circle2",
+    "m_GeneratePropertyBlock": true,
+    "m_UseCustomSlotLabel": false,
+    "m_CustomSlotLabel": "",
+    "m_DismissedVersion": 0,
+    "m_Precision": 0,
+    "overrideHLSLDeclaration": false,
+    "hlslDeclarationOverride": 0,
+    "m_Hidden": false,
+    "m_Value": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+    }
+}
+
+{
+    "m_SGVersion": 1,
+    "m_Type": "UnityEditor.ShaderGraph.Internal.Vector4ShaderProperty",
+    "m_ObjectId": "d05facd6f8d73ae83fed48a2ab3741ae",
+    "m_Guid": {
+        "m_GuidSerialized": "00000000-0000-4000-8000-000000100003"
+    },
+    "m_Name": "Circle 3",
+    "m_DefaultRefNameVersion": 1,
+    "m_RefNameGeneratedByDisplayName": "Circle_3",
+    "m_DefaultReferenceName": "_Circle_3",
+    "m_OverrideReferenceName": "_Circle3",
+    "m_GeneratePropertyBlock": true,
+    "m_UseCustomSlotLabel": false,
+    "m_CustomSlotLabel": "",
+    "m_DismissedVersion": 0,
+    "m_Precision": 0,
+    "overrideHLSLDeclaration": false,
+    "hlslDeclarationOverride": 0,
+    "m_Hidden": false,
+    "m_Value": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+    }
+}
+
+{
+    "m_SGVersion": 1,
+    "m_Type": "UnityEditor.ShaderGraph.Internal.Vector4ShaderProperty",
+    "m_ObjectId": "ff2c12d711d1a1031e39c395acdde0c9",
+    "m_Guid": {
+        "m_GuidSerialized": "00000000-0000-4000-8000-000000100004"
+    },
+    "m_Name": "Circle 4",
+    "m_DefaultRefNameVersion": 1,
+    "m_RefNameGeneratedByDisplayName": "Circle_4",
+    "m_DefaultReferenceName": "_Circle_4",
+    "m_OverrideReferenceName": "_Circle4",
+    "m_GeneratePropertyBlock": true,
+    "m_UseCustomSlotLabel": false,
+    "m_CustomSlotLabel": "",
+    "m_DismissedVersion": 0,
+    "m_Precision": 0,
+    "overrideHLSLDeclaration": false,
+    "hlslDeclarationOverride": 0,
+    "m_Hidden": false,
+    "m_Value": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+    }
+}
+
+{
+    "m_SGVersion": 1,
+    "m_Type": "UnityEditor.ShaderGraph.Internal.Vector4ShaderProperty",
+    "m_ObjectId": "5363b81d8dc315599480a478cacedaf3",
+    "m_Guid": {
+        "m_GuidSerialized": "00000000-0000-4000-8000-000000100005"
+    },
+    "m_Name": "Circle 5",
+    "m_DefaultRefNameVersion": 1,
+    "m_RefNameGeneratedByDisplayName": "Circle_5",
+    "m_DefaultReferenceName": "_Circle_5",
+    "m_OverrideReferenceName": "_Circle5",
+    "m_GeneratePropertyBlock": true,
+    "m_UseCustomSlotLabel": false,
+    "m_CustomSlotLabel": "",
+    "m_DismissedVersion": 0,
+    "m_Precision": 0,
+    "overrideHLSLDeclaration": false,
+    "hlslDeclarationOverride": 0,
+    "m_Hidden": false,
+    "m_Value": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+    }
+}
+
+{
+    "m_SGVersion": 1,
+    "m_Type": "UnityEditor.ShaderGraph.Internal.Vector4ShaderProperty",
+    "m_ObjectId": "f52c438cac9d1834b051ad994ce9322e",
+    "m_Guid": {
+        "m_GuidSerialized": "00000000-0000-4000-8000-000000100006"
+    },
+    "m_Name": "Circle 6",
+    "m_DefaultRefNameVersion": 1,
+    "m_RefNameGeneratedByDisplayName": "Circle_6",
+    "m_DefaultReferenceName": "_Circle_6",
+    "m_OverrideReferenceName": "_Circle6",
+    "m_GeneratePropertyBlock": true,
+    "m_UseCustomSlotLabel": false,
+    "m_CustomSlotLabel": "",
+    "m_DismissedVersion": 0,
+    "m_Precision": 0,
+    "overrideHLSLDeclaration": false,
+    "hlslDeclarationOverride": 0,
+    "m_Hidden": false,
+    "m_Value": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+    }
+}
+
+{
+    "m_SGVersion": 1,
+    "m_Type": "UnityEditor.ShaderGraph.Internal.Vector4ShaderProperty",
+    "m_ObjectId": "c611d642534e3617e3f7c98a786285a1",
+    "m_Guid": {
+        "m_GuidSerialized": "00000000-0000-4000-8000-000000100007"
+    },
+    "m_Name": "Circle 7",
+    "m_DefaultRefNameVersion": 1,
+    "m_RefNameGeneratedByDisplayName": "Circle_7",
+    "m_DefaultReferenceName": "_Circle_7",
+    "m_OverrideReferenceName": "_Circle7",
+    "m_GeneratePropertyBlock": true,
+    "m_UseCustomSlotLabel": false,
+    "m_CustomSlotLabel": "",
+    "m_DismissedVersion": 0,
+    "m_Precision": 0,
+    "overrideHLSLDeclaration": false,
+    "hlslDeclarationOverride": 0,
+    "m_Hidden": false,
+    "m_Value": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+    }
+}
+
+{
+    "m_SGVersion": 1,
+    "m_Type": "UnityEditor.ShaderGraph.Internal.Vector4ShaderProperty",
+    "m_ObjectId": "96213d59fa182d124594a80da35efe23",
+    "m_Guid": {
+        "m_GuidSerialized": "00000000-0000-4000-8000-000000100008"
+    },
+    "m_Name": "Circle 8",
+    "m_DefaultRefNameVersion": 1,
+    "m_RefNameGeneratedByDisplayName": "Circle_8",
+    "m_DefaultReferenceName": "_Circle_8",
+    "m_OverrideReferenceName": "_Circle8",
+    "m_GeneratePropertyBlock": true,
+    "m_UseCustomSlotLabel": false,
+    "m_CustomSlotLabel": "",
+    "m_DismissedVersion": 0,
+    "m_Precision": 0,
+    "overrideHLSLDeclaration": false,
+    "hlslDeclarationOverride": 0,
+    "m_Hidden": false,
+    "m_Value": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+    }
+}
+
+{
+    "m_SGVersion": 1,
+    "m_Type": "UnityEditor.ShaderGraph.Internal.Vector4ShaderProperty",
+    "m_ObjectId": "ddfd3e1b49dec984c7521e7830c6a2e4",
+    "m_Guid": {
+        "m_GuidSerialized": "00000000-0000-4000-8000-000000100009"
+    },
+    "m_Name": "Circle 9",
+    "m_DefaultRefNameVersion": 1,
+    "m_RefNameGeneratedByDisplayName": "Circle_9",
+    "m_DefaultReferenceName": "_Circle_9",
+    "m_OverrideReferenceName": "_Circle9",
+    "m_GeneratePropertyBlock": true,
+    "m_UseCustomSlotLabel": false,
+    "m_CustomSlotLabel": "",
+    "m_DismissedVersion": 0,
+    "m_Precision": 0,
+    "overrideHLSLDeclaration": false,
+    "hlslDeclarationOverride": 0,
+    "m_Hidden": false,
+    "m_Value": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+    }
+}
+
+{
+    "m_SGVersion": 1,
+    "m_Type": "UnityEditor.ShaderGraph.Internal.Vector4ShaderProperty",
+    "m_ObjectId": "a4a22c781e51ec548609be61e49a3f3b",
+    "m_Guid": {
+        "m_GuidSerialized": "00000000-0000-4000-8000-000000100010"
+    },
+    "m_Name": "Circle 10",
+    "m_DefaultRefNameVersion": 1,
+    "m_RefNameGeneratedByDisplayName": "Circle_10",
+    "m_DefaultReferenceName": "_Circle_10",
+    "m_OverrideReferenceName": "_Circle10",
+    "m_GeneratePropertyBlock": true,
+    "m_UseCustomSlotLabel": false,
+    "m_CustomSlotLabel": "",
+    "m_DismissedVersion": 0,
+    "m_Precision": 0,
+    "overrideHLSLDeclaration": false,
+    "hlslDeclarationOverride": 0,
+    "m_Hidden": false,
+    "m_Value": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+    }
+}
+
+{
+    "m_SGVersion": 1,
+    "m_Type": "UnityEditor.ShaderGraph.Internal.Vector4ShaderProperty",
+    "m_ObjectId": "9907b397664f9dec7341353f9290137c",
+    "m_Guid": {
+        "m_GuidSerialized": "00000000-0000-4000-8000-000000100011"
+    },
+    "m_Name": "Circle 11",
+    "m_DefaultRefNameVersion": 1,
+    "m_RefNameGeneratedByDisplayName": "Circle_11",
+    "m_DefaultReferenceName": "_Circle_11",
+    "m_OverrideReferenceName": "_Circle11",
+    "m_GeneratePropertyBlock": true,
+    "m_UseCustomSlotLabel": false,
+    "m_CustomSlotLabel": "",
+    "m_DismissedVersion": 0,
+    "m_Precision": 0,
+    "overrideHLSLDeclaration": false,
+    "hlslDeclarationOverride": 0,
+    "m_Hidden": false,
+    "m_Value": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+    }
+}
+
+{
+    "m_SGVersion": 1,
+    "m_Type": "UnityEditor.ShaderGraph.Internal.Vector4ShaderProperty",
+    "m_ObjectId": "1ce57a6df520b5e227334ae24abef38e",
+    "m_Guid": {
+        "m_GuidSerialized": "00000000-0000-4000-8000-000000100012"
+    },
+    "m_Name": "Circle 12",
+    "m_DefaultRefNameVersion": 1,
+    "m_RefNameGeneratedByDisplayName": "Circle_12",
+    "m_DefaultReferenceName": "_Circle_12",
+    "m_OverrideReferenceName": "_Circle12",
+    "m_GeneratePropertyBlock": true,
+    "m_UseCustomSlotLabel": false,
+    "m_CustomSlotLabel": "",
+    "m_DismissedVersion": 0,
+    "m_Precision": 0,
+    "overrideHLSLDeclaration": false,
+    "hlslDeclarationOverride": 0,
+    "m_Hidden": false,
+    "m_Value": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+    }
+}
+
+{
+    "m_SGVersion": 1,
+    "m_Type": "UnityEditor.ShaderGraph.Internal.Vector4ShaderProperty",
+    "m_ObjectId": "0d72bf73562783671e0b36ba5d6fbd4f",
+    "m_Guid": {
+        "m_GuidSerialized": "00000000-0000-4000-8000-000000100013"
+    },
+    "m_Name": "Circle 13",
+    "m_DefaultRefNameVersion": 1,
+    "m_RefNameGeneratedByDisplayName": "Circle_13",
+    "m_DefaultReferenceName": "_Circle_13",
+    "m_OverrideReferenceName": "_Circle13",
+    "m_GeneratePropertyBlock": true,
+    "m_UseCustomSlotLabel": false,
+    "m_CustomSlotLabel": "",
+    "m_DismissedVersion": 0,
+    "m_Precision": 0,
+    "overrideHLSLDeclaration": false,
+    "hlslDeclarationOverride": 0,
+    "m_Hidden": false,
+    "m_Value": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+    }
+}
+
+{
+    "m_SGVersion": 1,
+    "m_Type": "UnityEditor.ShaderGraph.Internal.Vector4ShaderProperty",
+    "m_ObjectId": "38381a8115989b25eaddb3e48323f718",
+    "m_Guid": {
+        "m_GuidSerialized": "00000000-0000-4000-8000-000000100014"
+    },
+    "m_Name": "Circle 14",
+    "m_DefaultRefNameVersion": 1,
+    "m_RefNameGeneratedByDisplayName": "Circle_14",
+    "m_DefaultReferenceName": "_Circle_14",
+    "m_OverrideReferenceName": "_Circle14",
+    "m_GeneratePropertyBlock": true,
+    "m_UseCustomSlotLabel": false,
+    "m_CustomSlotLabel": "",
+    "m_DismissedVersion": 0,
+    "m_Precision": 0,
+    "overrideHLSLDeclaration": false,
+    "hlslDeclarationOverride": 0,
+    "m_Hidden": false,
+    "m_Value": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+    }
+}
+
+{
+    "m_SGVersion": 1,
+    "m_Type": "UnityEditor.ShaderGraph.Internal.Vector4ShaderProperty",
+    "m_ObjectId": "be87b146a8e53069090a7772260f4d05",
+    "m_Guid": {
+        "m_GuidSerialized": "00000000-0000-4000-8000-000000100015"
+    },
+    "m_Name": "Circle 15",
+    "m_DefaultRefNameVersion": 1,
+    "m_RefNameGeneratedByDisplayName": "Circle_15",
+    "m_DefaultReferenceName": "_Circle_15",
+    "m_OverrideReferenceName": "_Circle15",
+    "m_GeneratePropertyBlock": true,
+    "m_UseCustomSlotLabel": false,
+    "m_CustomSlotLabel": "",
+    "m_DismissedVersion": 0,
+    "m_Precision": 0,
+    "overrideHLSLDeclaration": false,
+    "hlslDeclarationOverride": 0,
+    "m_Hidden": false,
+    "m_Value": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+    }
+}

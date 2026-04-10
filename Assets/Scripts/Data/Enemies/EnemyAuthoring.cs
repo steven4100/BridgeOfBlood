@@ -54,7 +54,8 @@ namespace BridgeOfBlood.Data.Enemies
 				entityId = entityId,
 				visual = visual != null
 					? visual.Resolve(randomSeed)
-					: new EntityVisual { frameIndex = -1, scale = 1f }
+					: EntityVisual.None,
+				visualTime = 0f
 			};
 		}
 	}

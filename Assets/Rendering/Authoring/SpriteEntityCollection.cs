@@ -9,16 +9,31 @@ public class SpriteEntityCollection : SpriteProvider
     public override EntityVisual Resolve(uint seed)
     {
         if (entries == null || entries.Length == 0)
-            return new EntityVisual { frameIndex = -1, scale = scale };
+            return new EntityVisual
+            {
+                frameIndex = -1,
+                scale = scale,
+                animationFrameCount = 1,
+                animationFramesPerSecond = 0f
+            };
 
         var entry = entries[seed % (uint)entries.Length];
         if (entry == null)
-            return new EntityVisual { frameIndex = -1, scale = scale };
+            return new EntityVisual
+            {
+                frameIndex = -1,
+                scale = scale,
+                animationFrameCount = 1,
+                animationFramesPerSecond = 0f
+            };
 
+        EntityVisual inner = entry.Resolve(seed);
         return new EntityVisual
         {
-            frameIndex = entry.bakedFrameIndex,
-            scale = scale
+            frameIndex = inner.frameIndex,
+            scale = scale,
+            animationFrameCount = inner.animationFrameCount,
+            animationFramesPerSecond = inner.animationFramesPerSecond
         };
     }
 }

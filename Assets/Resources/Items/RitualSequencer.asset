@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c85a995e0cf59fd4183f0ccfc5b81b66, type: 3}
+  m_Name: RitualSequencer
+  m_EditorClassIdentifier: 
+  shopItemDefinition:
+    displayName: Ritual Sequencer
+    description: When the previous spell is Fire, the current spell deals 50% more damage.
+    price: 7
+    resellValue: 3
+    isResellable: 1
+    rarity: 2
+    shopItemType: 1
+    weight: 0.6
+  effects:
+  - rid: 3000000000000000001
+  references:
+    version: 2
+    RefIds:
+    - rid: 3000000000000000001
+      type: {class: ConditionalEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        conditions:
+        - rid: 3000000000000000002
+        effects:
+        - rid: 3000000000000000005
+    - rid: 3000000000000000002
+      type: {class: ValueCondition, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        lhs:
+          rid: 3000000000000000003
+        comparison: 0
+        rhs:
+          rid: 3000000000000000004
+    - rid: 3000000000000000003
+      type: {class: SlotAttributeCheckValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        slot: 1
+        attributeFilter: 8
+    - rid: 3000000000000000004
+      type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        value: 0
+    - rid: 3000000000000000005
+      type: {class: SpellModificationEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        modifier:
+          rid: 3000000000000000006
+    - rid: 3000000000000000006
+      type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
+      data:
+        property: 8
+        filter: 0
+        flatAdditive:
+          rid: 0
+        percentIncreased:
+          rid: 0
+        moreMultiplier:
+          rid: 3000000000000000007
+    - rid: 3000000000000000007
+      type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        value: 50

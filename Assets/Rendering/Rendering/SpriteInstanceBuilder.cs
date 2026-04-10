@@ -33,13 +33,15 @@ public class SpriteInstanceBuilder
         EnsureCapacity(maxNeeded);
 
         SpriteFrame[] frames = _database.frames;
+        int dbLen = frames.Length;
 
         for (int i = 0; i < enemies.Length; i++)
         {
             Enemy e = enemies[i];
-            if (e.visual.frameIndex < 0 || e.visual.frameIndex >= frames.Length) continue;
+            int dbIndex = ResolveDatabaseFrameIndex(in e.visual, e.visualTime, dbLen);
+            if (dbIndex < 0) continue;
 
-            SpriteFrame f = frames[e.visual.frameIndex];
+            SpriteFrame f = frames[dbIndex];
             _buffer[_count++] = new SpriteInstanceData
             {
                 position = new float3(e.position, 0f),
@@ -51,9 +53,10 @@ public class SpriteInstanceBuilder
         for (int i = 0; i < attacks.Length; i++)
         {
             AttackEntity a = attacks[i];
-            if (a.visual.frameIndex < 0 || a.visual.frameIndex >= frames.Length) continue;
+            int dbIndex = ResolveDatabaseFrameIndex(in a.visual, a.timeAlive, dbLen);
+            if (dbIndex < 0) continue;
 
-            SpriteFrame f = frames[a.visual.frameIndex];
+            SpriteFrame f = frames[dbIndex];
             _buffer[_count++] = new SpriteInstanceData
             {
                 position = new float3(a.position, 0f),
@@ -67,9 +70,10 @@ public class SpriteInstanceBuilder
             for (int i = 0; i < effectSprites.Length; i++)
             {
                 EffectSprite es = effectSprites[i];
-                if (es.visual.frameIndex < 0 || es.visual.frameIndex >= frames.Length) continue;
+                int dbIndex = ResolveDatabaseFrameIndex(in es.visual, es.timeAlive, dbLen);
+                if (dbIndex < 0) continue;
 
-                SpriteFrame f = frames[es.visual.frameIndex];
+                SpriteFrame f = frames[dbIndex];
                 _buffer[_count++] = new SpriteInstanceData
                 {
                     position = new float3(es.position, 0f),
@@ -78,6 +82,29 @@ public class SpriteInstanceBuilder
                 };
             }
         }
+    }
+
+    private static int ResolveDatabaseFrameIndex(in EntityVisual visual, float elapsedSeconds, int frameDatabaseLength)
+    {
+        if (visual.frameIndex < 0) return -1;
+
+        int animCount = visual.animationFrameCount <= 1 ? 1 : visual.animationFrameCount;
+        int dbIndex;
+        if (animCount <= 1)
+        {
+            dbIndex = visual.frameIndex;
+        }
+        else
+        {
+            int local = (int)math.floor(elapsedSeconds * visual.animationFramesPerSecond);
+            local %= animCount;
+            if (local < 0)
+                local += animCount;
+            dbIndex = visual.frameIndex + local;
+        }
+
+        if (dbIndex < 0 || dbIndex >= frameDatabaseLength) return -1;
+        return dbIndex;
     }
 
     private void EnsureCapacity(int needed)

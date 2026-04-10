@@ -112,6 +112,7 @@ public class GameSimulation
         {
             new SimulationStepCommand { Name = "Spawn", Execute = StepSpawnEnemies },
             new SimulationStepCommand { Name = "Move", Execute = StepMoveEnemies },
+            new SimulationStepCommand { Name = "EnemyVisualTime", Execute = StepEnemyVisualTime },
             new SimulationStepCommand { Name = "BuildGrid", Execute = StepBuildGrid },
             new SimulationStepCommand { Name = "Cull", Execute = StepCull },
             new SimulationStepCommand { Name = "RemoveCulled", Execute = StepRemoveCulled },
@@ -247,6 +248,11 @@ public class GameSimulation
     private void StepMoveEnemies()
     {
         _movementSystem.MoveEnemies(_enemyManager.GetEnemies(), _frameDeltaTime);
+    }
+
+    private void StepEnemyVisualTime()
+    {
+        EnemyVisualTimeSystem.Tick(_enemyManager.GetEnemies(), _frameDeltaTime);
     }
 
     private void StepBuildGrid()

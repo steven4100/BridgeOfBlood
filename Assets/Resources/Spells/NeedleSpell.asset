@@ -36,6 +36,6 @@ MonoBehaviour:
         targetRange: 5
       attackEntityData: {fileID: 11400000, guid: 50324512e9bd0cb40878029ea472497b, type: 2}
   baseMultiplier: -1
-  castCompletionDuration: 1
+  castCompletionDuration: 0.5
   castTime: 0
   attributeMask: 2

@@ -26,7 +26,7 @@ MonoBehaviour:
     - time: 0
       attackEntityEmitter:
         targetMode: 0
-        spreadDegrees: 0
+        spreadDegrees: 360
         forwardDegrees: 0
         emitDuration: 0
         baseEmitCount: 1

@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c85a995e0cf59fd4183f0ccfc5b81b66, type: 3}
+  m_Name: PierceMastery
+  m_EditorClassIdentifier: 
+  shopItemDefinition:
+    displayName: Pierce Mastery
+    description: When your loop has 3+ spells, all spells gain +2 pierce.
+    price: 6
+    resellValue: 3
+    isResellable: 1
+    rarity: 1
+    shopItemType: 1
+    weight: 0.8
+  effects:
+  - rid: 3000000000000000051
+  references:
+    version: 2
+    RefIds:
+    - rid: 3000000000000000051
+      type: {class: ConditionalEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        conditions:
+        - rid: 3000000000000000052
+        effects:
+        - rid: 3000000000000000055
+    - rid: 3000000000000000052
+      type: {class: ValueCondition, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        lhs:
+          rid: 3000000000000000053
+        comparison: 4
+        rhs:
+          rid: 3000000000000000054
+    - rid: 3000000000000000053
+      type: {class: SpellInvocationValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        coefficient: 1
+        property: 3
+    - rid: 3000000000000000054
+      type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        value: 3
+    - rid: 3000000000000000055
+      type: {class: SpellModificationEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        modifier:
+          rid: 3000000000000000056
+    - rid: 3000000000000000056
+      type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
+      data:
+        property: 3
+        filter: 0
+        flatAdditive:
+          rid: 3000000000000000057
+        percentIncreased:
+          rid: 0
+        moreMultiplier:
+          rid: 0
+    - rid: 3000000000000000057
+      type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        value: 2

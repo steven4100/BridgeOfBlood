@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a91d9a7cd051d784ca72e1667be296bb, type: 3}
+  m_Name: ChainLightning
+  m_EditorClassIdentifier: 
+  shopItemDefinition:
+    displayName: Chain Lightning
+    description: A bolt that arcs between enemies, shocking each in its path.
+    price: 5
+    resellValue: 2
+    isResellable: 1
+    rarity: 1
+    shopItemType: 0
+    weight: 0.4
+  SpellAnimation:
+    keyFrames:
+    - time: 0
+      attackEntityEmitter:
+        targetMode: 1
+        spreadDegrees: 0
+        forwardDegrees: -180
+        emitDuration: 0
+        baseEmitCount: 1
+        speed: 150
+        relativeToPlayerSpawnCriteria:
+          offsetFromPlayer: {x: 0, y: 0}
+        targetRange: 235.1
+      attackEntityData: {fileID: 11400000, guid: c3d4e5f6a7b8c9d0e1f2a3b4c5d6a7b8, type: 2}
+  baseMultiplier: 1
+  castCompletionDuration: 0.8
+  castTime: 0.4
+  attributeMask: 34

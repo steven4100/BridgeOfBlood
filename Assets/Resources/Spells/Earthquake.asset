@@ -25,6 +25,7 @@ MonoBehaviour:
     keyFrames:
     - time: 0
       attackEntityEmitter:
+        targetMode: 0
         spreadDegrees: 0
         forwardDegrees: 0
         emitDuration: 0
@@ -32,8 +33,9 @@ MonoBehaviour:
         speed: 0
         relativeToPlayerSpawnCriteria:
           offsetFromPlayer: {x: 0, y: 0}
+        targetRange: 5
       attackEntityData: {fileID: 11400000, guid: 251edd5e577f4f146a2555ba6663ad33, type: 2}
   baseMultiplier: 1
-  castCompletionDuration: 1
-  castTime: 0.5
+  castCompletionDuration: 0.5
+  castTime: 0
   attributeMask: 5

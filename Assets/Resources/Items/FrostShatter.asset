@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c85a995e0cf59fd4183f0ccfc5b81b66, type: 3}
+  m_Name: FrostShatter
+  m_EditorClassIdentifier: 
+  shopItemDefinition:
+    displayName: Frost Shatter
+    description: When the previous spell is Cold, the current spell crits 25% harder.
+    price: 6
+    resellValue: 3
+    isResellable: 1
+    rarity: 2
+    shopItemType: 1
+    weight: 0.6
+  effects:
+  - rid: 3000000000000000011
+  references:
+    version: 2
+    RefIds:
+    - rid: 3000000000000000011
+      type: {class: ConditionalEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        conditions:
+        - rid: 3000000000000000012
+        effects:
+        - rid: 3000000000000000015
+    - rid: 3000000000000000012
+      type: {class: ValueCondition, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        lhs:
+          rid: 3000000000000000013
+        comparison: 0
+        rhs:
+          rid: 3000000000000000014
+    - rid: 3000000000000000013
+      type: {class: SlotAttributeCheckValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        slot: 1
+        attributeFilter: 16
+    - rid: 3000000000000000014
+      type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        value: 0
+    - rid: 3000000000000000015
+      type: {class: SpellModificationEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        modifier:
+          rid: 3000000000000000016
+    - rid: 3000000000000000016
+      type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
+      data:
+        property: 1
+        filter: 0
+        flatAdditive:
+          rid: 0
+        percentIncreased:
+          rid: 0
+        moreMultiplier:
+          rid: 3000000000000000017
+    - rid: 3000000000000000017
+      type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        value: 25

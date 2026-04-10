@@ -12,4 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c6d720bec21a3c098091a5b4c381960f, type: 3}
   m_Name: PlayerWallet
   m_EditorClassIdentifier: Assembly-CSharp::BridgeOfBlood.Data.Inventory.PlayerWallet
-  gold: 20
+  gold: 100

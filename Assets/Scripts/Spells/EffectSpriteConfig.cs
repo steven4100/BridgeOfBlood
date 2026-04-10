@@ -44,7 +44,7 @@ public struct EffectSpriteConfigRuntime
 
     public static EffectSpriteConfigRuntime Default() => new EffectSpriteConfigRuntime
     {
-        visual = new EntityVisual { frameIndex = -1, scale = 1f },
+        visual = EntityVisual.None,
         lifetime = 0f
     };
 }

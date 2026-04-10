@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
+  m_Name: ReapingBoltAttackEntity
+  m_EditorClassIdentifier: 
+  physicalDamage: 80
+  coldDamage: 0
+  fireDamage: 0
+  lightningDamage: 0
+  critChance: 0.25
+  critDamageMultiplier: 2
+  entityVelocity: {x: 0, y: 0}
+  hitBoxData:
+    isSphere: 1
+    isRect: 0
+    rectDimension: {x: 0, y: 0}
+    sphereRadius: 6
+    scaleGrowthRate: 0
+  rehitCooldownSeconds: 100
+  behaviors:
+  - rid: 1000000000000000041
+  - rid: 1000000000000000042
+  - rid: 1000000000000000043
+  - rid: 1000000000000000044
+  visual: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: 1000000000000000041
+      type: {class: ExpirationBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        isActive: 1
+        maxTimeAlive: 2
+        maxDistanceTravelled: 0
+    - rid: 1000000000000000042
+      type: {class: PierceBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        isActive: 1
+        maxEnemiesHit: 1
+    - rid: 1000000000000000043
+      type: {class: OnHitEffectBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        config: {fileID: 11400000, guid: 0f5b616e3aa80fc4cb4aac8f28c08762, type: 2}
+    - rid: 1000000000000000044
+      type: {class: OnKillEffectBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        config: {fileID: 11400000, guid: 469335601d0786d4ea6b11cc3dd255c1, type: 2}

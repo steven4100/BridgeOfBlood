@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
+  m_Name: FrostNovaAttackEntity
+  m_EditorClassIdentifier: 
+  physicalDamage: 0
+  coldDamage: 15
+  fireDamage: 0
+  lightningDamage: 0
+  critChance: 0
+  critDamageMultiplier: 0
+  entityVelocity: {x: 0, y: 0}
+  hitBoxData:
+    isSphere: 1
+    isRect: 0
+    rectDimension: {x: 0, y: 0}
+    sphereRadius: 80
+    scaleGrowthRate: 0
+  rehitCooldownSeconds: 100
+  behaviors:
+  - rid: 1000000000000000001
+  - rid: 1000000000000000002
+  - rid: 1000000000000000003
+  - rid: 1000000000000000004
+  visual: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: 1000000000000000001
+      type: {class: ExpirationBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        isActive: 1
+        maxTimeAlive: 0.3
+        maxDistanceTravelled: 0
+    - rid: 1000000000000000002
+      type: {class: ApplyFrozenBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        isActive: 1
+        applyChance: 1
+    - rid: 1000000000000000003
+      type: {class: OnHitEffectBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        config: {fileID: 11400000, guid: 0f5b616e3aa80fc4cb4aac8f28c08762, type: 2}
+    - rid: 1000000000000000004
+      type: {class: OnKillEffectBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        config: {fileID: 11400000, guid: 469335601d0786d4ea6b11cc3dd255c1, type: 2}

@@ -26,6 +26,8 @@ MonoBehaviour:
   references:
     version: 2
     RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
     - rid: 4884261721581813819
       type: {class: ConditionalEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
@@ -69,7 +71,7 @@ MonoBehaviour:
     - rid: 4884261816470863933
       type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
-        value: 20
+        value: 50
     - rid: 4884261816470863934
       type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
       data:
@@ -78,9 +80,9 @@ MonoBehaviour:
         flatAdditive:
           rid: 4884261816470863932
         percentIncreased:
-          rid: 0
+          rid: -2
         moreMultiplier:
-          rid: 0
+          rid: -2
     - rid: 4884261816470863935
       type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
       data:
@@ -89,6 +91,6 @@ MonoBehaviour:
         flatAdditive:
           rid: 4884261816470863933
         percentIncreased:
-          rid: 0
+          rid: -2
         moreMultiplier:
-          rid: 0
+          rid: -2

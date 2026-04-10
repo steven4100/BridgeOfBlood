@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
   m_Name: NeedleAttackEntity
   m_EditorClassIdentifier: 
-  physicalDamage: 20
+  physicalDamage: 100
   coldDamage: 0
   fireDamage: 0
   lightningDamage: 0

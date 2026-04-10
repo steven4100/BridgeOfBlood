@@ -21,7 +21,7 @@ public static class SpriteAtlasBuilder
             return;
         }
 
-        var textures = ExtractReadableTextures(visuals, out var importersToRevert);
+        var textures = ExtractReadableTextures(visuals, out var slotsPerVisual, out var importersToRevert);
 
         try
         {
@@ -41,12 +41,13 @@ public static class SpriteAtlasBuilder
             database.frames = frames;
             EditorUtility.SetDirty(database);
 
-            AssignBakedFrameIndices(visuals);
+            AssignBakedFrameIndices(visuals, slotsPerVisual);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
-            Debug.Log($"SpriteAtlasBuilder: Packed {visuals.Count} sprites into atlas ({savedAtlas.width}x{savedAtlas.height}).");
+            Debug.Log(
+                $"SpriteAtlasBuilder: Packed {textures.Count} atlas slots from {visuals.Count} visuals into {savedAtlas.width}x{savedAtlas.height}.");
         }
         finally
         {
@@ -70,10 +71,12 @@ public static class SpriteAtlasBuilder
 
     private static List<Texture2D> ExtractReadableTextures(
         List<SpriteEntityVisual> visuals,
+        out List<int> slotsPerVisual,
         out List<(string path, bool wasReadable)> importersToRevert)
     {
         importersToRevert = new List<(string, bool)>();
         var textures = new List<Texture2D>();
+        slotsPerVisual = new List<int>(visuals.Count);
 
         foreach (var visual in visuals)
         {
@@ -91,8 +94,36 @@ public static class SpriteAtlasBuilder
                 sprite = LoadSpriteFromAsset(visual);
             }
 
-            Texture2D cropped = CropSpriteRect(sprite);
-            textures.Add(cropped);
+            int frameCount = Mathf.Max(1, visual.frameCount);
+            if (frameCount <= 1)
+            {
+                textures.Add(CropSpriteRect(sprite));
+                slotsPerVisual.Add(1);
+            }
+            else
+            {
+                Rect r = sprite.rect;
+                int totalW = Mathf.FloorToInt(r.width);
+                int cellW = totalW / frameCount;
+                if (cellW <= 0)
+                {
+                    Debug.LogWarning(
+                        $"SpriteAtlasBuilder: '{visual.name}' frameCount={frameCount} is too large for sprite width {totalW}; using single crop.");
+                    textures.Add(CropSpriteRect(sprite));
+                    slotsPerVisual.Add(1);
+                    continue;
+                }
+
+                if (cellW * frameCount != totalW)
+                {
+                    Debug.LogWarning(
+                        $"SpriteAtlasBuilder: '{visual.name}' sprite rect width {totalW} is not evenly divisible by frameCount {frameCount}; using floor cell width {cellW}.");
+                }
+
+                for (int f = 0; f < frameCount; f++)
+                    textures.Add(CropSpriteHorizontalFrame(sprite, f, cellW));
+                slotsPerVisual.Add(frameCount);
+            }
         }
 
         return textures;
@@ -124,6 +155,20 @@ public static class SpriteAtlasBuilder
 
         Color[] pixels = sprite.texture.GetPixels(x, y, w, h);
         var cropped = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        cropped.SetPixels(pixels);
+        cropped.Apply();
+        return cropped;
+    }
+
+    private static Texture2D CropSpriteHorizontalFrame(Sprite sprite, int frameIndex, int cellWidth)
+    {
+        Rect r = sprite.rect;
+        int x = Mathf.FloorToInt(r.x) + frameIndex * cellWidth;
+        int y = Mathf.FloorToInt(r.y);
+        int h = Mathf.FloorToInt(r.height);
+
+        Color[] pixels = sprite.texture.GetPixels(x, y, cellWidth, h);
+        var cropped = new Texture2D(cellWidth, h, TextureFormat.RGBA32, false);
         cropped.SetPixels(pixels);
         cropped.Apply();
         return cropped;
@@ -180,12 +225,15 @@ public static class SpriteAtlasBuilder
         return db;
     }
 
-    private static void AssignBakedFrameIndices(List<SpriteEntityVisual> visuals)
+    private static void AssignBakedFrameIndices(List<SpriteEntityVisual> visuals, List<int> slotsPerVisual)
     {
+        int cursor = 0;
         for (int i = 0; i < visuals.Count; i++)
         {
-            visuals[i].bakedFrameIndex = i;
-            EditorUtility.SetDirty(visuals[i]);
+            var v = visuals[i];
+            v.bakedFrameIndex = cursor;
+            cursor += slotsPerVisual[i];
+            EditorUtility.SetDirty(v);
         }
     }
 

@@ -63,7 +63,7 @@ public static class AttackEntityBuilder
             stunnedApplier = StunnedApplierRuntime.Default(),
             visual = data.visual != null
                 ? data.visual.Resolve(visualSeed)
-                : new EntityVisual { frameIndex = -1, scale = 1f },
+                : EntityVisual.None,
             onHitEffect = EffectSpriteConfigRuntime.Default(),
             onKillEffect = EffectSpriteConfigRuntime.Default()
         };

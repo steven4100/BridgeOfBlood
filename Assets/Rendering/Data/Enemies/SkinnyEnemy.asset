@@ -12,6 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 30d75d9ce7278224e80a106f2f2db75b, type: 3}
   m_Name: SkinnyEnemy
   m_EditorClassIdentifier: 
-  sprite: {fileID: 21300000, guid: 7fa3be8dfbb7b3c4788ad2344587bdb0, type: 3}
+  sprite: {fileID: 21300000, guid: 7e5ea924dc895a5458f197e1d9fcd1b4, type: 3}
   scale: 30
+  frameCount: 2
+  framesPerSecond: 4
   bakedFrameIndex: 3

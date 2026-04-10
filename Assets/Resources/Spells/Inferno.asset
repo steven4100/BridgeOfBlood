@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a91d9a7cd051d784ca72e1667be296bb, type: 3}
+  m_Name: Inferno
+  m_EditorClassIdentifier: 
+  shopItemDefinition:
+    displayName: Inferno
+    description: Ignites the ground around the caster in a hellish blaze.
+    price: 6
+    resellValue: 3
+    isResellable: 1
+    rarity: 1
+    shopItemType: 0
+    weight: 0.4
+  SpellAnimation:
+    keyFrames:
+    - time: 0
+      attackEntityEmitter:
+        spreadDegrees: 0
+        forwardDegrees: 0
+        emitDuration: 0
+        baseEmitCount: 1
+        speed: 0
+        relativeToPlayerSpawnCriteria:
+          offsetFromPlayer: {x: 0, y: 0}
+      attackEntityData: {fileID: 11400000, guid: d4e5f6a7b8c9d0e1f2a3b4c5d6a7b8c9, type: 2}
+  baseMultiplier: 1
+  castCompletionDuration: 1.2
+  castTime: 0.6
+  attributeMask: 9

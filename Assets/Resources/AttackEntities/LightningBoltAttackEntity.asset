@@ -31,7 +31,7 @@ MonoBehaviour:
   - rid: 4044631629293158463
   - rid: 4044631629293158465
   - rid: 4044631629293158466
-  visual: {fileID: 0}
+  visual: {fileID: 11400000, guid: 3467a9aa04ed0fb48abbc8ba59624aeb, type: 2}
   references:
     version: 2
     RefIds:
@@ -52,5 +52,5 @@ MonoBehaviour:
       type: {class: ExpirationBehavior, ns: , asm: Assembly-CSharp}
       data:
         isActive: 1
-        maxTimeAlive: 0.2
+        maxTimeAlive: 1
         maxDistanceTravelled: 10000000

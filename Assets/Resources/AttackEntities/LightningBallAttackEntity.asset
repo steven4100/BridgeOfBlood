@@ -31,7 +31,7 @@ MonoBehaviour:
   - rid: 4044631629293158460
   - rid: 4044631629293158461
   - rid: 4044631629293158464
-  visual: {fileID: 0}
+  visual: {fileID: 11400000, guid: d9f97ca92c4ec744eb7a94978911d991, type: 2}
   references:
     version: 2
     RefIds:

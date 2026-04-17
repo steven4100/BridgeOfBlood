@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 30d75d9ce7278224e80a106f2f2db75b, type: 3}
-  m_Name: NeedleVisual
+  m_Name: LightningStrikeVisual
   m_EditorClassIdentifier: 
-  sprite: {fileID: 21300000, guid: 44a1c440624174b4084a7e49540119ec, type: 3}
-  scale: 25
-  frameCount: 1
-  framesPerSecond: 10
-  bakedFrameIndex: 15
+  sprite: {fileID: 21300000, guid: b4fe490bda65e2f429ea94b178e6269d, type: 3}
+  scale: 50
+  frameCount: 6
+  framesPerSecond: 15
+  bakedFrameIndex: 9

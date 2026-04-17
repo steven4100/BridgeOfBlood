@@ -3,7 +3,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 
 /// <summary>
-/// Multi-frame chaining: when a projectile hits a target, it is redirected to one new target (nearest in range).
+/// Multi-frame chaining: when a projectile hits a target, it is redirected to one new target (random in range).
 /// That hit happens in a later frame; redirect repeats until chainCount. Does not append HitEvents—only
 /// updates attack entity position/velocity and ChainPolicyRuntime state. No damage or telemetry.
 /// Assumes hit events and grid data are valid; caller (e.g. AttackEntityManager.ValidateHitEvents, EnemyManager.ValidateGridForCurrentEnemies) must validate upstream.
@@ -18,10 +18,11 @@ public class ChainSystem
     }
 
     /// <summary>
-    /// For each hit: if the attack has chaining and chainHitsSoFar &lt; chainCount, add this enemy to hitEnemyIds,
-    /// find one next target (nearest in range, excluding previously hit), redirect the projectile (position at hit,
-    /// velocity toward next target), increment chainHitsSoFar. If there is no valid target in range, exhaust remaining
-    /// chains (chainHitsSoFar = chainCount) so CollectRemovals later adds it to the remove buffer.
+    /// For each hit: if the attack has chaining and chainHitsSoFar &lt; chainCount, pick a random neighbor in chain
+    /// range; if it is the enemy just hit, remove it from the candidate list and pick again until a different target
+    /// is chosen or the list is empty, then redirect the projectile (position at hit, velocity toward that target),
+    /// increment chainHitsSoFar. If there is no valid target in range, exhaust remaining chains (chainHitsSoFar =
+    /// chainCount) so CollectRemovals later adds it to the remove buffer.
     /// </summary>
     public void ResolveChains(
         NativeArray<HitEvent>.ReadOnly hitEvents,
@@ -42,36 +43,24 @@ public class ChainSystem
                 continue;
 
             AttackEntity atk = attackEntities[hit.attackEntityIndex];
-            int currentEnemyId = enemies[hit.enemyIndex].entityId;
-            if (policy.excludePreviouslyHit && !policy.hitEnemyIds.Contains(currentEnemyId))
-            {
-                AddHitEnemyIdDropOldest(ref policy.hitEnemyIds, currentEnemyId, ChainPolicyConstants.MaxPreviouslyHitIds);
-            }
 
             _candidateIndices.Clear();
             grid.QueryNeighbors(hit.hitPosition, policy.chainRange, _candidateIndices);
 
+            var random = Random.CreateFromIndex(1);
             int bestIndex = -1;
-            float bestDistSq = float.MaxValue;
-
-            for (int i = 0; i < _candidateIndices.Length; i++)
+            while (_candidateIndices.Length > 0)
             {
-                int ei = _candidateIndices[i];
-
-                if (policy.excludePreviouslyHit)
+                int r = random.NextInt(_candidateIndices.Length);
+                int ei = _candidateIndices[r];
+                if (ei == hit.enemyIndex)
                 {
-                    int eid = enemies[ei].entityId;
-                    if (policy.hitEnemyIds.Contains(eid)) continue;
+                    _candidateIndices.RemoveAtSwapBack(r);
+                    continue;
                 }
 
-                float2 pos = enemies[ei].position;
-                float distSq = math.distancesq(hit.hitPosition, pos);
-                if (distSq > policy.chainRange * policy.chainRange) continue;
-                if (distSq < bestDistSq)
-                {
-                    bestDistSq = distSq;
-                    bestIndex = ei;
-                }
+                bestIndex = ei;
+                break;
             }
 
             if (bestIndex < 0)
@@ -93,17 +82,6 @@ public class ChainSystem
             attackEntities[hit.attackEntityIndex] = atk;
             chainPolicies[hit.attackEntityIndex] = policy;
         }
-    }
-
-    /// <summary>
-    /// Adds enemyId to the list for ExcludePreviouslyHit. If at capacity, removes the oldest so chaining can continue indefinitely.
-    /// Uses the list's actual Capacity (FixedList32Bytes&lt;int&gt; is 7, not 8) so we never exceed it.
-    /// </summary>
-    static void AddHitEnemyIdDropOldest(ref FixedList32Bytes<int> list, int enemyId, int maxCount)
-    {
-        if (list.Length >= list.Capacity)
-            list.RemoveAt(0);
-        list.Add(enemyId);
     }
 
     /// <summary>

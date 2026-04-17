@@ -904,7 +904,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 04e02f0386b6d374398cac082da0060c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  spawnRate: 8
+  spawnRate: 22.01
   simulationZone: {fileID: 1669307496}
   spawnTable: {fileID: 11400000, guid: accb87cdda325fa4faafbbe633ce99b5, type: 2}
   gizmoRadius: 1.04
@@ -913,7 +913,7 @@ MonoBehaviour:
   attackDebugMaterial: {fileID: 2100000, guid: 5cb69cd1c6441e44496eaf809f96136c, type: 2}
   damageNumberMaterial: {fileID: 0}
   spriteRenderDatabase: {fileID: 11400000, guid: 77a5fc279edf81d4c9cb56cd88810a36, type: 2}
-  playerMoveSpeed: 300
+  playerMoveSpeed: 500
   playerRenderer: {fileID: 22834934}
   gameConfig: {fileID: 11400000, guid: 0a1b2c3d4e5f6789012345678aabbccd, type: 2}
   castInputKey: 32

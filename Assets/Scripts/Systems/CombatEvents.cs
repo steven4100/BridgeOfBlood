@@ -35,6 +35,15 @@ public struct AttackEntityRemovalEvent
 }
 
 /// <summary>
+/// Why an enemy row is being removed from the live enemy buffer. Used to bucket removals in <see cref="EnemyRemovalBatch"/>.
+/// </summary>
+public enum EnemyRemovalReason
+{
+    CulledPastBounds,
+    HealthDepleted
+}
+
+/// <summary>
 /// Emitted by DamageSystem for each hit that deals damage. Single source of truth for telemetry aggregation
 /// and damage number rendering. Per-type damage values include crit scaling and sum to damageDealt.
 /// Blittable for NativeList.

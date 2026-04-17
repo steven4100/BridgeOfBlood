@@ -41,18 +41,24 @@ public class EnemyManager
         }
     }
 
-    public void RemoveEnemies(List<int> enemyIds)
+    /// <summary>
+    /// Applies removals using <paramref name="indices"/> sorted ascending (paired with <paramref name="entityIds"/>).
+    /// Removes from the highest index downward so swap-back stays valid. Skips stale rows when <see cref="Enemy.entityId"/> mismatches.
+    /// </summary>
+    public void ApplyAscendingRemovalTrack(NativeList<int> indices, NativeList<int> entityIds)
     {
-        if (enemyIds == null || enemyIds.Count == 0) return;
-        for (int i = _enemies.Length - 1; i >= 0 && enemyIds.Count > 0; i--)
+        UnityEngine.Assertions.Assert.AreEqual(indices.Length, entityIds.Length);
+        if (indices.Length == 0)
+            return;
+        for (int i = indices.Length - 1; i >= 0; i--)
         {
-            int id = _enemies[i].entityId;
-            int idx = enemyIds.IndexOf(id);
-            if (idx >= 0)
-            {
-                _enemies.RemoveAtSwapBack(i);
-                enemyIds.RemoveAt(idx);
-            }
+            int idx = indices[i];
+            int expectedId = entityIds[i];
+            if (idx < 0 || idx >= _enemies.Length)
+                continue;
+            if (_enemies[idx].entityId != expectedId)
+                continue;
+            _enemies.RemoveAtSwapBack(idx);
         }
     }
 
@@ -82,7 +88,7 @@ public class EnemyManager
     /// </summary>
     public void BuildGrid()
     {
-        if (_grid != null && _enemies.IsCreated && _enemies.Length > 0)
+        if (_grid != null && _enemies.IsCreated)
             _grid.Build(_enemies.AsArray());
     }
 

@@ -32,71 +32,85 @@ public class AttackEntityDebugRenderer : IDebugDrawable
         Matrix4x4 localToWorld = simZone.localToWorldMatrix;
         Vector3 forward = simZone.forward;
         localToWorld *= Matrix4x4.Translate(-forward * 0.05f);
-
-        for (int i = 0; i < entities.Length; i++)
+        try
         {
-            AttackEntity e = entities[i];
-            float scale = e.currentHitBoxScale;
-
-            Mesh mesh;
-            float sizeX, sizeY;
-
-            if (e.hitBox.isSphere)
+            for (int i = 0; i < entities.Length; i++)
             {
-                mesh = _circleMesh;
-                float diameter = e.hitBox.sphereRadius * scale * 2f;
-                sizeX = diameter;
-                sizeY = diameter;
-            }
-            else if (e.hitBox.isRect)
-            {
-                mesh = _quadMesh;
-                sizeX = e.hitBox.rectDimension.x * scale;
-                sizeY = e.hitBox.rectDimension.y * scale;
-            }
-            else
-            {
-                mesh = _circleMesh;
-                sizeX = 4f;
-                sizeY = 4f;
-            }
+                AttackEntity e = entities[i];
+                float scale = e.currentHitBoxScale;
 
-            Matrix4x4 entityMatrix = localToWorld
-                * Matrix4x4.TRS(
-                    new Vector3(e.position.x, e.position.y, 0f),
-                    Quaternion.identity,
-                    new Vector3(sizeX, sizeY, 1f));
+                Mesh mesh;
+                float sizeX, sizeY;
 
-            Graphics.DrawMesh(mesh, entityMatrix, _material, 0, camera, 0, null,
-                ShadowCastingMode.Off, false);
+                if (e.hitBox.isSphere)
+                {
+                    mesh = _circleMesh;
+                    float diameter = e.hitBox.sphereRadius * scale * 2f;
+                    sizeX = diameter;
+                    sizeY = diameter;
+                }
+                else if (e.hitBox.isRect)
+                {
+                    mesh = _quadMesh;
+                    sizeX = e.hitBox.rectDimension.x * scale;
+                    sizeY = e.hitBox.rectDimension.y * scale;
+                }
+                else
+                {
+                    mesh = _circleMesh;
+                    sizeX = 4f;
+                    sizeY = 4f;
+                }
+
+                Matrix4x4 entityMatrix = localToWorld
+                    * Matrix4x4.TRS(
+                        new Vector3(e.position.x, e.position.y, 0f),
+                        Quaternion.identity,
+                        new Vector3(sizeX, sizeY, 1f));
+
+                Graphics.DrawMesh(mesh, entityMatrix, _material, 0, camera, 0, null,
+                    ShadowCastingMode.Off, false);
+            }
         }
+        catch
+        {
+            Debug.LogError("oops");
+        }
+        
     }
 
     public void DrawGizmos(Transform transform)
     {
         if (_manager == null || transform == null || _manager.EntityCount == 0) return;
 
-        NativeArray<AttackEntity> entities = _manager.GetEntities();
-        for (int i = 0; i < entities.Length; i++)
+        try
         {
-            AttackEntity e = entities[i];
-            float scale = e.currentHitBoxScale;
+            NativeArray<AttackEntity> entities = _manager.GetEntities();
+            for (int i = 0; i < entities.Length; i++)
+            {
+                AttackEntity e = entities[i];
+                float scale = e.currentHitBoxScale;
 
-            Vector3 worldPos = transform.TransformPoint(new Vector3(e.position.x, e.position.y, 0f));
-            float worldScale = transform.lossyScale.x;
+                Vector3 worldPos = transform.TransformPoint(new Vector3(e.position.x, e.position.y, 0f));
+                float worldScale = transform.lossyScale.x;
 
-            float radius;
-            if (e.hitBox.isSphere)
-                radius = e.hitBox.sphereRadius * scale * worldScale;
-            else if (e.hitBox.isRect)
-                radius = math.length(e.hitBox.rectDimension * 0.5f) * scale * worldScale;
-            else
-                radius = 2f * worldScale;
+                float radius;
+                if (e.hitBox.isSphere)
+                    radius = e.hitBox.sphereRadius * scale * worldScale;
+                else if (e.hitBox.isRect)
+                    radius = math.length(e.hitBox.rectDimension * 0.5f) * scale * worldScale;
+                else
+                    radius = 2f * worldScale;
 
-            Gizmos.color = new Color(1f, 0.5f, 0f, 0.7f);
-            Gizmos.DrawWireSphere(worldPos, radius);
-            Gizmos.color = new Color(1f, 0.5f, 0f, 0.2f);
-            Gizmos.DrawSphere(worldPos, radius);
+                Gizmos.color = new Color(1f, 0.5f, 0f, 0.7f);
+                Gizmos.DrawWireSphere(worldPos, radius);
+                Gizmos.color = new Color(1f, 0.5f, 0f, 0.2f);
+                Gizmos.DrawSphere(worldPos, radius);
+            }
+        }
+        catch
+        {
+            Debug.LogError("oops");
         }
     }
 

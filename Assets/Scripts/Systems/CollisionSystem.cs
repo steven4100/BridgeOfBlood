@@ -34,7 +34,7 @@ public class CollisionSystem
 
     /// <summary>
     /// Detects all attack-entity-vs-enemy overlaps this frame. Pure geometry; no pierce or other policy.
-    /// Call after movement and BuildGrid. Downstream PierceSystem filters by pierce policy.
+    /// Call after BuildGrid for the current enemy list (simulation should build the grid after culls/removals that frame).
     /// </summary>
     /// <param name="attackEntities">Read-only for overlap.</param>
     /// <param name="enemies">Read-only enemy array (must match grid ordering from BuildGrid).</param>

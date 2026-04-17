@@ -16,7 +16,8 @@ public interface ISpellPayloadModifier
 /// builds payload from keyframe entity data (and optional modifiers), then spawns at the correct times.
 /// Also tracks active sub-emitters on live parent entities and ticks them each frame, spawning child entities
 /// at the parent's current position when the emission interval elapses.
-/// Call Update(simulationTime) each frame to process time-delayed spawns and sub-emitter ticks.
+/// Call Update(simulationTime) each frame to process time-delayed spawns and sub-emitter ticks; all attack spawns
+/// from this frame are applied in one batch at the end of Update so the entity buffer is not reallocated mid-tick.
 /// </summary>
 public class SpellEmissionHandler : ISpellEmissionHandler
 {
@@ -59,9 +60,19 @@ public class SpellEmissionHandler : ISpellEmissionHandler
         public int spellInvocationId;
     }
 
+    private struct BufferedAttackSpawn
+    {
+        public AttackEntitySpawnPayload payload;
+        public float2 position;
+        public bool registerSubEmitter;
+        public SubEmitterRegistration subEmitterReg;
+        public float subEmitterLastEmitSimTime;
+    }
+
     private readonly List<PendingSpawn> _pending = new List<PendingSpawn>();
     private readonly List<ActiveSubEmitter> _activeSubEmitters = new List<ActiveSubEmitter>();
     private readonly Dictionary<int, int> _entityIdToIndex = new Dictionary<int, int>();
+    private readonly List<BufferedAttackSpawn> _bufferedSpawns = new List<BufferedAttackSpawn>();
 
     public bool HasPendingSpawns => _pending.Count > 0;
 
@@ -69,6 +80,7 @@ public class SpellEmissionHandler : ISpellEmissionHandler
     {
         _pending.Clear();
         _activeSubEmitters.Clear();
+        _bufferedSpawns.Clear();
     }
 
     public SpellEmissionHandler(
@@ -144,6 +156,7 @@ public class SpellEmissionHandler : ISpellEmissionHandler
     {
         DrainPendingSpawns(simulationTime);
         TickSubEmitters(simulationTime);
+        FlushBufferedSpawns();
     }
 
     void DrainPendingSpawns(float simulationTime)
@@ -156,22 +169,14 @@ public class SpellEmissionHandler : ISpellEmissionHandler
             var pending = _pending[i];
             var payload = pending.basePayload;
             payload.velocity = pending.point.direction * pending.speed;
-            int entityId = _attackEntityManager.Spawn(payload, pending.point.position);
-
-            if (pending.hasSubEmitter)
+            _bufferedSpawns.Add(new BufferedAttackSpawn
             {
-                _activeSubEmitters.Add(new ActiveSubEmitter
-                {
-                    parentEntityId = entityId,
-                    emitter = pending.subEmitterReg.emitter,
-                    childPayload = pending.subEmitterReg.childPayload,
-                    emitInterval = pending.subEmitterReg.emitInterval,
-                    startDelay = pending.subEmitterReg.startDelay,
-                    lastEmitSimTime = simulationTime,
-                    spellId = pending.subEmitterReg.spellId,
-                    spellInvocationId = pending.subEmitterReg.spellInvocationId
-                });
-            }
+                payload = payload,
+                position = pending.point.position,
+                registerSubEmitter = pending.hasSubEmitter,
+                subEmitterReg = pending.subEmitterReg,
+                subEmitterLastEmitSimTime = simulationTime
+            });
 
             _pending.RemoveAt(i);
         }
@@ -238,8 +243,38 @@ public class SpellEmissionHandler : ISpellEmissionHandler
             childPayload.spellId = sub.spellId;
             childPayload.spellInvocationId = sub.spellInvocationId;
             childPayload.velocity = emitPoints[j].direction * speed;
-            _attackEntityManager.Spawn(childPayload, emitPoints[j].position);
+            _bufferedSpawns.Add(new BufferedAttackSpawn
+            {
+                payload = childPayload,
+                position = emitPoints[j].position,
+                registerSubEmitter = false
+            });
         }
+    }
+
+    void FlushBufferedSpawns()
+    {
+        for (int i = 0; i < _bufferedSpawns.Count; i++)
+        {
+            BufferedAttackSpawn b = _bufferedSpawns[i];
+            int entityId = _attackEntityManager.Spawn(b.payload, b.position);
+            if (b.registerSubEmitter)
+            {
+                _activeSubEmitters.Add(new ActiveSubEmitter
+                {
+                    parentEntityId = entityId,
+                    emitter = b.subEmitterReg.emitter,
+                    childPayload = b.subEmitterReg.childPayload,
+                    emitInterval = b.subEmitterReg.emitInterval,
+                    startDelay = b.subEmitterReg.startDelay,
+                    lastEmitSimTime = b.subEmitterLastEmitSimTime,
+                    spellId = b.subEmitterReg.spellId,
+                    spellInvocationId = b.subEmitterReg.spellInvocationId
+                });
+            }
+        }
+
+        _bufferedSpawns.Clear();
     }
 
     void BuildEntityIdLookup(NativeArray<AttackEntity> entities)

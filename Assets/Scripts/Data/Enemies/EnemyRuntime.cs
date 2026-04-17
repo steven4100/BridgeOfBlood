@@ -1,9 +1,9 @@
 using BridgeOfBlood.Data.Shared;
+using Unity.Collections;
 using Unity.Mathematics;
 
 namespace BridgeOfBlood.Data.Enemies
 {
-
 	public struct Enemy
 	{
 		public float2 position;
@@ -17,8 +17,69 @@ namespace BridgeOfBlood.Data.Enemies
 		public EntityVisual visual;
 		public float visualTime;
 	}
-	
-	public struct EnemyHitEvent
+
+	public struct EnemyBleedStatus
+	{
+		public int entityID;
+		public int spellId;
+		public int spellInvocationId;
+		public float timeApplied;
+		public float lifetime;
+		public float damagerPerTick;
+		public float damagePerUnitWalked;
+	}
+
+	public struct EnemyPoisonStatus
+	{
+		public int entityID;
+		public int spellId;
+		public int spellInvocationId;
+		public float timeApplied;
+		public float lifetime;
+		public float damagerPerTick;
+	}
+
+	public struct EnemyIgniteStatus
+	{
+		public int entityID;
+		public int spellId;
+		public int spellInvocationId;
+		public float timeApplied;
+		public float lifetime;
+		public float damagerPerTick;
+	}
+
+	public struct EnemyFrozenStatus
+	{
+		public int entityID;
+		public int spellId;
+		public int spellInvocationId;
+		public float timeApplied;
+		public float lifetime;
+	}
+
+	public struct EnemyStunnedStatus
+	{
+		public int entityID;
+		public int spellId;
+		public int spellInvocationId;
+		public float timeApplied;
+		public float lifetime;
+	}
+
+	public struct EnemyShockedStatus
+	{
+		public int entityID;
+		public int spellId;
+		public int spellInvocationId;
+		public float timeApplied;
+		public float lifetime;
+		public float damagerMultiplier;
+	}
+
+
+
+    public struct EnemyHitEvent
 	{
 		public int enemyEntityId;
 		public int spellId; // Which spell caused the hit

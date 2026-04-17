@@ -6,79 +6,90 @@ using Unity.Jobs;
 using Unity.Mathematics;
 
 [BurstCompile]
-public struct PoisonedDecideJob : IJobParallelFor
+public struct PoisonedTrackAndApplyJob : IJob
 {
-    [ReadOnly] public NativeArray<HitEvent> HitEvents;
-    [ReadOnly] public NativeArray<AttackEntity> AttackEntities;
+    [ReadOnly] public NativeArray<DamageEvent> HitEvents;
     [ReadOnly] public NativeArray<PoisonedApplierRuntime> Appliers;
-    [WriteOnly] public NativeArray<StatusAilmentFlag> Decisions;
+    public NativeArray<Enemy> Enemies;
+    public NativeList<EnemyPoisonStatus> Tracker;
+    public NativeList<StatusAilmentAppliedEvent> AilmentEvents;
+    public float TimeApplied;
+    public float TrackedLifetime;
     public uint Seed;
 
-    public void Execute(int i)
+    public void Execute()
     {
-        HitEvent hit = HitEvents[i];
-        PoisonedApplierRuntime applier = Appliers[hit.attackEntityIndex];
-        if (!applier.isActive)
+        for (int i = 0; i < HitEvents.Length; i++)
         {
-            Decisions[i] = StatusAilmentFlag.None;
-            return;
-        }
+            DamageEvent hit = HitEvents[i];
+            PoisonedApplierRuntime applier = Appliers[hit.attackEntityIndex];
+            if (!applier.isActive)
+                continue;
 
-        if (applier.applyChance >= 1f)
-        {
-            Decisions[i] = StatusAilmentFlag.Poisoned;
-            return;
-        }
+            bool proc = applier.applyChance >= 1f;
+            if (!proc)
+            {
+                var rng = Unity.Mathematics.Random.CreateFromIndex(Seed + (uint)i);
+                proc = rng.NextFloat() < applier.applyChance;
+            }
 
-        var rng = Unity.Mathematics.Random.CreateFromIndex(Seed + (uint)i);
-        Decisions[i] = rng.NextFloat() < applier.applyChance ? StatusAilmentFlag.Poisoned : StatusAilmentFlag.None;
+            if (!proc)
+                continue;
+
+            Enemy enemy = Enemies[hit.enemyIndex];
+            bool alreadyHad = (enemy.statusAilmentFlag & StatusAilmentFlag.Poisoned) != 0;
+
+            Tracker.Add(new EnemyPoisonStatus
+            {
+                entityID = enemy.entityId,
+                spellId = hit.spellId,
+                spellInvocationId = hit.spellInvocationId,
+                timeApplied = TimeApplied,
+                lifetime = TrackedLifetime,
+                damagerPerTick = 0f
+            });
+
+            enemy.statusAilmentFlag |= StatusAilmentFlag.Poisoned;
+            Enemies[hit.enemyIndex] = enemy;
+
+            if (!alreadyHad)
+            {
+                AilmentEvents.Add(new StatusAilmentAppliedEvent
+                {
+                    spellId = hit.spellId,
+                    spellInvocationId = hit.spellInvocationId,
+                    enemyIndex = hit.enemyIndex,
+                    ailmentFlag = StatusAilmentFlag.Poisoned
+                });
+            }
+        }
     }
 }
 
 public class PoisonedApplicationSystem
 {
-    public JobHandle ScheduleDecide(
-        NativeArray<HitEvent> hitEvents,
-        NativeArray<AttackEntity> attackEntities,
+    private const float DefaultTrackedLifetime = 4f;
+
+    public JobHandle ScheduleTrack(
+        NativeArray<DamageEvent> damageEvents,
         NativeArray<PoisonedApplierRuntime> appliers,
-        NativeArray<StatusAilmentFlag> decisions,
-        uint seed,
-        int batchSize)
-    {
-        return new PoisonedDecideJob
-        {
-            HitEvents = hitEvents,
-            AttackEntities = attackEntities,
-            Appliers = appliers,
-            Decisions = decisions,
-            Seed = seed
-        }.Schedule(hitEvents.Length, batchSize);
-    }
-
-    public void ApplyDecisions(
-        NativeArray<HitEvent> hitEvents,
-        NativeArray<StatusAilmentFlag> decisions,
-        NativeArray<AttackEntity> attackEntities,
         NativeArray<Enemy> enemies,
-        NativeList<StatusAilmentAppliedEvent> ailmentEvents)
+        NativeList<EnemyPoisonStatus> tracker,
+        NativeList<StatusAilmentAppliedEvent> ailmentEvents,
+        float timeApplied,
+        uint seed,
+        JobHandle dependsOn = default)
     {
-        for (int i = 0; i < hitEvents.Length; i++)
+        return new PoisonedTrackAndApplyJob
         {
-            if (decisions[i] == StatusAilmentFlag.None) continue;
-
-            HitEvent hit = hitEvents[i];
-            Enemy enemy = enemies[hit.enemyIndex];
-            enemy.statusAilmentFlag |= StatusAilmentFlag.Poisoned;
-            enemies[hit.enemyIndex] = enemy;
-
-            AttackEntity atk = attackEntities[hit.attackEntityIndex];
-            ailmentEvents.Add(new StatusAilmentAppliedEvent
-            {
-                spellId = atk.spellId,
-                spellInvocationId = atk.spellInvocationId,
-                enemyIndex = hit.enemyIndex,
-                ailmentFlag = StatusAilmentFlag.Poisoned
-            });
-        }
+            HitEvents = damageEvents,
+            Appliers = appliers,
+            Enemies = enemies,
+            Tracker = tracker,
+            AilmentEvents = ailmentEvents,
+            TimeApplied = timeApplied,
+            TrackedLifetime = DefaultTrackedLifetime,
+            Seed = seed
+        }.Schedule(dependsOn);
     }
 }

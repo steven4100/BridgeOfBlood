@@ -20,6 +20,7 @@ public enum AttackEntityRemovalReason
     PierceLimitReached,
     ExpiredByTime,
     ExpiredByDistance,
+    ExpiredByFrames,
     ChainLimitReached,
     CulledOffScreen
 }
@@ -81,4 +82,52 @@ public struct StatusAilmentAppliedEvent
     public int spellInvocationId;
     public int enemyIndex;
     public StatusAilmentFlag ailmentFlag;
+}
+
+/// <summary>Per-frame ignite DoT tick signal; resolver reads tracker row and computes damage.</summary>
+public struct IgniteTickSignal
+{
+    public int igniteListIndex;
+}
+
+/// <summary>Per-frame poison DoT tick signal; resolver reads tracker row and computes damage.</summary>
+public struct PoisonTickSignal
+{
+    public int poisonListIndex;
+}
+
+/// <summary>Bleed time tick signal (list index into bleed tracker).</summary>
+public struct BleedTickSignal
+{
+    public int bleedListIndex;
+}
+
+/// <summary>Which ailment produced a resolved <see cref="TickDamageEvent"/>.</summary>
+public enum TickDamageSource : byte
+{
+    Fire,
+    Poison,
+    Bleed
+}
+
+/// <summary>
+/// Resolved DoT damage for telemetry and numbers. Not a projectile hit; <see cref="AttackEntityIndexNone"/> for attack index.
+/// </summary>
+public struct TickDamageEvent
+{
+    public const int AttackEntityIndexNone = -1;
+
+    public float2 position;
+    public float damageDealt;
+    public int enemyIndex;
+    public int spellId;
+    public int spellInvocationId;
+    public bool wasKill;
+    public float overkillDamage;
+    public float bloodExtracted;
+    public float physicalDamage;
+    public float fireDamage;
+    public float coldDamage;
+    public float lightningDamage;
+    public TickDamageSource source;
 }

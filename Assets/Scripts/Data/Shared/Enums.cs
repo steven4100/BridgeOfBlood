@@ -41,7 +41,8 @@ namespace BridgeOfBlood.Data.Shared
 		Stunned = 1 << 1,
 		Poisoned = 1 << 2,
 		Ignited = 1 << 3,
-		Shocked = 1 << 4
+		Shocked = 1 << 4,
+		Bleeding = 1 << 5
 	}
 
 	/// <summary>

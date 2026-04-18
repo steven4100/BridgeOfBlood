@@ -1,7 +1,7 @@
 using Unity.Collections;
 
 /// <summary>
-/// Evaluates expiration policy: when an attack entity has exceeded maxTimeAlive or maxDistanceTravelled,
+/// Evaluates expiration policy: when an attack entity has exceeded maxFrames, maxTimeAlive, or maxDistanceTravelled,
 /// appends an AttackEntityRemovalEvent so the entity is removed at end of frame.
 /// Does not remove entities; only appends to the shared removal list.
 /// Assumes attackEntities and expirationPolicies have matching length; caller (e.g. AttackEntityManager.ValidateParallelLists) must validate upstream.
@@ -25,7 +25,12 @@ public class ExpirationSystem
             bool expired = false;
             AttackEntityRemovalReason reason = default;
 
-            if (exp.maxTimeAlive > 0f && e.timeAlive >= exp.maxTimeAlive)
+            if (exp.maxFrames > 0 && e.framesAlive >= exp.maxFrames)
+            {
+                expired = true;
+                reason = AttackEntityRemovalReason.ExpiredByFrames;
+            }
+            else if (exp.maxTimeAlive > 0f && e.timeAlive >= exp.maxTimeAlive)
             {
                 expired = true;
                 reason = AttackEntityRemovalReason.ExpiredByTime;

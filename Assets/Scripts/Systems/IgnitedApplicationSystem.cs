@@ -39,6 +39,9 @@ public struct IgnitedTrackAndApplyJob : IJob
             Enemy enemy = Enemies[hit.enemyIndex];
             bool alreadyHad = (enemy.statusAilmentFlag & StatusAilmentFlag.Ignited) != 0;
 
+            const float dotFrac = 0.2f;
+            const float neverTicked = -100000f;
+            float damagePerTick = hit.damageDealt * dotFrac;
             Tracker.Add(new EnemyIgniteStatus
             {
                 entityID = enemy.entityId,
@@ -46,7 +49,8 @@ public struct IgnitedTrackAndApplyJob : IJob
                 spellInvocationId = hit.spellInvocationId,
                 timeApplied = TimeApplied,
                 lifetime = TrackedLifetime,
-                damagerPerTick = 0f
+                damagerPerTick = damagePerTick,
+                lastTimeTicked = neverTicked
             });
 
             enemy.statusAilmentFlag |= StatusAilmentFlag.Ignited;

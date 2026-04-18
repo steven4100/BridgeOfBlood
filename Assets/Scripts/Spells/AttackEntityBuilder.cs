@@ -24,6 +24,7 @@ public struct AttackEntitySpawnPayload
     public ShockedApplierRuntime shockedApplier;
     public PoisonedApplierRuntime poisonedApplier;
     public StunnedApplierRuntime stunnedApplier;
+    public BleedApplierRuntime bleedApplier;
     public EntityVisual visual;
     public EffectSpriteConfigRuntime onHitEffect;
     public EffectSpriteConfigRuntime onKillEffect;
@@ -61,6 +62,7 @@ public static class AttackEntityBuilder
             shockedApplier = ShockedApplierRuntime.Default(),
             poisonedApplier = PoisonedApplierRuntime.Default(),
             stunnedApplier = StunnedApplierRuntime.Default(),
+            bleedApplier = BleedApplierRuntime.Default(),
             visual = data.visual != null
                 ? data.visual.Resolve(visualSeed)
                 : EntityVisual.None,

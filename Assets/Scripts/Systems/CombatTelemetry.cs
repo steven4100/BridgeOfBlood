@@ -22,9 +22,10 @@ namespace BridgeOfBlood.Data.Shared
 		public int shockedApplied;
 		public int poisonedApplied;
 		public int stunnedApplied;
+		public int bleedingApplied;
 		public float duration;
 
-		public int TotalAilmentsApplied => frozenApplied + ignitedApplied + shockedApplied + poisonedApplied + stunnedApplied;
+		public int TotalAilmentsApplied => frozenApplied + ignitedApplied + shockedApplied + poisonedApplied + stunnedApplied + bleedingApplied;
 		public float DPS => duration > 0f ? totalDamage / duration : 0f;
 
 		public void Accumulate(in CombatMetrics other)
@@ -45,6 +46,7 @@ namespace BridgeOfBlood.Data.Shared
 			shockedApplied += other.shockedApplied;
 			poisonedApplied += other.poisonedApplied;
 			stunnedApplied += other.stunnedApplied;
+			bleedingApplied += other.bleedingApplied;
 			duration += other.duration;
 		}
 

@@ -15,6 +15,8 @@ public struct AttackEntity
     public float2 position;
     public float2 velocity;
     public float timeAlive;
+    /// <summary>Increments once per attack time tick (same cadence as <see cref="timeAlive"/>).</summary>
+    public int framesAlive;
     public float distanceTravelled;
     public int enemiesHit;
     public float rehitCooldownSeconds;
@@ -52,6 +54,7 @@ public class AttackEntityManager
     private NativeList<ShockedApplierRuntime> _shockedAppliers;
     private NativeList<PoisonedApplierRuntime> _poisonedAppliers;
     private NativeList<StunnedApplierRuntime> _stunnedAppliers;
+    private NativeList<BleedApplierRuntime> _bleedAppliers;
     private int _nextEntityId;
 
     public AttackEntityManager()
@@ -66,6 +69,7 @@ public class AttackEntityManager
         _shockedAppliers = new NativeList<ShockedApplierRuntime>(Allocator.Persistent);
         _poisonedAppliers = new NativeList<PoisonedApplierRuntime>(Allocator.Persistent);
         _stunnedAppliers = new NativeList<StunnedApplierRuntime>(Allocator.Persistent);
+        _bleedAppliers = new NativeList<BleedApplierRuntime>(Allocator.Persistent);
         _nextEntityId = 0;
     }
 
@@ -81,6 +85,7 @@ public class AttackEntityManager
             position = spawnPosition,
             velocity = payload.velocity,
             timeAlive = 0f,
+            framesAlive = 0,
             distanceTravelled = 0f,
             enemiesHit = 0,
             rehitCooldownSeconds = payload.rehit.rehitCooldownSeconds,
@@ -107,6 +112,7 @@ public class AttackEntityManager
         _shockedAppliers.Add(payload.shockedApplier);
         _poisonedAppliers.Add(payload.poisonedApplier);
         _stunnedAppliers.Add(payload.stunnedApplier);
+        _bleedAppliers.Add(payload.bleedApplier);
         return id;
     }
 
@@ -155,6 +161,7 @@ public class AttackEntityManager
     public NativeArray<ShockedApplierRuntime> GetShockedAppliers() => _shockedAppliers.AsArray();
     public NativeArray<PoisonedApplierRuntime> GetPoisonedAppliers() => _poisonedAppliers.AsArray();
     public NativeArray<StunnedApplierRuntime> GetStunnedAppliers() => _stunnedAppliers.AsArray();
+    public NativeArray<BleedApplierRuntime> GetBleedAppliers() => _bleedAppliers.AsArray();
 
     public int EntityCount => _entities.Length;
 
@@ -183,6 +190,8 @@ public class AttackEntityManager
             throw new InvalidOperationException($"AttackEntityManager: poisonedAppliers.Length ({_poisonedAppliers.Length}) != entities.Length ({n}).");
         if (_stunnedAppliers.Length != n)
             throw new InvalidOperationException($"AttackEntityManager: stunnedAppliers.Length ({_stunnedAppliers.Length}) != entities.Length ({n}).");
+        if (_bleedAppliers.Length != n)
+            throw new InvalidOperationException($"AttackEntityManager: bleedAppliers.Length ({_bleedAppliers.Length}) != entities.Length ({n}).");
     }
 
     /// <summary>
@@ -247,6 +256,7 @@ public class AttackEntityManager
                 _shockedAppliers.RemoveAtSwapBack(i);
                 _poisonedAppliers.RemoveAtSwapBack(i);
                 _stunnedAppliers.RemoveAtSwapBack(i);
+                _bleedAppliers.RemoveAtSwapBack(i);
                 return;
             }
         }
@@ -267,6 +277,7 @@ public class AttackEntityManager
         _shockedAppliers.Clear();
         _poisonedAppliers.Clear();
         _stunnedAppliers.Clear();
+        _bleedAppliers.Clear();
     }
 
     public void Dispose()
@@ -281,5 +292,6 @@ public class AttackEntityManager
         if (_shockedAppliers.IsCreated) _shockedAppliers.Dispose();
         if (_poisonedAppliers.IsCreated) _poisonedAppliers.Dispose();
         if (_stunnedAppliers.IsCreated) _stunnedAppliers.Dispose();
+        if (_bleedAppliers.IsCreated) _bleedAppliers.Dispose();
     }
 }

@@ -156,6 +156,7 @@ namespace BridgeOfBlood.Editor
 			EditorGUILayout.LabelField("Shocked", m.shockedApplied.ToString());
 			EditorGUILayout.LabelField("Poisoned", m.poisonedApplied.ToString());
 			EditorGUILayout.LabelField("Stunned", m.stunnedApplied.ToString());
+			EditorGUILayout.LabelField("Bleeding", m.bleedingApplied.ToString());
 			EditorGUI.indentLevel--;
 
 			EditorGUILayout.LabelField("Duration (s)", m.duration.ToString("F2"));

@@ -13,17 +13,21 @@ public class ExpirationBehavior : AttackEntityBehavior
     [Tooltip("Max distance travelled. 0 = no distance limit.")]
     public float maxDistanceTravelled;
 
+    [Tooltip("Max attack time ticks (simulation frames that run the attack time step). 0 = no frame limit.")]
+    public int maxFrames;
+
     public ExpirationPolicyRuntime ToRuntime()
     {
         return new ExpirationPolicyRuntime
         {
             isActive = isActive,
             maxTimeAlive = maxTimeAlive,
-            maxDistanceTravelled = maxDistanceTravelled
+            maxDistanceTravelled = maxDistanceTravelled,
+            maxFrames = maxFrames
         };
     }
 
-    public override AttackEntityBehavior Clone() => new ExpirationBehavior { isActive = isActive, maxTimeAlive = maxTimeAlive, maxDistanceTravelled = maxDistanceTravelled };
+    public override AttackEntityBehavior Clone() => new ExpirationBehavior { isActive = isActive, maxTimeAlive = maxTimeAlive, maxDistanceTravelled = maxDistanceTravelled, maxFrames = maxFrames };
     public override void ApplyTo(ref AttackEntitySpawnPayload payload) => payload.expiration = ToRuntime();
 }
 
@@ -38,6 +42,8 @@ public struct ExpirationPolicyRuntime
     public float maxTimeAlive;
     /// <summary>Max distance travelled. 0 = no limit.</summary>
     public float maxDistanceTravelled;
+    /// <summary>Max attack time ticks (see <see cref="AttackEntity.framesAlive"/>). 0 = no limit.</summary>
+    public int maxFrames;
 
-    public static ExpirationPolicyRuntime Default() => new ExpirationPolicyRuntime { isActive = false, maxTimeAlive = 0f, maxDistanceTravelled = 0f };
+    public static ExpirationPolicyRuntime Default() => new ExpirationPolicyRuntime { isActive = false, maxTimeAlive = 0f, maxDistanceTravelled = 0f, maxFrames = 0 };
 }

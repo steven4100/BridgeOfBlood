@@ -16,6 +16,7 @@ public struct TickAttackEntityTimeJob : IJobParallelFor
     {
         AttackEntity e = Entities[index];
 
+        e.framesAlive++;
         e.timeAlive += DeltaTime;
 
         if (e.hitBox.scaleGrowthRate > 0f)

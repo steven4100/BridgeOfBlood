@@ -33,6 +33,18 @@ public class DamageNumberController
         }
     }
 
+    public void SpawnFromTickDamageEvents(NativeArray<TickDamageEvent> tickEvents, NativeArray<Enemy> enemies)
+    {
+        for (int i = 0; i < tickEvents.Length; i++)
+        {
+            TickDamageEvent evt = tickEvents[i];
+            float velocityX = 0f;
+            if (evt.enemyIndex >= 0 && evt.enemyIndex < enemies.Length)
+                velocityX = enemies[evt.enemyIndex].moveSpeed;
+            _manager.Spawn(evt.position, (int)evt.damageDealt, velocityX: velocityX, isCrit: false);
+        }
+    }
+
     /// <summary>Advances damage number lifetimes and motion. Call each frame when time advances.</summary>
     public void Update(float deltaTime)
     {

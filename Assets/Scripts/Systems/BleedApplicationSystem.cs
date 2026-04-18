@@ -5,13 +5,12 @@ using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 
-[BurstCompile]
-public struct ShockedTrackAndApplyJob : IJob
+public struct BleedTrackAndApplyJob : IJob
 {
     [ReadOnly] public NativeArray<DamageEvent> HitEvents;
-    [ReadOnly] public NativeArray<ShockedApplierRuntime> Appliers;
+    [ReadOnly] public NativeArray<BleedApplierRuntime> Appliers;
     public NativeArray<Enemy> Enemies;
-    public NativeList<EnemyShockedStatus> Tracker;
+    public NativeList<EnemyBleedStatus> Tracker;
     public NativeList<StatusAilmentAppliedEvent> AilmentEvents;
     public float TimeApplied;
     public float TrackedLifetime;
@@ -22,7 +21,7 @@ public struct ShockedTrackAndApplyJob : IJob
         for (int i = 0; i < HitEvents.Length; i++)
         {
             DamageEvent hit = HitEvents[i];
-            ShockedApplierRuntime applier = Appliers[hit.attackEntityIndex];
+            BleedApplierRuntime applier = Appliers[hit.attackEntityIndex];
             if (!applier.isActive)
                 continue;
 
@@ -37,19 +36,23 @@ public struct ShockedTrackAndApplyJob : IJob
                 continue;
 
             Enemy enemy = Enemies[hit.enemyIndex];
-            bool alreadyHad = (enemy.statusAilmentFlag & StatusAilmentFlag.Shocked) != 0;
+            bool alreadyHad = (enemy.statusAilmentFlag & StatusAilmentFlag.Bleeding) != 0;
 
-            Tracker.Add(new EnemyShockedStatus
+            const float frac = 0.2f;
+            float damagePerTick = hit.damageDealt * frac;
+
+            Tracker.Add(new EnemyBleedStatus
             {
                 entityID = enemy.entityId,
                 spellId = hit.spellId,
                 spellInvocationId = hit.spellInvocationId,
                 timeApplied = TimeApplied,
                 lifetime = TrackedLifetime,
-                damagerMultiplier = applier.incomingDamageTakenMultiplier
+                damagerPerTick = damagePerTick,
+                lastTimeTicked = TickDamagePipeline.NeverTickedSentinel
             });
 
-            enemy.statusAilmentFlag |= StatusAilmentFlag.Shocked;
+            enemy.statusAilmentFlag |= StatusAilmentFlag.Bleeding;
             Enemies[hit.enemyIndex] = enemy;
 
             if (!alreadyHad)
@@ -59,28 +62,28 @@ public struct ShockedTrackAndApplyJob : IJob
                     spellId = hit.spellId,
                     spellInvocationId = hit.spellInvocationId,
                     enemyIndex = hit.enemyIndex,
-                    ailmentFlag = StatusAilmentFlag.Shocked
+                    ailmentFlag = StatusAilmentFlag.Bleeding
                 });
             }
         }
     }
 }
 
-public class ShockedApplicationSystem
+public class BleedApplicationSystem
 {
     private const float DefaultTrackedLifetime = 4f;
 
     public JobHandle ScheduleTrack(
         NativeArray<DamageEvent> damageEvents,
-        NativeArray<ShockedApplierRuntime> appliers,
+        NativeArray<BleedApplierRuntime> appliers,
         NativeArray<Enemy> enemies,
-        NativeList<EnemyShockedStatus> tracker,
+        NativeList<EnemyBleedStatus> tracker,
         NativeList<StatusAilmentAppliedEvent> ailmentEvents,
         float timeApplied,
         uint seed,
         JobHandle dependsOn = default)
     {
-        return new ShockedTrackAndApplyJob
+        return new BleedTrackAndApplyJob
         {
             HitEvents = damageEvents,
             Appliers = appliers,

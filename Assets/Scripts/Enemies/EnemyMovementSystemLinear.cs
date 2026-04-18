@@ -1,9 +1,9 @@
 using BridgeOfBlood.Data.Enemies;
+using BridgeOfBlood.Data.Shared;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
-using UnityEngine;
 
 [BurstCompile]
 public struct MoveEnemiesJob : IJobParallelFor
@@ -14,7 +14,11 @@ public struct MoveEnemiesJob : IJobParallelFor
     public void Execute(int index)
     {
         Enemy e = Enemies[index];
-        e.position.x += e.moveSpeed * DeltaTime;
+        if ((e.statusAilmentFlag & (StatusAilmentFlag.Frozen | StatusAilmentFlag.Stunned)) == 0)
+        {
+            float dx = e.moveSpeed * DeltaTime;
+            e.position.x += dx;
+        }
         Enemies[index] = e;
     }
 }

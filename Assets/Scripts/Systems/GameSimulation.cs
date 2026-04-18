@@ -54,6 +54,13 @@ public class GameSimulation
     private NativeList<EnemyKilledEvent> _killEvents;
     private NativeList<DamageEvent> _damageEvents;
     private NativeList<StatusAilmentAppliedEvent> _statusAilmentAppliedEvents;
+    private NativeList<IgniteTickSignal> _igniteTickSignals;
+    private NativeList<PoisonTickSignal> _poisonTickSignals;
+    private NativeList<BleedTickSignal> _bleedTickSignals;
+    private NativeList<TickDamageEvent> _tickDamageEvents;
+    private NativeHashMap<int, float> _shockDamageMultiplierScratch;
+    /// <summary>entityId → index into current enemy array; rebuilt each frame at the start of the AilmentTime step.</summary>
+    private NativeHashMap<int, int> _enemyEntityIdToIndex;
 
     private SimulationStepCommand[] _steps;
     private float _simulationTime;
@@ -96,6 +103,12 @@ public class GameSimulation
         _killEvents = new NativeList<EnemyKilledEvent>(16, Allocator.Persistent);
         _damageEvents = new NativeList<DamageEvent>(64, Allocator.Persistent);
         _statusAilmentAppliedEvents = new NativeList<StatusAilmentAppliedEvent>(32, Allocator.Persistent);
+        _igniteTickSignals = new NativeList<IgniteTickSignal>(32, Allocator.Persistent);
+        _poisonTickSignals = new NativeList<PoisonTickSignal>(32, Allocator.Persistent);
+        _bleedTickSignals = new NativeList<BleedTickSignal>(32, Allocator.Persistent);
+        _tickDamageEvents = new NativeList<TickDamageEvent>(64, Allocator.Persistent);
+        _shockDamageMultiplierScratch = new NativeHashMap<int, float>(256, Allocator.Persistent);
+        _enemyEntityIdToIndex = new NativeHashMap<int, int>(256, Allocator.Persistent);
         _enemyRemovals = new EnemyRemovalBatch(Allocator.Persistent);
 
         _debugDrawables.Add(_enemyManager.Grid);
@@ -106,13 +119,13 @@ public class GameSimulation
             new SimulationStepCommand { Name = "Spawn", Execute = StepSpawnEnemies },
             new SimulationStepCommand { Name = "Move", Execute = StepMoveEnemies },
             new SimulationStepCommand { Name = "EnemyVisualTime", Execute = StepEnemyVisualTime },
-            new SimulationStepCommand { Name = "AilmentTime", Execute = StepAilmentTime },
             new SimulationStepCommand { Name = "Cull", Execute = StepCull },
             new SimulationStepCommand { Name = "RemoveCulled", Execute = StepRemoveCulled },
             new SimulationStepCommand { Name = "BuildGrid", Execute = StepBuildGrid },
             new SimulationStepCommand { Name = "AttackTick", Execute = StepAttackTickAndMove },
             new SimulationStepCommand { Name = "Collision", Execute = StepCollision },
             new SimulationStepCommand { Name = "Damage", Execute = StepDamage },
+            new SimulationStepCommand { Name = "AilmentTime", Execute = StepAilmentTime },
             new SimulationStepCommand { Name = "AttackExpire", Execute = StepAttackExpire },
         };
     }
@@ -148,6 +161,9 @@ public class GameSimulation
     public Rect Rect => _simulationZone != null ? _simulationZone.rect : default;
 
     public NativeArray<Enemy> GetEnemies() => _enemyManager?.GetEnemies() ?? default;
+
+    /// <summary><see cref="Enemy.entityId"/> → index into <see cref="GetEnemies"/>; rebuilt at the start of each AilmentTime step.</summary>
+    public NativeHashMap<int, int> EnemyEntityIdToIndex => _enemyEntityIdToIndex;
     public NativeArray<AttackEntity> GetAttackEntities() => _attackEntityManager?.GetEntities() ?? default;
     public AttackEntityManager GetAttackEntityManager() => _attackEntityManager;
     public EnemyManager GetEnemyManager() => _enemyManager;
@@ -163,6 +179,10 @@ public class GameSimulation
 
     /// <summary>Clears status ailment applied events after the caller has consumed them.</summary>
     public void ClearStatusAilmentAppliedEvents() => _statusAilmentAppliedEvents.Clear();
+
+    public NativeArray<TickDamageEvent> GetTickDamageEvents() => _tickDamageEvents.AsArray();
+
+    public void ClearTickDamageEvents() => _tickDamageEvents.Clear();
 
     /// <summary>
     /// Clears all enemies, attack entities, event buffers, and resets simulation time for a fresh round.
@@ -183,6 +203,11 @@ public class GameSimulation
         _killEvents.Clear();
         _damageEvents.Clear();
         _statusAilmentAppliedEvents.Clear();
+        _igniteTickSignals.Clear();
+        _poisonTickSignals.Clear();
+        _bleedTickSignals.Clear();
+        _tickDamageEvents.Clear();
+        _enemyEntityIdToIndex.Clear();
         _enemyRemovals.Clear();
     }
 
@@ -201,6 +226,12 @@ public class GameSimulation
         if (_killEvents.IsCreated) _killEvents.Dispose();
         if (_damageEvents.IsCreated) _damageEvents.Dispose();
         if (_statusAilmentAppliedEvents.IsCreated) _statusAilmentAppliedEvents.Dispose();
+        if (_igniteTickSignals.IsCreated) _igniteTickSignals.Dispose();
+        if (_poisonTickSignals.IsCreated) _poisonTickSignals.Dispose();
+        if (_bleedTickSignals.IsCreated) _bleedTickSignals.Dispose();
+        if (_tickDamageEvents.IsCreated) _tickDamageEvents.Dispose();
+        if (_shockDamageMultiplierScratch.IsCreated) _shockDamageMultiplierScratch.Dispose();
+        if (_enemyEntityIdToIndex.IsCreated) _enemyEntityIdToIndex.Dispose();
         _enemyRemovals.Dispose();
         _ailmentSystem.Dispose();
     }
@@ -244,7 +275,9 @@ public class GameSimulation
 
     private void StepMoveEnemies()
     {
-        _movementSystem.MoveEnemies(_enemyManager.GetEnemies(), _frameDeltaTime);
+        NativeArray<Enemy> enemies = _enemyManager.GetEnemies();
+        if (enemies.Length > 0)
+            _movementSystem.MoveEnemies(enemies, _frameDeltaTime);
     }
 
     private void StepEnemyVisualTime()
@@ -252,9 +285,48 @@ public class GameSimulation
         EnemyVisualTimeSystem.Tick(_enemyManager.GetEnemies(), _frameDeltaTime);
     }
 
+    private void RebuildEnemyEntityIdToIndexMap(NativeArray<Enemy> enemies)
+    {
+        _enemyEntityIdToIndex.Clear();
+        for (int i = 0; i < enemies.Length; i++)
+            _enemyEntityIdToIndex[enemies[i].entityId] = i;
+    }
+
     private void StepAilmentTime()
     {
-        _ailmentSystem.TickStatusAilmentDurations(_enemyManager.GetEnemies(), _frameDeltaTime);
+        NativeArray<Enemy> enemies = _enemyManager.GetEnemies();
+        if (enemies.Length == 0 || _frameDeltaTime <= 0f)
+        {
+            _enemyEntityIdToIndex.Clear();
+            _ailmentSystem.TickStatusAilmentDurations(enemies, _frameDeltaTime);
+            return;
+        }
+
+        _igniteTickSignals.Clear();
+        _poisonTickSignals.Clear();
+        _bleedTickSignals.Clear();
+
+        RebuildEnemyEntityIdToIndexMap(enemies);
+
+        TickDamagePipeline.EmitTimeBasedIgniteSignals(_ailmentSystem.IgniteStatus, _igniteTickSignals, _simulationTime);
+        TickDamagePipeline.EmitTimeBasedPoisonSignals(_ailmentSystem.PoisonStatus, _poisonTickSignals, _simulationTime);
+        TickDamagePipeline.EmitTimeBasedBleedSignals(_ailmentSystem.BleedStatus, _bleedTickSignals, _simulationTime);
+
+        TickDamagePipeline.ResolveApplyAndAppend(
+            _igniteTickSignals,
+            _poisonTickSignals,
+            _bleedTickSignals,
+            _ailmentSystem.IgniteStatus,
+            _ailmentSystem.PoisonStatus,
+            _ailmentSystem.BleedStatus,
+            enemies,
+            _enemyEntityIdToIndex,
+            _frameDeltaTime,
+            _simulationTime,
+            _tickDamageEvents);
+
+        ProcessDeadFromHealthDepleted();
+        _ailmentSystem.TickStatusAilmentDurations(enemies, _frameDeltaTime);
     }
 
     private void StepBuildGrid()
@@ -340,7 +412,15 @@ public class GameSimulation
 
             _chainSystem.ResolveChains(resolvedHitsRO, attackEntities, chainPolicies, _enemyManager.Grid, enemies.AsReadOnly());
 
-            _damageSystem.ProcessHits(resolvedHitsRO, attackEntities, enemies, _hitEvents, _killEvents, _damageEvents);
+            _ailmentSystem.BuildShockDamageMultipliers(_shockDamageMultiplierScratch);
+            _damageSystem.ProcessHits(
+                resolvedHitsRO,
+                attackEntities,
+                enemies,
+                _hitEvents,
+                _killEvents,
+                _damageEvents,
+                _shockDamageMultiplierScratch);
 
             var appliers = new AttackEntityManagerAilmentAppliers { Manager = _attackEntityManager };
             _ailmentSystem.ProcessAilmentApplication(
@@ -352,14 +432,23 @@ public class GameSimulation
 
             _attackEntityManager.RecordRehitHits(resolvedHitsRO, attackEntities.AsReadOnly(), enemies.AsReadOnly());
 
-            _enemyRemovals.HealthDepletedIndices.Clear();
-            _enemyRemovals.HealthDepletedEntityIds.Clear();
-            _deadEnemyRemovalSystem.CollectDeadEnemies(
-                _enemyManager.GetEnemies(),
-                _enemyRemovals.HealthDepletedIndices,
-                _enemyRemovals.HealthDepletedEntityIds);
-            ApplyDeadEnemyRemovals();
+            ProcessDeadFromHealthDepleted();
         }
+        else
+        {
+            ProcessDeadFromHealthDepleted();
+        }
+    }
+
+    private void ProcessDeadFromHealthDepleted()
+    {
+        _enemyRemovals.HealthDepletedIndices.Clear();
+        _enemyRemovals.HealthDepletedEntityIds.Clear();
+        _deadEnemyRemovalSystem.CollectDeadEnemies(
+            _enemyManager.GetEnemies(),
+            _enemyRemovals.HealthDepletedIndices,
+            _enemyRemovals.HealthDepletedEntityIds);
+        ApplyDeadEnemyRemovals();
     }
 
     private void ApplyCulledEnemyRemovals()
@@ -409,5 +498,6 @@ public class GameSimulation
         public NativeArray<ShockedApplierRuntime> GetShockedAppliers() => Manager.GetShockedAppliers();
         public NativeArray<PoisonedApplierRuntime> GetPoisonedAppliers() => Manager.GetPoisonedAppliers();
         public NativeArray<StunnedApplierRuntime> GetStunnedAppliers() => Manager.GetStunnedAppliers();
+        public NativeArray<BleedApplierRuntime> GetBleedAppliers() => Manager.GetBleedAppliers();
     }
 }

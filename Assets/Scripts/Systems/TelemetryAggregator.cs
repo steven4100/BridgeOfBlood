@@ -4,7 +4,7 @@ using Unity.Collections;
 
 /// <summary>
 /// Aggregates combat telemetry at five nested time scales: Frame, Spell Cast, Spell Loop, Round, Game.
-/// Consumes the enriched DamageEvent list each frame as its single source of truth.
+/// Consumes enriched <see cref="DamageEvent"/> and <see cref="TickDamageEvent"/> lists each frame as sources of truth for hits and DoT ticks.
 /// UI and other downstream systems read snapshots via properties -- never hook into combat logic directly.
 /// </summary>
 public class TelemetryAggregator
@@ -85,6 +85,7 @@ public class TelemetryAggregator
     /// </summary>
     public void ProcessFrame(
         NativeArray<DamageEvent> damageEvents,
+        NativeArray<TickDamageEvent> tickDamageEvents,
         NativeArray<StatusAilmentAppliedEvent> statusAilmentEvents,
         float deltaTime,
         float simulationTime,
@@ -93,11 +94,16 @@ public class TelemetryAggregator
         if (castResult.didCast)
             OnSpellCast(castResult);
 
-        BuildFrameSnapshot(damageEvents, statusAilmentEvents, deltaTime, simulationTime);
+        BuildFrameSnapshot(damageEvents, tickDamageEvents, statusAilmentEvents, deltaTime, simulationTime);
         AccumulateFrameIntoHigherLevels();
     }
 
-    private void BuildFrameSnapshot(NativeArray<DamageEvent> damageEvents, NativeArray<StatusAilmentAppliedEvent> statusAilmentEvents, float deltaTime, float simulationTime)
+    private void BuildFrameSnapshot(
+        NativeArray<DamageEvent> damageEvents,
+        NativeArray<TickDamageEvent> tickDamageEvents,
+        NativeArray<StatusAilmentAppliedEvent> statusAilmentEvents,
+        float deltaTime,
+        float simulationTime)
     {
         _framePerSpell.Clear();
         var metrics = new CombatMetrics { duration = deltaTime };
@@ -123,6 +129,23 @@ public class TelemetryAggregator
             }
 
             AccumulateEventIntoDict(_framePerSpell, in evt);
+        }
+
+        for (int i = 0; i < tickDamageEvents.Length; i++)
+        {
+            TickDamageEvent te = tickDamageEvents[i];
+            metrics.totalDamage += te.damageDealt;
+            metrics.physicalDamage += te.physicalDamage;
+            metrics.fireDamage += te.fireDamage;
+            metrics.coldDamage += te.coldDamage;
+            metrics.lightningDamage += te.lightningDamage;
+            metrics.bloodExtracted += te.bloodExtracted;
+            if (te.wasKill)
+            {
+                metrics.kills++;
+                metrics.overkillDamage += te.overkillDamage;
+            }
+            AccumulateTickEventIntoDict(_framePerSpell, in te);
         }
 
         for (int i = 0; i < statusAilmentEvents.Length; i++)
@@ -207,6 +230,26 @@ public class TelemetryAggregator
         dict[key] = existing;
     }
 
+    private static void AccumulateTickEventIntoDict(Dictionary<int, CombatMetrics> dict, in TickDamageEvent evt)
+    {
+        int key = evt.spellId;
+        dict.TryGetValue(key, out CombatMetrics existing);
+
+        existing.totalDamage += evt.damageDealt;
+        existing.physicalDamage += evt.physicalDamage;
+        existing.fireDamage += evt.fireDamage;
+        existing.coldDamage += evt.coldDamage;
+        existing.lightningDamage += evt.lightningDamage;
+        existing.bloodExtracted += evt.bloodExtracted;
+        if (evt.wasKill)
+        {
+            existing.kills++;
+            existing.overkillDamage += evt.overkillDamage;
+        }
+
+        dict[key] = existing;
+    }
+
     private static void AccumulateAilmentEventIntoDict(Dictionary<int, CombatMetrics> dict, in StatusAilmentAppliedEvent evt)
     {
         int key = evt.spellId;
@@ -222,6 +265,7 @@ public class TelemetryAggregator
         if ((flag & StatusAilmentFlag.Shocked) != 0) metrics.shockedApplied++;
         if ((flag & StatusAilmentFlag.Poisoned) != 0) metrics.poisonedApplied++;
         if ((flag & StatusAilmentFlag.Stunned) != 0) metrics.stunnedApplied++;
+        if ((flag & StatusAilmentFlag.Bleeding) != 0) metrics.bleedingApplied++;
     }
 
     private static void MergePerSpellFrom(Dictionary<int, CombatMetrics> target, Dictionary<int, CombatMetrics> source)

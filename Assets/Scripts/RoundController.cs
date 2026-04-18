@@ -167,6 +167,7 @@ public class RoundController
         float frameDt = hasController ? debugCtrl.DeltaTime : deltaTime;
         _telemetryAggregator.ProcessFrame(
             _simulation.GetDamageEvents(),
+            _simulation.GetTickDamageEvents(),
             _simulation.GetStatusAilmentAppliedEvents(),
             frameDt,
             _simulation.SimulationTime,
@@ -175,8 +176,10 @@ public class RoundController
         BloodExtractedThisRound = _telemetryAggregator.CurrentRound.aggregate.bloodExtracted;
 
         _damageNumberController.SpawnFromDamageEvents(_simulation.GetDamageEvents(), _simulation.GetEnemies());
+        _damageNumberController.SpawnFromTickDamageEvents(_simulation.GetTickDamageEvents(), _simulation.GetEnemies());
         _effectSpriteController.SpawnFromDamageEvents(_simulation.GetDamageEvents(), _simulation.GetAttackEntities());
         _simulation.ClearDamageEvents();
+        _simulation.ClearTickDamageEvents();
         _simulation.ClearStatusAilmentAppliedEvents();
 
         if (advanceTime)

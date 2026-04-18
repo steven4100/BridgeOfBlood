@@ -25,8 +25,10 @@ namespace BridgeOfBlood.Data.Enemies
 		public int spellInvocationId;
 		public float timeApplied;
 		public float lifetime;
+		/// <summary>Damage dealt each time the bleed ticks (discrete).</summary>
 		public float damagerPerTick;
-		public float damagePerUnitWalked;
+		/// <summary>Simulation time when this row last dealt tick damage; starts at a large negative sentinel until first tick.</summary>
+		public float lastTimeTicked;
 	}
 
 	public struct EnemyPoisonStatus
@@ -36,7 +38,9 @@ namespace BridgeOfBlood.Data.Enemies
 		public int spellInvocationId;
 		public float timeApplied;
 		public float lifetime;
+		/// <summary>Damage dealt each time poison ticks (discrete).</summary>
 		public float damagerPerTick;
+		public float lastTimeTicked;
 	}
 
 	public struct EnemyIgniteStatus
@@ -46,7 +50,9 @@ namespace BridgeOfBlood.Data.Enemies
 		public int spellInvocationId;
 		public float timeApplied;
 		public float lifetime;
+		/// <summary>Damage dealt each time ignite ticks (discrete).</summary>
 		public float damagerPerTick;
+		public float lastTimeTicked;
 	}
 
 	public struct EnemyFrozenStatus

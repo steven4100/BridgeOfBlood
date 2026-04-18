@@ -22,9 +22,11 @@ public class DamageSystem
         NativeArray<Enemy> enemies,
         NativeList<EnemyHitEvent> outHitEvents,
         NativeList<EnemyKilledEvent> outKillEvents,
-        NativeList<DamageEvent> outDamageEvents = default)
+        NativeList<DamageEvent> outDamageEvents = default,
+        NativeHashMap<int, float> shockDamageTakenMultiplierByEntityId = default)
     {
         bool emitDamageEvents = outDamageEvents.IsCreated;
+        bool useShock = shockDamageTakenMultiplierByEntityId.IsCreated;
 
         for (int i = 0; i < hitEvents.Length; i++)
         {
@@ -46,6 +48,14 @@ public class DamageSystem
                 cold *= m;
                 fire *= m;
                 lightning *= m;
+            }
+
+            if (useShock && shockDamageTakenMultiplierByEntityId.TryGetValue(enemy.entityId, out float shockMult))
+            {
+                physical *= shockMult;
+                cold *= shockMult;
+                fire *= shockMult;
+                lightning *= shockMult;
             }
 
             float totalDamage = physical + cold + fire + lightning;

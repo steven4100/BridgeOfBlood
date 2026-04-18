@@ -11,96 +11,96 @@ using Unity.Mathematics;
 [BurstCompile]
 public struct StepEnemyIgniteLifetimeJob : IJobParallelFor
 {
-    public NativeList<EnemyIgniteStatus> List;
+    public NativeArray<EnemyIgniteStatus> Items;
     public float DeltaTime;
 
     public void Execute(int index)
     {
-        EnemyIgniteStatus row = List[index];
+        EnemyIgniteStatus row = Items[index];
         row.lifetime -= DeltaTime;
         if (row.lifetime < 0f)
             row.lifetime = 0f;
-        List[index] = row;
+        Items[index] = row;
     }
 }
 
 [BurstCompile]
 public struct StepEnemyFrozenLifetimeJob : IJobParallelFor
 {
-    public NativeList<EnemyFrozenStatus> List;
+    public NativeArray<EnemyFrozenStatus> Items;
     public float DeltaTime;
 
     public void Execute(int index)
     {
-        EnemyFrozenStatus row = List[index];
+        EnemyFrozenStatus row = Items[index];
         row.lifetime -= DeltaTime;
         if (row.lifetime < 0f)
             row.lifetime = 0f;
-        List[index] = row;
+        Items[index] = row;
     }
 }
 
 [BurstCompile]
 public struct StepEnemyStunnedLifetimeJob : IJobParallelFor
 {
-    public NativeList<EnemyStunnedStatus> List;
+    public NativeArray<EnemyStunnedStatus> Items;
     public float DeltaTime;
 
     public void Execute(int index)
     {
-        EnemyStunnedStatus row = List[index];
+        EnemyStunnedStatus row = Items[index];
         row.lifetime -= DeltaTime;
         if (row.lifetime < 0f)
             row.lifetime = 0f;
-        List[index] = row;
+        Items[index] = row;
     }
 }
 
 [BurstCompile]
 public struct StepEnemyPoisonLifetimeJob : IJobParallelFor
 {
-    public NativeList<EnemyPoisonStatus> List;
+    public NativeArray<EnemyPoisonStatus> Items;
     public float DeltaTime;
 
     public void Execute(int index)
     {
-        EnemyPoisonStatus row = List[index];
+        EnemyPoisonStatus row = Items[index];
         row.lifetime -= DeltaTime;
         if (row.lifetime < 0f)
             row.lifetime = 0f;
-        List[index] = row;
+        Items[index] = row;
     }
 }
 
 [BurstCompile]
 public struct StepEnemyShockedLifetimeJob : IJobParallelFor
 {
-    public NativeList<EnemyShockedStatus> List;
+    public NativeArray<EnemyShockedStatus> Items;
     public float DeltaTime;
 
     public void Execute(int index)
     {
-        EnemyShockedStatus row = List[index];
+        EnemyShockedStatus row = Items[index];
         row.lifetime -= DeltaTime;
         if (row.lifetime < 0f)
             row.lifetime = 0f;
-        List[index] = row;
+        Items[index] = row;
     }
 }
 
 [BurstCompile]
 public struct StepEnemyBleedLifetimeJob : IJobParallelFor
 {
-    public NativeList<EnemyBleedStatus> List;
+    public NativeArray<EnemyBleedStatus> Items;
     public float DeltaTime;
 
     public void Execute(int index)
     {
-        EnemyBleedStatus row = List[index];
+        EnemyBleedStatus row = Items[index];
         row.lifetime -= DeltaTime;
         if (row.lifetime < 0f)
             row.lifetime = 0f;
-        List[index] = row;
+        Items[index] = row;
     }
 }
 
@@ -235,6 +235,7 @@ public struct BuildEntityStatusAilmentFlagsMapJob : IJob
     [ReadOnly] public NativeList<EnemyStunnedStatus> Stunned;
     [ReadOnly] public NativeList<EnemyPoisonStatus> Poison;
     [ReadOnly] public NativeList<EnemyShockedStatus> Shocked;
+    [ReadOnly] public NativeList<EnemyBleedStatus> Bleed;
 
     public NativeHashMap<int, StatusAilmentFlag> OutMap;
 
@@ -275,6 +276,13 @@ public struct BuildEntityStatusAilmentFlagsMapJob : IJob
             EnemyShockedStatus row = Shocked[i];
             if (row.lifetime > 0f)
                 OrFlag(row.entityID, StatusAilmentFlag.Shocked);
+        }
+
+        for (int i = 0; i < Bleed.Length; i++)
+        {
+            EnemyBleedStatus row = Bleed[i];
+            if (row.lifetime > 0f)
+                OrFlag(row.entityID, StatusAilmentFlag.Bleeding);
         }
     }
 
@@ -319,7 +327,8 @@ public static class AilmentTimeScheduler
         | StatusAilmentFlag.Stunned
         | StatusAilmentFlag.Poisoned
         | StatusAilmentFlag.Ignited
-        | StatusAilmentFlag.Shocked;
+        | StatusAilmentFlag.Shocked
+        | StatusAilmentFlag.Bleeding;
 
     public static void Tick(
         NativeArray<Enemy> enemies,
@@ -347,12 +356,12 @@ public static class AilmentTimeScheduler
 
         if (anyTrackers)
         {
-            JobHandle hBleed = new StepEnemyBleedLifetimeJob { List = bleed, DeltaTime = deltaTime }.Schedule(bleed.Length, math.max(1, bleed.Length / 32), default);
-            JobHandle hFrozen = new StepEnemyFrozenLifetimeJob { List = frozen, DeltaTime = deltaTime }.Schedule(frozen.Length, math.max(1, frozen.Length / 32), default);
-            JobHandle hIgnite = new StepEnemyIgniteLifetimeJob { List = ignite, DeltaTime = deltaTime }.Schedule(ignite.Length, math.max(1, ignite.Length / 32), default);
-            JobHandle hStunned = new StepEnemyStunnedLifetimeJob { List = stunned, DeltaTime = deltaTime }.Schedule(stunned.Length, math.max(1, stunned.Length / 32), default);
-            JobHandle hPoison = new StepEnemyPoisonLifetimeJob { List = poison, DeltaTime = deltaTime }.Schedule(poison.Length, math.max(1, poison.Length / 32), default);
-            JobHandle hShocked = new StepEnemyShockedLifetimeJob { List = shocked, DeltaTime = deltaTime }.Schedule(shocked.Length, math.max(1, shocked.Length / 32), default);
+            JobHandle hBleed = new StepEnemyBleedLifetimeJob { Items = bleed.AsArray(), DeltaTime = deltaTime }.Schedule(bleed.Length, math.max(1, bleed.Length / 32), default);
+            JobHandle hFrozen = new StepEnemyFrozenLifetimeJob { Items = frozen.AsArray(), DeltaTime = deltaTime }.Schedule(frozen.Length, math.max(1, frozen.Length / 32), default);
+            JobHandle hIgnite = new StepEnemyIgniteLifetimeJob { Items = ignite.AsArray(), DeltaTime = deltaTime }.Schedule(ignite.Length, math.max(1, ignite.Length / 32), default);
+            JobHandle hStunned = new StepEnemyStunnedLifetimeJob { Items = stunned.AsArray(), DeltaTime = deltaTime }.Schedule(stunned.Length, math.max(1, stunned.Length / 32), default);
+            JobHandle hPoison = new StepEnemyPoisonLifetimeJob { Items = poison.AsArray(), DeltaTime = deltaTime }.Schedule(poison.Length, math.max(1, poison.Length / 32), default);
+            JobHandle hShocked = new StepEnemyShockedLifetimeJob { Items = shocked.AsArray(), DeltaTime = deltaTime }.Schedule(shocked.Length, math.max(1, shocked.Length / 32), default);
 
             var deps = new NativeArray<JobHandle>(6, Allocator.TempJob);
             deps[0] = hBleed;
@@ -384,6 +393,7 @@ public static class AilmentTimeScheduler
                 Stunned = stunned,
                 Poison = poison,
                 Shocked = shocked,
+                Bleed = bleed,
                 OutMap = entityFlagsScratch
             }.Schedule(h);
 

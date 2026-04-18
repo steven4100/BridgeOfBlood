@@ -4,6 +4,7 @@ using BridgeOfBlood.Data.Enemies;
 using BridgeOfBlood.Data.Shared;
 using Unity.Collections;
 using Unity.Jobs;
+using Unity.Mathematics;
 
 public class AilmentSystem
 {
@@ -12,6 +13,7 @@ public class AilmentSystem
     private ShockedApplicationSystem _shockedSystem;
     private PoisonedApplicationSystem _poisonedSystem;
     private StunnedApplicationSystem _stunnedSystem;
+    private BleedApplicationSystem _bleedSystem;
 
     private NativeList<EnemyBleedStatus> _enemyBleedStatus;
     private NativeList<EnemyFrozenStatus> _enemyFrozenStatus;
@@ -31,6 +33,7 @@ public class AilmentSystem
         _shockedSystem = new ShockedApplicationSystem();
         _poisonedSystem = new PoisonedApplicationSystem();
         _stunnedSystem = new StunnedApplicationSystem();
+        _bleedSystem = new BleedApplicationSystem();
 
         _enemyBleedStatus = new NativeList<EnemyBleedStatus>(Allocator.Persistent);
         _enemyFrozenStatus = new NativeList<EnemyFrozenStatus>(Allocator.Persistent);
@@ -55,6 +58,26 @@ public class AilmentSystem
     /// <summary>
     /// Steps remaining ailment duration, drops expired tracker rows, and syncs <see cref="Enemy.statusAilmentFlag"/> from trackers.
     /// </summary>
+    public NativeList<EnemyIgniteStatus> IgniteStatus => _enemyIgniteStatus;
+    public NativeList<EnemyPoisonStatus> PoisonStatus => _enemyPoisonStatus;
+    public NativeList<EnemyBleedStatus> BleedStatus => _enemyBleedStatus;
+
+    public void BuildShockDamageMultipliers(NativeHashMap<int, float> outMap)
+    {
+        outMap.Clear();
+        for (int i = 0; i < _enemyShockedStatus.Length; i++)
+        {
+            EnemyShockedStatus row = _enemyShockedStatus[i];
+            if (row.lifetime <= 0f)
+                continue;
+            int id = row.entityID;
+            if (outMap.TryGetValue(id, out float existing))
+                outMap[id] = math.max(existing, row.damagerMultiplier);
+            else
+                outMap[id] = row.damagerMultiplier;
+        }
+    }
+
     public void TickStatusAilmentDurations(NativeArray<Enemy> enemies, float deltaTime)
     {
         AilmentTimeScheduler.Tick(
@@ -127,7 +150,16 @@ public class AilmentSystem
             ailmentTime,
             ailmentSeed,
             h4);
-        h5.Complete();
+        JobHandle h6 = _bleedSystem.ScheduleTrack(
+            damageEvents,
+            ailmentAppliers.GetBleedAppliers(),
+            enemies,
+            _enemyBleedStatus,
+            statusAilmentAppliedEvents,
+            ailmentTime,
+            ailmentSeed + 50000u,
+            h5);
+        h6.Complete();
     }
 
     /// <summary>
@@ -173,5 +205,6 @@ public class AilmentSystem
         public NativeArray<ShockedApplierRuntime> GetShockedAppliers();
         public NativeArray<PoisonedApplierRuntime> GetPoisonedAppliers();
         public NativeArray<StunnedApplierRuntime> GetStunnedAppliers();
+        public NativeArray<BleedApplierRuntime> GetBleedAppliers();
     }
 }

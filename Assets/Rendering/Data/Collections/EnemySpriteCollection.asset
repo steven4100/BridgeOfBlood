@@ -14,4 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   entries:
   - {fileID: 11400000, guid: d553987990a6b304e98635e1a0e25073, type: 2}
-  scale: 32.5
+  scale: 45

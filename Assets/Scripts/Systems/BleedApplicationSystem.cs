@@ -9,7 +9,8 @@ public struct BleedTrackAndApplyJob : IJob
 {
     [ReadOnly] public NativeArray<DamageEvent> HitEvents;
     [ReadOnly] public NativeArray<BleedApplierRuntime> Appliers;
-    public NativeArray<Enemy> Enemies;
+    public NativeArray<int> EntityIds;
+    public NativeArray<StatusAilmentFlag> Status;
     public NativeList<EnemyBleedStatus> Tracker;
     public NativeList<StatusAilmentAppliedEvent> AilmentEvents;
     public float TimeApplied;
@@ -35,15 +36,16 @@ public struct BleedTrackAndApplyJob : IJob
             if (!proc)
                 continue;
 
-            Enemy enemy = Enemies[hit.enemyIndex];
-            bool alreadyHad = (enemy.statusAilmentFlag & StatusAilmentFlag.Bleeding) != 0;
+            int entityId = EntityIds[hit.enemyIndex];
+            StatusAilmentFlag flags = Status[hit.enemyIndex];
+            bool alreadyHad = (flags & StatusAilmentFlag.Bleeding) != 0;
 
             const float frac = 0.2f;
             float damagePerTick = hit.damageDealt * frac;
 
             Tracker.Add(new EnemyBleedStatus
             {
-                entityID = enemy.entityId,
+                entityID = entityId,
                 spellId = hit.spellId,
                 spellInvocationId = hit.spellInvocationId,
                 timeApplied = TimeApplied,
@@ -52,8 +54,8 @@ public struct BleedTrackAndApplyJob : IJob
                 lastTimeTicked = TickDamagePipeline.NeverTickedSentinel
             });
 
-            enemy.statusAilmentFlag |= StatusAilmentFlag.Bleeding;
-            Enemies[hit.enemyIndex] = enemy;
+            flags |= StatusAilmentFlag.Bleeding;
+            Status[hit.enemyIndex] = flags;
 
             if (!alreadyHad)
             {
@@ -76,7 +78,8 @@ public class BleedApplicationSystem
     public JobHandle ScheduleTrack(
         NativeArray<DamageEvent> damageEvents,
         NativeArray<BleedApplierRuntime> appliers,
-        NativeArray<Enemy> enemies,
+        NativeArray<int> entityIds,
+        NativeArray<StatusAilmentFlag> status,
         NativeList<EnemyBleedStatus> tracker,
         NativeList<StatusAilmentAppliedEvent> ailmentEvents,
         float timeApplied,
@@ -87,7 +90,8 @@ public class BleedApplicationSystem
         {
             HitEvents = damageEvents,
             Appliers = appliers,
-            Enemies = enemies,
+            EntityIds = entityIds,
+            Status = status,
             Tracker = tracker,
             AilmentEvents = ailmentEvents,
             TimeApplied = timeApplied,

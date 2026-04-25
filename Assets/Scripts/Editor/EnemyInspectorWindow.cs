@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using BridgeOfBlood.Data.Enemies;
+using BridgeOfBlood.Data.Shared;
 using Unity.Collections;
 using UnityEditor;
 using UnityEngine;
@@ -66,8 +67,8 @@ namespace BridgeOfBlood.Editor
 				return;
 			}
 
-			var enemies = _sceneManager.Simulation.GetEnemies();
-			if (!enemies.IsCreated || enemies.Length == 0)
+			var enemies = _sceneManager.Simulation.State.EnemyBuffers;
+			if (!enemies.Motion.IsCreated || enemies.Length == 0)
 			{
 				EditorGUILayout.LabelField("No enemies alive.");
 				return;
@@ -76,7 +77,7 @@ namespace BridgeOfBlood.Editor
 			int idx = -1;
 			for (int i = 0; i < enemies.Length; i++)
 			{
-				if (enemies[i].entityId == selectedId)
+				if (enemies.EntityIds[i] == selectedId)
 				{
 					idx = i;
 					break;
@@ -89,32 +90,37 @@ namespace BridgeOfBlood.Editor
 				return;
 			}
 
-			var enemy = enemies[idx];
+			int entityId = enemies.EntityIds[idx];
+			EnemyVitality vit = enemies.Vitality[idx];
+			EnemyMotion motion = enemies.Motion[idx];
+			EnemyCombatTraits traits = enemies.CombatTraits[idx];
+			StatusAilmentFlag status = enemies.Status[idx];
+			EntityVisual visual = enemies.Presentation[idx].visual;
 			_scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
 
-			EditorGUILayout.LabelField($"Enemy #{enemy.entityId}", EditorStyles.boldLabel);
+			EditorGUILayout.LabelField($"Enemy #{entityId}", EditorStyles.boldLabel);
 			EditorGUILayout.Space(4);
 
 			Section("Health");
-			float pct = enemy.maxHealth > 0f ? enemy.health / enemy.maxHealth : 0f;
+			float pct = vit.maxHealth > 0f ? vit.health / vit.maxHealth : 0f;
 			var hpRect = EditorGUILayout.GetControlRect(false, EditorGUIUtility.singleLineHeight);
 			EditorGUI.ProgressBar(hpRect, Mathf.Clamp01(pct),
-				$"{enemy.health:F1} / {enemy.maxHealth:F1} ({pct:P0})");
+				$"{vit.health:F1} / {vit.maxHealth:F1} ({pct:P0})");
 
 			Section("Movement");
-			Field("Position", $"({enemy.position.x:F1}, {enemy.position.y:F1})");
-			Field("Move Speed", enemy.moveSpeed.ToString("F2"));
+			Field("Position", $"({motion.position.x:F1}, {motion.position.y:F1})");
+			Field("Move Speed", motion.moveSpeed.ToString("F2"));
 
 			Section("Attributes");
-			Field("Corruption", enemy.corruptionFlag.ToString());
-			Field("Elemental Weakness", enemy.elementalWeakness.ToString());
-			Field("Status Ailments", enemy.statusAilmentFlag != 0
-				? enemy.statusAilmentFlag.ToString()
+			Field("Corruption", traits.corruptionFlag.ToString());
+			Field("Elemental Weakness", traits.elementalWeakness.ToString());
+			Field("Status Ailments", status != 0
+				? status.ToString()
 				: "None");
 
 			Section("Visual");
-			Field("Frame Index", enemy.visual.frameIndex.ToString());
-			Field("Scale", enemy.visual.scale.ToString("F2"));
+			Field("Frame Index", visual.frameIndex.ToString());
+			Field("Scale", visual.scale.ToString("F2"));
 
 			EditorGUILayout.EndScrollView();
 		}

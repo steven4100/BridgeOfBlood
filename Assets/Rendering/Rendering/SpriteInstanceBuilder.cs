@@ -1,4 +1,5 @@
 using BridgeOfBlood.Data.Enemies;
+using BridgeOfBlood.Data.Shared;
 using Unity.Collections;
 using Unity.Mathematics;
 
@@ -9,6 +10,11 @@ using Unity.Mathematics;
 /// </summary>
 public class SpriteInstanceBuilder
 {
+    private static readonly float4 FrozenAdditiveRgb = new float4(0f, 0.06f, 0.14f, 0f);
+    private static readonly float4 IgniteFlashAdditiveRgb = new float4(0.22f, 0.09f, 0.02f, 0f);
+    private static readonly float4 PoisonFlashAdditiveRgb = new float4(0.03f, 0.20f, 0.05f, 0f);
+    private static readonly float4 BleedFlashAdditiveRgb = new float4(0.20f, 0.03f, 0.03f, 0f);
+
     private readonly SpriteRenderDatabase _database;
     private SpriteInstanceData[] _buffer;
     private int _count;
@@ -22,7 +28,7 @@ public class SpriteInstanceBuilder
     public SpriteInstanceData[] Buffer => _buffer;
     public int Count => _count;
 
-    public void Build(NativeArray<Enemy> enemies, NativeArray<AttackEntity> attacks, NativeArray<EffectSprite> effectSprites = default)
+    public void Build(EnemyBuffers enemies, NativeArray<AttackEntity> attacks, NativeArray<EffectSprite> effectSprites = default)
     {
         _count = 0;
 
@@ -37,16 +43,18 @@ public class SpriteInstanceBuilder
 
         for (int i = 0; i < enemies.Length; i++)
         {
-            Enemy e = enemies[i];
-            int dbIndex = ResolveDatabaseFrameIndex(in e.visual, e.visualTime, dbLen);
+            EnemyMotion m = enemies.Motion[i];
+            EnemyPresentation pr = enemies.Presentation[i];
+            StatusAilmentFlag st = enemies.Status[i];
+            int dbIndex = ResolveDatabaseFrameIndex(in pr.visual, pr.visualTime, dbLen);
             if (dbIndex < 0) continue;
 
             SpriteFrame f = frames[dbIndex];
             _buffer[_count++] = new SpriteInstanceData
             {
-                position = new float3(e.position, 0f),
-                scale = e.visual.scale,
-                uvRect = new float4(f.uvMin, f.uvMax)
+                positionScale = new float4(m.position.x, m.position.y, 0f, pr.visual.scale),
+                uvRect = new float4(f.uvMin, f.uvMax),
+                color = ComputeEnemyTint(st, in pr)
             };
         }
 
@@ -59,9 +67,9 @@ public class SpriteInstanceBuilder
             SpriteFrame f = frames[dbIndex];
             _buffer[_count++] = new SpriteInstanceData
             {
-                position = new float3(a.position, 0f),
-                scale = a.visual.scale,
-                uvRect = new float4(f.uvMin, f.uvMax)
+                positionScale = new float4(a.position.x, a.position.y, 0f, a.visual.scale),
+                uvRect = new float4(f.uvMin, f.uvMax),
+                color = default
             };
         }
 
@@ -76,11 +84,40 @@ public class SpriteInstanceBuilder
                 SpriteFrame f = frames[dbIndex];
                 _buffer[_count++] = new SpriteInstanceData
                 {
-                    position = new float3(es.position, 0f),
-                    scale = es.visual.scale,
-                    uvRect = new float4(f.uvMin, f.uvMax)
+                    positionScale = new float4(es.position.x, es.position.y, 0f, es.visual.scale),
+                    uvRect = new float4(f.uvMin, f.uvMax),
+                    color = default
                 };
             }
+        }
+    }
+
+    private static float4 ComputeEnemyTint(StatusAilmentFlag status, in EnemyPresentation p)
+    {
+        float4 add = default;
+        if ((status & StatusAilmentFlag.Frozen) != 0)
+            add += FrozenAdditiveRgb;
+        if (p.ailmentFlashTimer > 0f)
+        {
+            float k = math.saturate(p.ailmentFlashTimer / TickDamagePipeline.DotFlashDurationSeconds);
+            add += DotFlashAdditiveRgb(p.ailmentFlashSource) * k;
+        }
+
+        return add;
+    }
+
+    private static float4 DotFlashAdditiveRgb(TickDamageSource source)
+    {
+        switch (source)
+        {
+            case TickDamageSource.Fire:
+                return IgniteFlashAdditiveRgb;
+            case TickDamageSource.Poison:
+                return PoisonFlashAdditiveRgb;
+            case TickDamageSource.Bleed:
+                return BleedFlashAdditiveRgb;
+            default:
+                return default;
         }
     }
 

@@ -8,30 +8,32 @@ using Unity.Mathematics;
 [BurstCompile]
 public struct MoveEnemiesJob : IJobParallelFor
 {
-    public NativeArray<Enemy> Enemies;
+    public NativeArray<EnemyMotion> Motion;
+    [ReadOnly] public NativeArray<StatusAilmentFlag> Status;
     public float DeltaTime;
 
     public void Execute(int index)
     {
-        Enemy e = Enemies[index];
-        if ((e.statusAilmentFlag & (StatusAilmentFlag.Frozen | StatusAilmentFlag.Stunned)) == 0)
+        EnemyMotion m = Motion[index];
+        if ((Status[index] & (StatusAilmentFlag.Frozen | StatusAilmentFlag.Stunned)) == 0)
         {
-            float dx = e.moveSpeed * DeltaTime;
-            e.position.x += dx;
+            float dx = m.moveSpeed * DeltaTime;
+            m.position.x += dx;
         }
-        Enemies[index] = e;
+        Motion[index] = m;
     }
 }
 
 public class EnemyMovementSystemLinear : IEnemyMoveSystem
 {
-    public void MoveEnemies(NativeArray<Enemy> enemies, float deltaTime)
+    public void MoveEnemies(EnemyBuffers enemies, float deltaTime)
     {
         if (enemies.Length == 0) return;
 
         var job = new MoveEnemiesJob
         {
-            Enemies = enemies,
+            Motion = enemies.Motion,
+            Status = enemies.Status,
             DeltaTime = deltaTime
         };
 

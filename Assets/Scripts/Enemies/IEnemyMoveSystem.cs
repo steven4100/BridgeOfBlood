@@ -1,7 +1,6 @@
 using BridgeOfBlood.Data.Enemies;
-using Unity.Collections;
 
 public interface IEnemyMoveSystem
 {
-    void MoveEnemies(NativeArray<Enemy> enemies, float deltaTime);
+    void MoveEnemies(EnemyBuffers enemies, float deltaTime);
 }

@@ -31,9 +31,9 @@ Shader "BridgeOfBlood/InstancedSprite"
 
             struct InstanceData
             {
-                float3 position;
-                float scale;
+                float4 positionScale; // xyz = position, w = scale (matches C# interop; avoids float3 padding mismatch)
                 float4 uvRect; // (xMin, yMin, xMax, yMax)
+                float4 color; // rgb = additive ailment tint; default (0,0,0,0); a unused
             };
 
             StructuredBuffer<InstanceData> _InstanceData;
@@ -52,6 +52,8 @@ Shader "BridgeOfBlood/InstancedSprite"
             {
                 float4 positionCS : SV_POSITION;
                 float2 uv : TEXCOORD0;
+                // Per-instance additive overlay (same for all verts).
+                nointerpolation float4 additive : COLOR0;
             };
 
             Varyings vert(Attributes v, uint svInstanceID : SV_InstanceID)
@@ -61,12 +63,15 @@ Shader "BridgeOfBlood/InstancedSprite"
 
                 InstanceData data = _InstanceData[instanceID];
 
-                float3 localPos = float3(data.position.xy + v.positionOS.xy * data.scale, 0.0);
+                float3 localPos = float3(
+                    data.positionScale.xy + v.positionOS.xy * data.positionScale.w,
+                    data.positionScale.z);
                 float3 worldPos = mul(_LocalToWorld, float4(localPos, 1.0)).xyz;
 
                 Varyings o;
                 o.positionCS = TransformWorldToHClip(worldPos);
                 o.uv = lerp(data.uvRect.xy, data.uvRect.zw, v.uv);
+                o.additive = data.color;
                 return o;
             }
 
@@ -74,7 +79,8 @@ Shader "BridgeOfBlood/InstancedSprite"
             {
                 float4 col = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv);
                 clip(col.a - 0.01);
-                return col;
+                float3 rgb = saturate(col.rgb + i.additive.rgb);
+                return float4(rgb, col.a);
             }
             ENDHLSL
         }

@@ -201,9 +201,9 @@ public class AttackEntityManager
     public void RecordRehitHits(
         NativeArray<HitEvent>.ReadOnly hitEvents,
         NativeArray<AttackEntity>.ReadOnly attackEntities,
-        NativeArray<Enemy>.ReadOnly enemies)
+        NativeArray<int>.ReadOnly entityIds)
     {
-        RehitRecordSystem.RecordRehitHits(hitEvents, attackEntities, enemies, _rehitPolicies.AsArray());
+        RehitRecordSystem.RecordRehitHits(hitEvents, attackEntities, entityIds, _rehitPolicies.AsArray());
     }
 
     /// <summary>

@@ -12,14 +12,10 @@ public class DamageSystem
 {
     public const float WeaknessMultiplier = 1.5f;
 
-    /// <summary>
-    /// For each HitEvent, applies the attack entity's damage to the enemy (with weakness and crit), updates health and enemiesHit, emits telemetry.
-    /// When outDamageEvents is created, appends one DamageEvent per hit for the text/damage-number system.
-    /// </summary>
     public void ProcessHits(
         NativeArray<HitEvent>.ReadOnly hitEvents,
         NativeArray<AttackEntity> attackEntities,
-        NativeArray<Enemy> enemies,
+        EnemyBuffers enemies,
         NativeList<EnemyHitEvent> outHitEvents,
         NativeList<EnemyKilledEvent> outKillEvents,
         NativeList<DamageEvent> outDamageEvents = default,
@@ -33,12 +29,16 @@ public class DamageSystem
             HitEvent hit = hitEvents[i];
 
             AttackEntity atk = attackEntities[hit.attackEntityIndex];
-            Enemy enemy = enemies[hit.enemyIndex];
+            int ei = hit.enemyIndex;
+            int entityId = enemies.EntityIds[ei];
+            EnemyCombatTraits traits = enemies.CombatTraits[ei];
+            EnemyVitality vit = enemies.Vitality[ei];
+            StatusAilmentFlag status = enemies.Status[ei];
 
-            float physical = ApplyDamageType(atk.physicalDamage, DamageType.Physical, enemy, outHitEvents);
-            float cold = ApplyDamageType(atk.coldDamage, DamageType.Cold, enemy, outHitEvents);
-            float fire = ApplyDamageType(atk.fireDamage, DamageType.Fire, enemy, outHitEvents);
-            float lightning = ApplyDamageType(atk.lightningDamage, DamageType.Lightning, enemy, outHitEvents);
+            float physical = ApplyDamageType(atk.physicalDamage, DamageType.Physical, entityId, traits.elementalWeakness, outHitEvents);
+            float cold = ApplyDamageType(atk.coldDamage, DamageType.Cold, entityId, traits.elementalWeakness, outHitEvents);
+            float fire = ApplyDamageType(atk.fireDamage, DamageType.Fire, entityId, traits.elementalWeakness, outHitEvents);
+            float lightning = ApplyDamageType(atk.lightningDamage, DamageType.Lightning, entityId, traits.elementalWeakness, outHitEvents);
 
             bool isCrit = atk.critChance > 0f && atk.critDamageMultiplier >= 1f && Random.value < atk.critChance;
             if (isCrit)
@@ -50,7 +50,7 @@ public class DamageSystem
                 lightning *= m;
             }
 
-            if (useShock && shockDamageTakenMultiplierByEntityId.TryGetValue(enemy.entityId, out float shockMult))
+            if (useShock && shockDamageTakenMultiplierByEntityId.TryGetValue(entityId, out float shockMult))
             {
                 physical *= shockMult;
                 cold *= shockMult;
@@ -59,10 +59,10 @@ public class DamageSystem
             }
 
             float totalDamage = physical + cold + fire + lightning;
-            float healthBefore = enemy.health;
-            enemy.health -= totalDamage;
-            bool killed = healthBefore > 0f && enemy.health <= 0f;
-            float overkill = killed ? -enemy.health : 0f;
+            float healthBefore = vit.health;
+            vit.health -= totalDamage;
+            bool killed = healthBefore > 0f && vit.health <= 0f;
+            float overkill = killed ? -vit.health : 0f;
 
             if (emitDamageEvents && totalDamage > 0f)
             {
@@ -81,7 +81,9 @@ public class DamageSystem
                     spellInvocationId = atk.spellInvocationId,
                     wasKill = killed,
                     overkillDamage = overkill,
-                    bloodExtracted = totalDamage + overkill
+                    bloodExtracted = totalDamage + overkill,
+                    onHitEffectForVfx = atk.onHitEffect,
+                    onKillEffectForVfx = atk.onKillEffect
                 });
             }
 
@@ -89,14 +91,14 @@ public class DamageSystem
             {
                 outKillEvents.Add(new EnemyKilledEvent
                 {
-                    enemyEntityId = enemy.entityId,
+                    enemyEntityId = entityId,
                     overkillDamage = overkill,
-                    corruptionFlag = enemy.corruptionFlag,
-                    finalStatusAilments = enemy.statusAilmentFlag
+                    corruptionFlag = traits.corruptionFlag,
+                    finalStatusAilments = status
                 });
             }
 
-            enemies[hit.enemyIndex] = enemy;
+            enemies.Vitality[ei] = vit;
 
             atk.enemiesHit++;
             attackEntities[hit.attackEntityIndex] = atk;
@@ -106,18 +108,19 @@ public class DamageSystem
     static float ApplyDamageType(
         float baseDamage,
         DamageType type,
-        Enemy enemy,
+        int enemyEntityId,
+        DamageType elementalWeakness,
         NativeList<EnemyHitEvent> hitEvents)
     {
         if (baseDamage <= 0f) return 0f;
 
         float amount = baseDamage;
-        if (type == enemy.elementalWeakness)
+        if (type == elementalWeakness)
             amount *= WeaknessMultiplier;
 
         hitEvents.Add(new EnemyHitEvent
         {
-            enemyEntityId = enemy.entityId,
+            enemyEntityId = enemyEntityId,
             damageDealt = amount,
             damageType = type
         });

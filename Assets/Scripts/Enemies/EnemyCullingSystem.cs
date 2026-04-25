@@ -6,19 +6,20 @@ using Unity.Jobs;
 [BurstCompile]
 public struct EnemyPastEdgeCullJob : IJob
 {
-    [ReadOnly] public NativeArray<Enemy> Enemies;
+    [ReadOnly] public NativeArray<EnemyMotion> Motion;
+    [ReadOnly] public NativeArray<int> EntityIds;
     public float RightEdgeX;
     public NativeList<int> OutIndices;
     public NativeList<int> OutEntityIds;
 
     public void Execute()
     {
-        for (int i = 0; i < Enemies.Length; i++)
+        for (int i = 0; i < Motion.Length; i++)
         {
-            if (Enemies[i].position.x > RightEdgeX)
+            if (Motion[i].position.x > RightEdgeX)
             {
                 OutIndices.Add(i);
-                OutEntityIds.Add(Enemies[i].entityId);
+                OutEntityIds.Add(EntityIds[i]);
             }
         }
     }
@@ -26,12 +27,11 @@ public struct EnemyPastEdgeCullJob : IJob
 
 /// <summary>
 /// Collects enemies that have left the simulation bounds (e.g. past the right edge).
-/// Appends indices in ascending order (sequential scan).
 /// </summary>
 public class EnemyCullingSystem
 {
     public JobHandle ScheduleCollectEnemiesPastRightEdge(
-        NativeArray<Enemy> enemies,
+        EnemyBuffers enemies,
         float rightEdgeX,
         NativeList<int> outIndices,
         NativeList<int> outEntityIds,
@@ -44,7 +44,8 @@ public class EnemyCullingSystem
 
         return new EnemyPastEdgeCullJob
         {
-            Enemies = enemies,
+            Motion = enemies.Motion,
+            EntityIds = enemies.EntityIds,
             RightEdgeX = rightEdgeX,
             OutIndices = outIndices,
             OutEntityIds = outEntityIds

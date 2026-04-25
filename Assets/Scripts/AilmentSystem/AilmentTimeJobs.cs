@@ -302,18 +302,20 @@ public struct BuildEntityStatusAilmentFlagsMapJob : IJob
 [BurstCompile]
 public struct ApplyEntityStatusAilmentFlagsJob : IJobParallelFor
 {
-    public NativeArray<Enemy> Enemies;
+    public NativeArray<int> EntityIds;
+    public NativeArray<StatusAilmentFlag> Status;
     [ReadOnly] public NativeHashMap<int, StatusAilmentFlag> EntityFlags;
     public StatusAilmentFlag TrackedAilmentMask;
 
     public void Execute(int index)
     {
-        Enemy e = Enemies[index];
+        int id = EntityIds[index];
+        StatusAilmentFlag s = Status[index];
         StatusAilmentFlag fromTrackers = StatusAilmentFlag.None;
-        if (EntityFlags.TryGetValue(e.entityId, out StatusAilmentFlag f))
+        if (EntityFlags.TryGetValue(id, out StatusAilmentFlag f))
             fromTrackers = f;
-        e.statusAilmentFlag = (e.statusAilmentFlag & ~TrackedAilmentMask) | (fromTrackers & TrackedAilmentMask);
-        Enemies[index] = e;
+        s = (s & ~TrackedAilmentMask) | (fromTrackers & TrackedAilmentMask);
+        Status[index] = s;
     }
 }
 
@@ -331,7 +333,8 @@ public static class AilmentTimeScheduler
         | StatusAilmentFlag.Bleeding;
 
     public static void Tick(
-        NativeArray<Enemy> enemies,
+        NativeArray<int> entityIds,
+        NativeArray<StatusAilmentFlag> status,
         float deltaTime,
         NativeList<EnemyBleedStatus> bleed,
         NativeList<EnemyFrozenStatus> frozen,
@@ -384,7 +387,7 @@ public static class AilmentTimeScheduler
             }.Schedule(h);
         }
 
-        if (enemies.IsCreated && enemies.Length > 0)
+        if (entityIds.IsCreated && entityIds.Length > 0)
         {
             h = new BuildEntityStatusAilmentFlagsMapJob
             {
@@ -397,13 +400,14 @@ public static class AilmentTimeScheduler
                 OutMap = entityFlagsScratch
             }.Schedule(h);
 
-            int batch = math.max(1, enemies.Length / 32);
+            int batch = math.max(1, entityIds.Length / 32);
             h = new ApplyEntityStatusAilmentFlagsJob
             {
-                Enemies = enemies,
+                EntityIds = entityIds,
+                Status = status,
                 EntityFlags = entityFlagsScratch,
                 TrackedAilmentMask = TrackedStatusAilmentMask
-            }.Schedule(enemies.Length, batch, h);
+            }.Schedule(entityIds.Length, batch, h);
         }
 
         h.Complete();

@@ -69,6 +69,10 @@ public struct DamageEvent
     public float overkillDamage;
     /// <summary>Blood collected from this hit. Currently damageDealt + overkillDamage; future blood multipliers apply here.</summary>
     public float bloodExtracted;
+    /// <summary>Snapshotted at hit time so VFX work after the attack entity row is removed (swap-back / expiration).</summary>
+    public EffectSpriteConfigRuntime onHitEffectForVfx;
+    /// <summary>Snapshotted at hit time; use with <see cref="wasKill"/>.</summary>
+    public EffectSpriteConfigRuntime onKillEffectForVfx;
 }
 
 /// <summary>
@@ -82,24 +86,6 @@ public struct StatusAilmentAppliedEvent
     public int spellInvocationId;
     public int enemyIndex;
     public StatusAilmentFlag ailmentFlag;
-}
-
-/// <summary>Per-frame ignite DoT tick signal; resolver reads tracker row and computes damage.</summary>
-public struct IgniteTickSignal
-{
-    public int igniteListIndex;
-}
-
-/// <summary>Per-frame poison DoT tick signal; resolver reads tracker row and computes damage.</summary>
-public struct PoisonTickSignal
-{
-    public int poisonListIndex;
-}
-
-/// <summary>Bleed time tick signal (list index into bleed tracker).</summary>
-public struct BleedTickSignal
-{
-    public int bleedListIndex;
 }
 
 /// <summary>Which ailment produced a resolved <see cref="TickDamageEvent"/>.</summary>

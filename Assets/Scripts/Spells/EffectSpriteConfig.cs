@@ -32,7 +32,7 @@ public class EffectSpriteConfig : ScriptableObject
 
 /// <summary>
 /// Blittable runtime data for a configured effect sprite. Carried on AttackEntity;
-/// spawned into EffectSpriteManager when events occur.
+/// spawned into EffectSpriteController when events occur.
 /// A frameIndex of -1 means no effect is configured.
 /// </summary>
 public struct EffectSpriteConfigRuntime
@@ -51,7 +51,7 @@ public struct EffectSpriteConfigRuntime
 
 /// <summary>
 /// A live effect sprite with position, visual, and remaining lifetime.
-/// Managed by EffectSpriteManager; rendered alongside enemies and attack entities.
+/// Managed by EffectSpriteController; rendered alongside enemies and attack entities.
 /// Blittable for NativeList storage.
 /// </summary>
 public struct EffectSprite

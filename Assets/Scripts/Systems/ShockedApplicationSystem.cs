@@ -10,7 +10,8 @@ public struct ShockedTrackAndApplyJob : IJob
 {
     [ReadOnly] public NativeArray<DamageEvent> HitEvents;
     [ReadOnly] public NativeArray<ShockedApplierRuntime> Appliers;
-    public NativeArray<Enemy> Enemies;
+    public NativeArray<int> EntityIds;
+    public NativeArray<StatusAilmentFlag> Status;
     public NativeList<EnemyShockedStatus> Tracker;
     public NativeList<StatusAilmentAppliedEvent> AilmentEvents;
     public float TimeApplied;
@@ -36,12 +37,13 @@ public struct ShockedTrackAndApplyJob : IJob
             if (!proc)
                 continue;
 
-            Enemy enemy = Enemies[hit.enemyIndex];
-            bool alreadyHad = (enemy.statusAilmentFlag & StatusAilmentFlag.Shocked) != 0;
+            int entityId = EntityIds[hit.enemyIndex];
+            StatusAilmentFlag flags = Status[hit.enemyIndex];
+            bool alreadyHad = (flags & StatusAilmentFlag.Shocked) != 0;
 
             Tracker.Add(new EnemyShockedStatus
             {
-                entityID = enemy.entityId,
+                entityID = entityId,
                 spellId = hit.spellId,
                 spellInvocationId = hit.spellInvocationId,
                 timeApplied = TimeApplied,
@@ -49,8 +51,8 @@ public struct ShockedTrackAndApplyJob : IJob
                 damagerMultiplier = applier.incomingDamageTakenMultiplier
             });
 
-            enemy.statusAilmentFlag |= StatusAilmentFlag.Shocked;
-            Enemies[hit.enemyIndex] = enemy;
+            flags |= StatusAilmentFlag.Shocked;
+            Status[hit.enemyIndex] = flags;
 
             if (!alreadyHad)
             {
@@ -73,7 +75,8 @@ public class ShockedApplicationSystem
     public JobHandle ScheduleTrack(
         NativeArray<DamageEvent> damageEvents,
         NativeArray<ShockedApplierRuntime> appliers,
-        NativeArray<Enemy> enemies,
+        NativeArray<int> entityIds,
+        NativeArray<StatusAilmentFlag> status,
         NativeList<EnemyShockedStatus> tracker,
         NativeList<StatusAilmentAppliedEvent> ailmentEvents,
         float timeApplied,
@@ -84,7 +87,8 @@ public class ShockedApplicationSystem
         {
             HitEvents = damageEvents,
             Appliers = appliers,
-            Enemies = enemies,
+            EntityIds = entityIds,
+            Status = status,
             Tracker = tracker,
             AilmentEvents = ailmentEvents,
             TimeApplied = timeApplied,

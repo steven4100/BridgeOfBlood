@@ -4,18 +4,63 @@ using Unity.Mathematics;
 
 namespace BridgeOfBlood.Data.Enemies
 {
-	public struct Enemy
+	/// <summary>Position and horizontal motion; hot path for movement and spatial queries.</summary>
+	public struct EnemyMotion
 	{
 		public float2 position;
 		public float moveSpeed;
+	}
+
+	/// <summary>Health pool; hot path for damage and death checks.</summary>
+	public struct EnemyVitality
+	{
 		public float health;
 		public float maxHealth;
+	}
+
+	/// <summary>Damage resolution metadata.</summary>
+	public struct EnemyCombatTraits
+	{
 		public EnemyCorruptionFlag corruptionFlag;
 		public DamageType elementalWeakness;
-		public StatusAilmentFlag statusAilmentFlag;
-		public int entityId;
+	}
+
+	/// <summary>Flipbook and DoT flash presentation.</summary>
+	public struct EnemyPresentation
+	{
 		public EntityVisual visual;
 		public float visualTime;
+		public float ailmentFlashTimer;
+		public TickDamageSource ailmentFlashSource;
+	}
+
+	/// <summary>Parallel column views into <see cref="EnemyManager"/> storage; valid until next list mutation.</summary>
+	public struct EnemyBuffers
+	{
+		public NativeArray<EnemyMotion> Motion;
+		public NativeArray<EnemyVitality> Vitality;
+		public NativeArray<int> EntityIds;
+		public NativeArray<EnemyCombatTraits> CombatTraits;
+		public NativeArray<StatusAilmentFlag> Status;
+		public NativeArray<EnemyPresentation> Presentation;
+
+		public EnemyBuffers(
+			NativeArray<EnemyMotion> motion,
+			NativeArray<EnemyVitality> vitality,
+			NativeArray<int> entityIds,
+			NativeArray<EnemyCombatTraits> combatTraits,
+			NativeArray<StatusAilmentFlag> status,
+			NativeArray<EnemyPresentation> presentation)
+		{
+			Motion = motion;
+			Vitality = vitality;
+			EntityIds = entityIds;
+			CombatTraits = combatTraits;
+			Status = status;
+			Presentation = presentation;
+		}
+
+		public int Length => Motion.Length;
 	}
 
 	public struct EnemyBleedStatus
@@ -25,9 +70,7 @@ namespace BridgeOfBlood.Data.Enemies
 		public int spellInvocationId;
 		public float timeApplied;
 		public float lifetime;
-		/// <summary>Damage dealt each time the bleed ticks (discrete).</summary>
 		public float damagerPerTick;
-		/// <summary>Simulation time when this row last dealt tick damage; starts at a large negative sentinel until first tick.</summary>
 		public float lastTimeTicked;
 	}
 
@@ -38,7 +81,6 @@ namespace BridgeOfBlood.Data.Enemies
 		public int spellInvocationId;
 		public float timeApplied;
 		public float lifetime;
-		/// <summary>Damage dealt each time poison ticks (discrete).</summary>
 		public float damagerPerTick;
 		public float lastTimeTicked;
 	}
@@ -50,7 +92,6 @@ namespace BridgeOfBlood.Data.Enemies
 		public int spellInvocationId;
 		public float timeApplied;
 		public float lifetime;
-		/// <summary>Damage dealt each time ignite ticks (discrete).</summary>
 		public float damagerPerTick;
 		public float lastTimeTicked;
 	}
@@ -83,26 +124,23 @@ namespace BridgeOfBlood.Data.Enemies
 		public float damagerMultiplier;
 	}
 
-
-
-    public struct EnemyHitEvent
+	public struct EnemyHitEvent
 	{
 		public int enemyEntityId;
-		public int spellId; // Which spell caused the hit
-		public int spellInvocationId; // Which invocation of that spell
+		public int spellId;
+		public int spellInvocationId;
 		public StatusAilmentFlag statusAilmentsApplied;
 		public float damageDealt;
 		public DamageType damageType;
 	}
-	
+
 	public struct EnemyKilledEvent
 	{
 		public int enemyEntityId;
-		public int spellId; // Which spell caused the kill
-		public int spellInvocationId; // Which invocation of that spell
+		public int spellId;
+		public int spellInvocationId;
 		public float overkillDamage;
 		public EnemyCorruptionFlag corruptionFlag;
 		public StatusAilmentFlag finalStatusAilments;
 	}
 }
-

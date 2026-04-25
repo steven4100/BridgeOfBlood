@@ -1,5 +1,4 @@
 using BridgeOfBlood.Data.Enemies;
-using Unity.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -19,14 +18,14 @@ public class EnemyManagerGizmoDrawer : IDebugDrawable
     public void DrawGizmos(Transform transform)
     {
         if (_manager == null || transform == null) return;
-        NativeArray<Enemy> enemies = _manager.GetEnemies();
+        EnemyBuffers enemies = _manager.GetBuffers();
         if (enemies.Length == 0) return;
 
         Gizmos.color = Color.red;
         for (int i = 0; i < enemies.Length; i++)
         {
-            var e = enemies[i];
-            Vector3 localPos = new Vector3(e.position.x, e.position.y, 0f);
+            var m = enemies.Motion[i];
+            Vector3 localPos = new Vector3(m.position.x, m.position.y, 0f);
             Vector3 worldPos = transform.TransformPoint(localPos);
             Gizmos.DrawSphere(worldPos, _radius);
         }

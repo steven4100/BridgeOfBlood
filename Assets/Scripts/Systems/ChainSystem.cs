@@ -29,9 +29,9 @@ public class ChainSystem
         NativeArray<AttackEntity> attackEntities,
         NativeArray<ChainPolicyRuntime> chainPolicies,
         GridSpatialPartition grid,
-        NativeArray<Enemy>.ReadOnly enemies)
+        NativeArray<EnemyMotion>.ReadOnly enemyMotion)
     {
-        if (attackEntities.Length == 0 || chainPolicies.Length == 0 || enemies.Length == 0)
+        if (attackEntities.Length == 0 || chainPolicies.Length == 0 || enemyMotion.Length == 0)
             return;
 
         for (int h = 0; h < hitEvents.Length; h++)
@@ -70,7 +70,7 @@ public class ChainSystem
                 continue;
             }
 
-            float2 nextPos = enemies[bestIndex].position;
+            float2 nextPos = enemyMotion[bestIndex].position;
             float2 dir = math.normalize(nextPos - hit.hitPosition);
             float speed = math.length(atk.velocity);
             if (speed < 0.0001f) speed = 1f;

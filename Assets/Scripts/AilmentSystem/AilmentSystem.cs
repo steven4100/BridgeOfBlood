@@ -56,7 +56,7 @@ public class AilmentSystem
     }
 
     /// <summary>
-    /// Steps remaining ailment duration, drops expired tracker rows, and syncs <see cref="Enemy.statusAilmentFlag"/> from trackers.
+    /// Steps remaining ailment duration, drops expired tracker rows, and syncs enemy status flags from trackers.
     /// </summary>
     public NativeList<EnemyIgniteStatus> IgniteStatus => _enemyIgniteStatus;
     public NativeList<EnemyPoisonStatus> PoisonStatus => _enemyPoisonStatus;
@@ -78,10 +78,11 @@ public class AilmentSystem
         }
     }
 
-    public void TickStatusAilmentDurations(NativeArray<Enemy> enemies, float deltaTime)
+    public void TickStatusAilmentDurations(EnemyBuffers enemies, float deltaTime)
     {
         AilmentTimeScheduler.Tick(
-            enemies,
+            enemies.EntityIds,
+            enemies.Status,
             deltaTime,
             _enemyBleedStatus,
             _enemyFrozenStatus,
@@ -93,7 +94,7 @@ public class AilmentSystem
     }
 
     public void ProcessAilmentApplication(
-        NativeArray<Enemy> enemies,
+        EnemyBuffers enemies,
         NativeArray<DamageEvent> damageEvents,
         AilmentApplierProvider ailmentAppliers,
         NativeList<StatusAilmentAppliedEvent> statusAilmentAppliedEvents,
@@ -108,7 +109,8 @@ public class AilmentSystem
         JobHandle h1 = _ignitedSystem.ScheduleTrack(
             damageEvents,
             ailmentAppliers.GetIgnitedAppliers(),
-            enemies,
+            enemies.EntityIds,
+            enemies.Status,
             _enemyIgniteStatus,
             statusAilmentAppliedEvents,
             ailmentTime,
@@ -117,7 +119,8 @@ public class AilmentSystem
         JobHandle h2 = _shockedSystem.ScheduleTrack(
             damageEvents,
             ailmentAppliers.GetShockedAppliers(),
-            enemies,
+            enemies.EntityIds,
+            enemies.Status,
             _enemyShockedStatus,
             statusAilmentAppliedEvents,
             ailmentTime,
@@ -126,7 +129,8 @@ public class AilmentSystem
         JobHandle h3 = _poisonedSystem.ScheduleTrack(
             damageEvents,
             ailmentAppliers.GetPoisonedAppliers(),
-            enemies,
+            enemies.EntityIds,
+            enemies.Status,
             _enemyPoisonStatus,
             statusAilmentAppliedEvents,
             ailmentTime,
@@ -135,7 +139,8 @@ public class AilmentSystem
         JobHandle h4 = _stunnedSystem.ScheduleTrack(
             damageEvents,
             ailmentAppliers.GetStunnedAppliers(),
-            enemies,
+            enemies.EntityIds,
+            enemies.Status,
             _enemyStunnedStatus,
             statusAilmentAppliedEvents,
             ailmentTime,
@@ -144,7 +149,8 @@ public class AilmentSystem
         JobHandle h5 = _frozenSystem.ScheduleTrack(
             damageEvents,
             ailmentAppliers.GetFrozenAppliers(),
-            enemies,
+            enemies.EntityIds,
+            enemies.Status,
             _enemyFrozenStatus,
             statusAilmentAppliedEvents,
             ailmentTime,
@@ -153,7 +159,8 @@ public class AilmentSystem
         JobHandle h6 = _bleedSystem.ScheduleTrack(
             damageEvents,
             ailmentAppliers.GetBleedAppliers(),
-            enemies,
+            enemies.EntityIds,
+            enemies.Status,
             _enemyBleedStatus,
             statusAilmentAppliedEvents,
             ailmentTime,

@@ -71,7 +71,7 @@ MonoBehaviour:
     - rid: 4884261816470863933
       type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
-        value: 50
+        value: 150
     - rid: 4884261816470863934
       type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
       data:

@@ -7,13 +7,10 @@ using Unity.Collections;
 /// </summary>
 public static class RehitRecordSystem
 {
-    /// <summary>
-    /// Records hit events into the corresponding rehit policy lists. When a policy's recentHits is at capacity, evicts the oldest entry (smallest hitTimeAlive) before adding.
-    /// </summary>
     public static void RecordRehitHits(
         NativeArray<HitEvent>.ReadOnly hitEvents,
         NativeArray<AttackEntity>.ReadOnly attackEntities,
-        NativeArray<Enemy>.ReadOnly enemies,
+        NativeArray<int>.ReadOnly entityIds,
         NativeArray<RehitPolicyRuntime> rehitPolicies)
     {
         for (int i = 0; i < hitEvents.Length; i++)
@@ -21,14 +18,13 @@ public static class RehitRecordSystem
             HitEvent hit = hitEvents[i];
             int ai = hit.attackEntityIndex;
             if (ai < 0 || ai >= rehitPolicies.Length) continue;
-            if (hit.enemyIndex < 0 || hit.enemyIndex >= enemies.Length) continue;
+            if (hit.enemyIndex < 0 || hit.enemyIndex >= entityIds.Length) continue;
 
             RehitPolicyRuntime rehit = rehitPolicies[ai];
             if (rehit.rehitCooldownSeconds <= 0f) continue;
 
             AttackEntity atk = attackEntities[ai];
-            Enemy enemy = enemies[hit.enemyIndex];
-            var entry = new RehitEntry { enemyId = enemy.entityId, hitTimeAlive = atk.timeAlive };
+            var entry = new RehitEntry { enemyId = entityIds[hit.enemyIndex], hitTimeAlive = atk.timeAlive };
 
             if (rehit.recentHits.Length >= rehit.recentHits.Capacity)
             {

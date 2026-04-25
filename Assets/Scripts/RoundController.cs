@@ -134,9 +134,10 @@ public class RoundController
 
         EvaluateItems(mods);
 
+        var sim = _simulation.State;
         SpellCastResult castResult = _loopedSpellCaster.AttemptToCastNextSpell(
-            _simulation.SimulationTime, _player.Position, castRequested, mods);
-        _loopedSpellCaster.Update(_simulation.SimulationTime, new float2(-1f, 0f));
+            sim.SimulationTime, _player.Position, castRequested, mods);
+        _loopedSpellCaster.Update(sim.SimulationTime, new float2(-1f, 0f));
 
         bool advanceTime = !hasController || debugCtrl.ShouldAdvanceTime;
         if (advanceTime)
@@ -165,22 +166,14 @@ public class RoundController
         }
 
         float frameDt = hasController ? debugCtrl.DeltaTime : deltaTime;
-        _telemetryAggregator.ProcessFrame(
-            _simulation.GetDamageEvents(),
-            _simulation.GetTickDamageEvents(),
-            _simulation.GetStatusAilmentAppliedEvents(),
-            frameDt,
-            _simulation.SimulationTime,
-            castResult);
+        _telemetryAggregator.ProcessFrame(sim, frameDt, castResult);
 
         BloodExtractedThisRound = _telemetryAggregator.CurrentRound.aggregate.bloodExtracted;
 
-        _damageNumberController.SpawnFromDamageEvents(_simulation.GetDamageEvents(), _simulation.GetEnemies());
-        _damageNumberController.SpawnFromTickDamageEvents(_simulation.GetTickDamageEvents(), _simulation.GetEnemies());
-        _effectSpriteController.SpawnFromDamageEvents(_simulation.GetDamageEvents(), _simulation.GetAttackEntities());
-        _simulation.ClearDamageEvents();
-        _simulation.ClearTickDamageEvents();
-        _simulation.ClearStatusAilmentAppliedEvents();
+        _damageNumberController.SpawnFromDamageEvents(sim.DamageEvents, sim.EnemyBuffers);
+        _damageNumberController.SpawnFromTickDamageEvents(sim.TickDamageEvents, sim.EnemyBuffers);
+        _effectSpriteController.SpawnFromDamageEvents(sim.DamageEvents);
+        _simulation.ClearFrameCombatEvents();
 
         if (advanceTime)
         {
@@ -189,22 +182,19 @@ public class RoundController
             _effectSpriteController.Update(effectDt);
         }
 
-        _spriteInstanceBuilder.Build(_simulation.GetEnemies(), _simulation.GetAttackEntities(), _effectSpriteController.GetEntities());
+        _spriteInstanceBuilder.Build(sim.EnemyBuffers, sim.AttackEntities, _effectSpriteController.GetEntities());
         _spriteRenderer.Render(_spriteInstanceBuilder.Buffer, _spriteInstanceBuilder.Count, simulationZone, cam);
-        _attackDebugRenderer.Render(_simulation.GetAttackEntities(), simulationZone, cam);
+        _attackDebugRenderer.Render(sim.AttackEntities, simulationZone, cam);
         _damageNumberController.Render(simulationZone, cam);
 
         if (hasController)
             debugCtrl.NotifyFrameComplete();
 
-        if (_config.debugLogTiming)
-            Debug.Log($"[Timing] Total: {totalMs}ms");
-
         UpdatePhase(
             loopsExhausted,
             _loopedSpellCaster.HasActiveCasts,
             _loopedSpellCaster.HasPendingSpawns,
-            _simulation.GetAttackEntityManager().EntityCount);
+            sim.AttackEntityCount);
 
         if (Phase == GameLoopPhase.RoundEnd)
         {

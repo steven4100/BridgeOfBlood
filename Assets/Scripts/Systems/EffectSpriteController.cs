@@ -1,42 +1,76 @@
 using Unity.Collections;
+using Unity.Mathematics;
 
 /// <summary>
-/// Orchestrates effect sprite lifecycle: spawns from damage events, updates lifetimes, exposes live sprites for rendering.
+/// Effect splashes from combat events: NativeList-backed storage, spawn from damage events,
+/// ticks lifetimes each frame, exposes sprites for rendering.
 /// </summary>
 public class EffectSpriteController
 {
-    private readonly EffectSpriteManager _manager;
+    private NativeList<EffectSprite> _sprites;
 
-    public EffectSpriteController()
+    public EffectSpriteController(int initialCapacity = 256)
     {
-        _manager = new EffectSpriteManager();
+        _sprites = new NativeList<EffectSprite>(initialCapacity, Allocator.Persistent);
     }
 
     /// <summary>
     /// Spawns on-hit and on-kill effect sprites from this frame's damage events.
-    /// Must be called before ClearDamageEvents and before attack entities are removed.
+    /// Uses per-event VFX snapshots so effects still spawn after the attack entity row is removed (e.g. single-frame expiration).
     /// </summary>
-    public void SpawnFromDamageEvents(NativeArray<DamageEvent> damageEvents, NativeArray<AttackEntity> attackEntities)
+    public void SpawnFromDamageEvents(NativeArray<DamageEvent> damageEvents)
     {
         for (int i = 0; i < damageEvents.Length; i++)
         {
             DamageEvent evt = damageEvents[i];
-            if (evt.attackEntityIndex < 0 || evt.attackEntityIndex >= attackEntities.Length)
-                continue;
 
-            AttackEntity atk = attackEntities[evt.attackEntityIndex];
+            if (evt.onHitEffectForVfx.IsValid)
+                Spawn(evt.position, evt.onHitEffectForVfx.visual, evt.onHitEffectForVfx.lifetime);
 
-            if (atk.onHitEffect.IsValid)
-                _manager.Spawn(evt.position, atk.onHitEffect.visual, atk.onHitEffect.lifetime);
-
-            if (evt.wasKill && atk.onKillEffect.IsValid)
-                _manager.Spawn(evt.position, atk.onKillEffect.visual, atk.onKillEffect.lifetime);
+            if (evt.wasKill && evt.onKillEffectForVfx.IsValid)
+                Spawn(evt.position, evt.onKillEffectForVfx.visual, evt.onKillEffectForVfx.lifetime);
         }
     }
 
-    public void Update(float dt) => _manager.Update(dt);
+    private void Spawn(float2 position, EntityVisual visual, float lifetime)
+    {
+        if (visual.frameIndex < 0 || lifetime <= 0f) return;
 
-    public NativeArray<EffectSprite> GetEntities() => _manager.GetEntities();
+        _sprites.Add(new EffectSprite
+        {
+            position = position,
+            visual = visual,
+            timeAlive = 0f,
+            lifetime = lifetime
+        });
+    }
 
-    public void Dispose() => _manager?.Dispose();
+    public void Update(float dt)
+    {
+        for (int i = _sprites.Length - 1; i >= 0; i--)
+        {
+            EffectSprite s = _sprites[i];
+            s.timeAlive += dt;
+
+            if (s.timeAlive >= s.lifetime)
+            {
+                _sprites.RemoveAtSwapBack(i);
+                continue;
+            }
+
+            _sprites[i] = s;
+        }
+    }
+
+    public NativeArray<EffectSprite> GetEntities() => _sprites.AsArray();
+
+    public int Count => _sprites.Length;
+
+    public void Clear() => _sprites.Clear();
+
+    public void Dispose()
+    {
+        if (_sprites.IsCreated)
+            _sprites.Dispose();
+    }
 }

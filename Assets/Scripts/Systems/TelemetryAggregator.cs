@@ -98,6 +98,21 @@ public class TelemetryAggregator
         AccumulateFrameIntoHigherLevels();
     }
 
+    /// <summary>Feeds LCD combat buffers from <see cref="GameSimulation.State"/> into telemetry.</summary>
+    public void ProcessFrame(
+        GameSimulation.SimulationState state,
+        float deltaTime,
+        SpellCastResult castResult)
+    {
+        ProcessFrame(
+            state.DamageEvents,
+            state.TickDamageEvents,
+            state.StatusAilmentAppliedEvents,
+            deltaTime,
+            state.SimulationTime,
+            castResult);
+    }
+
     private void BuildFrameSnapshot(
         NativeArray<DamageEvent> damageEvents,
         NativeArray<TickDamageEvent> tickDamageEvents,

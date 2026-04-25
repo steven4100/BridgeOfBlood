@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using BridgeOfBlood.Data.Enemies;
 using Unity.Collections;
 using Unity.Mathematics;
 
@@ -50,15 +51,16 @@ public class EnemyEmissionTargetProvider : IEmissionTargetProvider, System.IDisp
 
         _queryBuffer.Clear();
         _enemyManager.Grid.QueryNeighbors(position, range, _queryBuffer);
-        var enemies = _enemyManager.GetEnemies();
+        EnemyBuffers buf = _enemyManager.GetBuffers();
         float rangeSq = range * range;
 
         for (int i = 0; i < _queryBuffer.Length && outPositions.Count < maxResults; i++)
         {
             int idx = _queryBuffer[i];
-            if (idx >= enemies.Length) continue;
-            if (math.distancesq(position, enemies[idx].position) <= rangeSq)
-                outPositions.Add(enemies[idx].position);
+            if (idx >= buf.Length) continue;
+            float2 p = buf.Motion[idx].position;
+            if (math.distancesq(position, p) <= rangeSq)
+                outPositions.Add(p);
         }
     }
 

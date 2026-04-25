@@ -10,7 +10,8 @@ public struct IgnitedTrackAndApplyJob : IJob
 {
     [ReadOnly] public NativeArray<DamageEvent> HitEvents;
     [ReadOnly] public NativeArray<IgnitedApplierRuntime> Appliers;
-    public NativeArray<Enemy> Enemies;
+    public NativeArray<int> EntityIds;
+    public NativeArray<StatusAilmentFlag> Status;
     public NativeList<EnemyIgniteStatus> Tracker;
     public NativeList<StatusAilmentAppliedEvent> AilmentEvents;
     public float TimeApplied;
@@ -36,15 +37,16 @@ public struct IgnitedTrackAndApplyJob : IJob
             if (!proc)
                 continue;
 
-            Enemy enemy = Enemies[hit.enemyIndex];
-            bool alreadyHad = (enemy.statusAilmentFlag & StatusAilmentFlag.Ignited) != 0;
+            int entityId = EntityIds[hit.enemyIndex];
+            StatusAilmentFlag flags = Status[hit.enemyIndex];
+            bool alreadyHad = (flags & StatusAilmentFlag.Ignited) != 0;
 
             const float dotFrac = 0.2f;
             const float neverTicked = -100000f;
             float damagePerTick = hit.damageDealt * dotFrac;
             Tracker.Add(new EnemyIgniteStatus
             {
-                entityID = enemy.entityId,
+                entityID = entityId,
                 spellId = hit.spellId,
                 spellInvocationId = hit.spellInvocationId,
                 timeApplied = TimeApplied,
@@ -53,8 +55,8 @@ public struct IgnitedTrackAndApplyJob : IJob
                 lastTimeTicked = neverTicked
             });
 
-            enemy.statusAilmentFlag |= StatusAilmentFlag.Ignited;
-            Enemies[hit.enemyIndex] = enemy;
+            flags |= StatusAilmentFlag.Ignited;
+            Status[hit.enemyIndex] = flags;
 
             if (!alreadyHad)
             {
@@ -77,7 +79,8 @@ public class IgnitedApplicationSystem
     public JobHandle ScheduleTrack(
         NativeArray<DamageEvent> damageEvents,
         NativeArray<IgnitedApplierRuntime> appliers,
-        NativeArray<Enemy> enemies,
+        NativeArray<int> entityIds,
+        NativeArray<StatusAilmentFlag> status,
         NativeList<EnemyIgniteStatus> tracker,
         NativeList<StatusAilmentAppliedEvent> ailmentEvents,
         float timeApplied,
@@ -88,7 +91,8 @@ public class IgnitedApplicationSystem
         {
             HitEvents = damageEvents,
             Appliers = appliers,
-            Enemies = enemies,
+            EntityIds = entityIds,
+            Status = status,
             Tracker = tracker,
             AilmentEvents = ailmentEvents,
             TimeApplied = timeApplied,

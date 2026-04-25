@@ -10,7 +10,8 @@ public struct FrozenTrackAndApplyJob : IJob
 {
     [ReadOnly] public NativeArray<DamageEvent> HitEvents;
     [ReadOnly] public NativeArray<FrozenApplierRuntime> Appliers;
-    public NativeArray<Enemy> Enemies;
+    public NativeArray<int> EntityIds;
+    public NativeArray<StatusAilmentFlag> Status;
     public NativeList<EnemyFrozenStatus> Tracker;
     public NativeList<StatusAilmentAppliedEvent> AilmentEvents;
     public float TimeApplied;
@@ -36,20 +37,21 @@ public struct FrozenTrackAndApplyJob : IJob
             if (!proc)
                 continue;
 
-            Enemy enemy = Enemies[hit.enemyIndex];
-            bool alreadyHad = (enemy.statusAilmentFlag & StatusAilmentFlag.Frozen) != 0;
+            int entityId = EntityIds[hit.enemyIndex];
+            StatusAilmentFlag flags = Status[hit.enemyIndex];
+            bool alreadyHad = (flags & StatusAilmentFlag.Frozen) != 0;
 
             Tracker.Add(new EnemyFrozenStatus
             {
-                entityID = enemy.entityId,
+                entityID = entityId,
                 spellId = hit.spellId,
                 spellInvocationId = hit.spellInvocationId,
                 timeApplied = TimeApplied,
                 lifetime = TrackedLifetime
             });
 
-            enemy.statusAilmentFlag |= StatusAilmentFlag.Frozen;
-            Enemies[hit.enemyIndex] = enemy;
+            flags |= StatusAilmentFlag.Frozen;
+            Status[hit.enemyIndex] = flags;
 
             if (!alreadyHad)
             {
@@ -72,7 +74,8 @@ public class FrozenApplicationSystem
     public JobHandle ScheduleTrack(
         NativeArray<DamageEvent> damageEvents,
         NativeArray<FrozenApplierRuntime> appliers,
-        NativeArray<Enemy> enemies,
+        NativeArray<int> entityIds,
+        NativeArray<StatusAilmentFlag> status,
         NativeList<EnemyFrozenStatus> tracker,
         NativeList<StatusAilmentAppliedEvent> ailmentEvents,
         float timeApplied,
@@ -83,7 +86,8 @@ public class FrozenApplicationSystem
         {
             HitEvents = damageEvents,
             Appliers = appliers,
-            Enemies = enemies,
+            EntityIds = entityIds,
+            Status = status,
             Tracker = tracker,
             AilmentEvents = ailmentEvents,
             TimeApplied = timeApplied,

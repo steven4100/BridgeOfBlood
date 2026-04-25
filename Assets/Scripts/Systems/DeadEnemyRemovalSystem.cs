@@ -1,22 +1,46 @@
 using BridgeOfBlood.Data.Enemies;
+using Unity.Burst;
 using Unity.Collections;
+using Unity.Jobs;
 
 /// <summary>
 /// Scans enemies in index order and appends removal pairs for any with health at or below zero (indices ascending).
-/// Call after DamageSystem so dead enemies are cleaned up before the next frame.
 /// </summary>
 public class DeadEnemyRemovalSystem
 {
-    public void CollectDeadEnemies(NativeArray<Enemy> enemies, NativeList<int> outIndices, NativeList<int> outEntityIds)
+    [BurstCompile]
+    private struct CollectDeadEnemiesJob : IJob
     {
-        for (int i = 0; i < enemies.Length; i++)
+        [ReadOnly] public NativeArray<EnemyVitality> Vitality;
+        [ReadOnly] public NativeArray<int> EntityIds;
+        public NativeList<int> OutIndices;
+        public NativeList<int> OutEntityIds;
+
+        public void Execute()
         {
-            if (enemies[i].health <= 0f)
+            for (int i = 0; i < Vitality.Length; i++)
             {
-                Enemy e = enemies[i];
-                outIndices.Add(i);
-                outEntityIds.Add(e.entityId);
+                if (Vitality[i].health > 0f)
+                    continue;
+                OutIndices.Add(i);
+                OutEntityIds.Add(EntityIds[i]);
             }
         }
+    }
+
+    public void CollectDeadEnemies(EnemyBuffers enemies, NativeList<int> outIndices, NativeList<int> outEntityIds)
+    {
+        outIndices.Clear();
+        outEntityIds.Clear();
+
+        JobHandle h = new CollectDeadEnemiesJob
+        {
+            Vitality = enemies.Vitality,
+            EntityIds = enemies.EntityIds,
+            OutIndices = outIndices,
+            OutEntityIds = outEntityIds
+        }.Schedule();
+
+        h.Complete();
     }
 }

@@ -27,8 +27,8 @@ public class EnemySelector : MonoBehaviour
 		var sceneManager = GetComponentInParent<TestSceneManager>();
 		if (sceneManager == null || sceneManager.Simulation == null) return;
 
-		var enemies = sceneManager.Simulation.GetEnemies();
-		if (!enemies.IsCreated || enemies.Length == 0) return;
+		var enemies = sceneManager.Simulation.State.EnemyBuffers;
+		if (!enemies.Motion.IsCreated || enemies.Length == 0) return;
 
 		float bestDist = float.MaxValue;
 		int bestId = -1;
@@ -36,11 +36,11 @@ public class EnemySelector : MonoBehaviour
 
 		for (int i = 0; i < enemies.Length; i++)
 		{
-			float dist = math.distancesq(click, enemies[i].position);
+			float dist = math.distancesq(click, enemies.Motion[i].position);
 			if (dist < bestDist)
 			{
 				bestDist = dist;
-				bestId = enemies[i].entityId;
+				bestId = enemies.EntityIds[i];
 			}
 		}
 

@@ -1,12 +1,12 @@
 using BridgeOfBlood.Data.Shared;
+using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
 namespace BridgeOfBlood.Data.Enemies
 {
 	/// <summary>
-	/// Authoring data for enemies. Converted to runtime Enemy struct during initialization.
-	/// Simple design: HP, movement pattern, speed, elemental weakness.
+	/// Authoring data for enemies. Appended as SoA column rows during spawn.
 	/// </summary>
 	[CreateAssetMenu(fileName = "EnemyData", menuName = "BridgeOfBlood/Enemies/Enemy Authoring Data")]
 	public class EnemyAuthoringData : ScriptableObject
@@ -34,29 +34,38 @@ namespace BridgeOfBlood.Data.Enemies
 		public SpriteProvider visual;
 
 		/// <summary>
-		/// Creates a runtime Enemy struct from this authoring data.
-		/// Uses deterministic random seed for moveSpeed calculation.
+		/// Appends one enemy as parallel column rows. Uses deterministic random seed for moveSpeed.
 		/// </summary>
-		public Enemy CreateRuntimeEnemy(float2 position, int entityId, uint randomSeed)
+		public void AppendRuntimeColumns(
+			float2 position,
+			int entityId,
+			uint randomSeed,
+			NativeList<EnemyMotion> motion,
+			NativeList<EnemyVitality> vitality,
+			NativeList<int> entityIds,
+			NativeList<EnemyCombatTraits> combatTraits,
+			NativeList<StatusAilmentFlag> status,
+			NativeList<EnemyPresentation> presentation)
 		{
 			var random = Unity.Mathematics.Random.CreateFromIndex(randomSeed);
-			var moveSpeed = random.NextFloat(minMoveSpeed, maxMoveSpeed);
+			float moveSpeed = random.NextFloat(minMoveSpeed, maxMoveSpeed);
 
-			return new Enemy
+			motion.Add(new EnemyMotion { position = position, moveSpeed = moveSpeed });
+			vitality.Add(new EnemyVitality { health = healthPoints, maxHealth = healthPoints });
+			entityIds.Add(entityId);
+			combatTraits.Add(new EnemyCombatTraits
 			{
-				position = position,
-				moveSpeed = moveSpeed,
-				health = healthPoints,
-				maxHealth = healthPoints,
 				corruptionFlag = corruptionFlag,
-				elementalWeakness = elementalWeakness,
-				statusAilmentFlag = 0,
-				entityId = entityId,
-				visual = visual != null
-					? visual.Resolve(randomSeed)
-					: EntityVisual.None,
-				visualTime = 0f
-			};
+				elementalWeakness = elementalWeakness
+			});
+			status.Add(0);
+			presentation.Add(new EnemyPresentation
+			{
+				visual = visual != null ? visual.Resolve(randomSeed) : EntityVisual.None,
+				visualTime = 0f,
+				ailmentFlashTimer = 0f,
+				ailmentFlashSource = default
+			});
 		}
 	}
 }

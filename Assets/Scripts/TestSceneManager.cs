@@ -107,8 +107,8 @@ public class TestSceneManager : MonoBehaviour
         };
         _simulation = new GameSimulation(simConfig);
 
-        _emissionTargetProvider = new EnemyEmissionTargetProvider(_simulation.GetEnemyManager());
-        var emissionHandler = new SpellEmissionHandler(_simulation.GetAttackEntityManager(), _emissionTargetProvider);
+        _emissionTargetProvider = new EnemyEmissionTargetProvider(_simulation.EnemyManager);
+        var emissionHandler = new SpellEmissionHandler(_simulation.AttackEntityManager, _emissionTargetProvider);
 
         CreateRuntimeGameConfigCopy();
 
@@ -116,7 +116,7 @@ public class TestSceneManager : MonoBehaviour
         _spellCollection.SyncSpellLoopFromInventory(_runtimeGameConfig.playerInventory.GetSpellLoopAuthoring());
         _loopedSpellCaster = new LoopedSpellCaster(_spellCollection.RuntimeSpells, emissionHandler);
 
-        _attackDebugRenderer = new AttackEntityDebugRenderer(_simulation.GetAttackEntityManager(), attackDebugMaterial);
+        _attackDebugRenderer = new AttackEntityDebugRenderer(_simulation.AttackEntityManager, attackDebugMaterial);
         int initialSpellCount = Mathf.Max(8, _spellCollection.Count);
         _telemetryAggregator = new TelemetryAggregator(initialSpellCount);
 
@@ -182,9 +182,9 @@ public class TestSceneManager : MonoBehaviour
             spellLoopsPerRound = _roundController.SpellLoopsPerRound,
             loopsCompleted = _loopedSpellCaster.LoopCount,
             roundMetrics = round.aggregate,
-            simulationTime = _simulation.SimulationTime,
-            enemyCount = _simulation.GetEnemies().Length,
-            attackEntityCount = _simulation.GetAttackEntityManager().EntityCount
+            simulationTime = _simulation.State.SimulationTime,
+            enemyCount = _simulation.State.EnemyCount,
+            attackEntityCount = _simulation.State.AttackEntityCount
         };
     }
 

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
   m_Name: EarthquakeAttackEntity
   m_EditorClassIdentifier: 
-  physicalDamage: 100
+  physicalDamage: 50
   coldDamage: 0
   fireDamage: 0
   lightningDamage: 0
@@ -30,10 +30,22 @@ MonoBehaviour:
   - rid: 4884261957644320836
   - rid: 4884261957644320837
   - rid: 4884261957644320838
+  - rid: 4044632107998511173
+  - rid: 4044632107998511174
   visual: {fileID: 0}
   references:
     version: 2
     RefIds:
+    - rid: 4044632107998511173
+      type: {class: ApplyFrozenBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        isActive: 1
+        applyChance: 1
+    - rid: 4044632107998511174
+      type: {class: ApplyIgnitedBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        isActive: 1
+        applyChance: 1
     - rid: 4884261957644320836
       type: {class: OnHitEffectBehavior, ns: , asm: Assembly-CSharp}
       data:
@@ -48,3 +60,4 @@ MonoBehaviour:
         isActive: 1
         maxTimeAlive: 0.2
         maxDistanceTravelled: 0
+        maxFrames: 1

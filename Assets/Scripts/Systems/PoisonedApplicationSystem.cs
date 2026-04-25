@@ -10,7 +10,8 @@ public struct PoisonedTrackAndApplyJob : IJob
 {
     [ReadOnly] public NativeArray<DamageEvent> HitEvents;
     [ReadOnly] public NativeArray<PoisonedApplierRuntime> Appliers;
-    public NativeArray<Enemy> Enemies;
+    public NativeArray<int> EntityIds;
+    public NativeArray<StatusAilmentFlag> Status;
     public NativeList<EnemyPoisonStatus> Tracker;
     public NativeList<StatusAilmentAppliedEvent> AilmentEvents;
     public float TimeApplied;
@@ -36,15 +37,16 @@ public struct PoisonedTrackAndApplyJob : IJob
             if (!proc)
                 continue;
 
-            Enemy enemy = Enemies[hit.enemyIndex];
-            bool alreadyHad = (enemy.statusAilmentFlag & StatusAilmentFlag.Poisoned) != 0;
+            int entityId = EntityIds[hit.enemyIndex];
+            StatusAilmentFlag flags = Status[hit.enemyIndex];
+            bool alreadyHad = (flags & StatusAilmentFlag.Poisoned) != 0;
 
             const float dotFrac = 0.2f;
             const float neverTicked = -100000f;
             float damagePerTick = hit.damageDealt * dotFrac;
             Tracker.Add(new EnemyPoisonStatus
             {
-                entityID = enemy.entityId,
+                entityID = entityId,
                 spellId = hit.spellId,
                 spellInvocationId = hit.spellInvocationId,
                 timeApplied = TimeApplied,
@@ -53,8 +55,8 @@ public struct PoisonedTrackAndApplyJob : IJob
                 lastTimeTicked = neverTicked
             });
 
-            enemy.statusAilmentFlag |= StatusAilmentFlag.Poisoned;
-            Enemies[hit.enemyIndex] = enemy;
+            flags |= StatusAilmentFlag.Poisoned;
+            Status[hit.enemyIndex] = flags;
 
             if (!alreadyHad)
             {
@@ -77,7 +79,8 @@ public class PoisonedApplicationSystem
     public JobHandle ScheduleTrack(
         NativeArray<DamageEvent> damageEvents,
         NativeArray<PoisonedApplierRuntime> appliers,
-        NativeArray<Enemy> enemies,
+        NativeArray<int> entityIds,
+        NativeArray<StatusAilmentFlag> status,
         NativeList<EnemyPoisonStatus> tracker,
         NativeList<StatusAilmentAppliedEvent> ailmentEvents,
         float timeApplied,
@@ -88,7 +91,8 @@ public class PoisonedApplicationSystem
         {
             HitEvents = damageEvents,
             Appliers = appliers,
-            Enemies = enemies,
+            EntityIds = entityIds,
+            Status = status,
             Tracker = tracker,
             AilmentEvents = ailmentEvents,
             TimeApplied = timeApplied,

@@ -1,4 +1,5 @@
 using BridgeOfBlood.Data.Enemies;
+using BridgeOfBlood.Data.Shared;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
@@ -7,29 +8,35 @@ using Unity.Mathematics;
 [BurstCompile]
 public struct TickEnemyVisualTimeJob : IJobParallelFor
 {
-    public NativeArray<Enemy> Enemies;
+    [ReadOnly] public NativeArray<StatusAilmentFlag> Status;
+    public NativeArray<EnemyPresentation> Presentation;
     public float DeltaTime;
 
     public void Execute(int index)
     {
-        Enemy e = Enemies[index];
-        e.visualTime += DeltaTime;
-        Enemies[index] = e;
+        EnemyPresentation p = Presentation[index];
+        if ((Status[index] & StatusAilmentFlag.Frozen) == 0)
+            p.visualTime += DeltaTime;
+        p.ailmentFlashTimer -= DeltaTime;
+        if (p.ailmentFlashTimer < 0f)
+            p.ailmentFlashTimer = 0f;
+        Presentation[index] = p;
     }
 }
 
 /// <summary>
-/// Advances <see cref="Enemy.visualTime"/> for flipbook animation; independent of movement.
+/// Advances flipbook time and decays ailment flash timer.
 /// </summary>
 public static class EnemyVisualTimeSystem
 {
-    public static void Tick(NativeArray<Enemy> enemies, float deltaTime)
+    public static void Tick(EnemyBuffers enemies, float deltaTime)
     {
-        if (!enemies.IsCreated || enemies.Length == 0) return;
+        if (!enemies.Motion.IsCreated || enemies.Length == 0) return;
 
         var job = new TickEnemyVisualTimeJob
         {
-            Enemies = enemies,
+            Status = enemies.Status,
+            Presentation = enemies.Presentation,
             DeltaTime = deltaTime
         };
         int batchCount = math.max(1, enemies.Length / 32);

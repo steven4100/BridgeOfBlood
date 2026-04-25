@@ -904,7 +904,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 04e02f0386b6d374398cac082da0060c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  spawnRate: 22.01
+  spawnRate: 3
   simulationZone: {fileID: 1669307496}
   spawnTable: {fileID: 11400000, guid: accb87cdda325fa4faafbbe633ce99b5, type: 2}
   gizmoRadius: 1.04
@@ -918,7 +918,7 @@ MonoBehaviour:
   gameConfig: {fileID: 11400000, guid: 0a1b2c3d4e5f6789012345678aabbccd, type: 2}
   castInputKey: 32
   castModifications: {fileID: 11400000, guid: 9641dd6fe2f6c5d4b9f5db999c5e4695, type: 2}
-  debugLogTiming: 0
+  debugLogTiming: 1
   debugController: {fileID: 1770549542}
   shopPanel: {fileID: 1888888003}
   roundPanel: {fileID: 1888888102}

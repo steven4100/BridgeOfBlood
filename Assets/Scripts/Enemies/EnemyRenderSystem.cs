@@ -64,7 +64,7 @@ public class EnemyRenderSystem
             GraphicsBuffer.IndirectDrawIndexedArgs.size);
     }
 
-    public void RenderEnemies(NativeArray<Enemy> enemies, RectTransform rectTransform, Camera camera)
+    public void RenderEnemies(EnemyBuffers enemies, RectTransform rectTransform, Camera camera)
     {
         if (rectTransform == null || enemies.Length == 0 || camera == null) return;
 
@@ -72,7 +72,7 @@ public class EnemyRenderSystem
         EnsureCapacity(count);
 
         for (int i = 0; i < count; i++)
-            _cpuData[i].localPos = enemies[i].position;
+            _cpuData[i].localPos = enemies.Motion[i].position;
 
         _instanceBuffer.SetData(_cpuData, 0, 0, count);
 

@@ -21,7 +21,7 @@ public struct CollisionEvent
 /// Queries the spatial grid for broad-phase, then runs narrow-phase overlap tests.
 /// Outputs a flat list of CollisionEvents for downstream processing. Does not update enemiesHit
 /// (HitResolver → ChainSystem → DamageSystem; DamageSystem increments enemiesHit when applying hits).
-/// Assumes grid was built from the same enemies array; caller (e.g. EnemyManager.ValidateGridForCurrentEnemies) must validate upstream.
+/// Assumes grid was built from the same enemy motion column; caller (e.g. EnemyManager.ValidateGridForCurrentEnemies) must validate upstream.
 /// </summary>
 public class CollisionSystem
 {
@@ -32,17 +32,9 @@ public class CollisionSystem
         _candidateIndices = new NativeList<int>(64, Allocator.Persistent);
     }
 
-    /// <summary>
-    /// Detects all attack-entity-vs-enemy overlaps this frame. Pure geometry; no pierce or other policy.
-    /// Call after BuildGrid for the current enemy list (simulation should build the grid after culls/removals that frame).
-    /// </summary>
-    /// <param name="attackEntities">Read-only for overlap.</param>
-    /// <param name="enemies">Read-only enemy array (must match grid ordering from BuildGrid).</param>
-    /// <param name="grid">Spatial grid built from the current enemy positions.</param>
-    /// <param name="results">Cleared and filled with all overlapping collision events.</param>
     public void Detect(
         NativeArray<AttackEntity> attackEntities,
-        NativeArray<Enemy> enemies,
+        EnemyBuffers enemies,
         GridSpatialPartition grid,
         NativeList<CollisionEvent> results)
     {
@@ -60,18 +52,18 @@ public class CollisionSystem
             {
                 int ei = _candidateIndices[c];
 
-                Enemy enemy = enemies[ei];
+                float2 enemyPos = enemies.Motion[ei].position;
 
-                if (!Overlaps(atk, enemy.position))
+                if (!Overlaps(atk, enemyPos))
                     continue;
 
                 results.Add(new CollisionEvent
                 {
                     attackEntityId = atk.entityId,
                     attackEntityIndex = ai,
-                    enemyEntityId = enemy.entityId,
+                    enemyEntityId = enemies.EntityIds[ei],
                     enemyIndex = ei,
-                    enemyPosition = enemy.position,
+                    enemyPosition = enemyPos,
                     attackEntityPosition = atk.position
                 });
             }

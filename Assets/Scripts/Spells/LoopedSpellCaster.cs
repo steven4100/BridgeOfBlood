@@ -27,33 +27,33 @@ public struct SpellCastResult
 /// </summary>
 public class LoopedSpellCaster
 {
-    private readonly IReadOnlyList<RuntimeSpell> _spells;
+    private readonly SpellCollection _spellCollection;
     private readonly SpellInvoker _spellInvoker;
     private readonly ISpellEmissionHandler _emissionHandler;
     private int _indexOfLastCast;
     private double _timeOfLastCast;
     private int _loopCount;
 
-    public IReadOnlyList<RuntimeSpell> Spells => _spells;
+    public IReadOnlyList<RuntimeSpell> Spells => _spellCollection.RuntimeSpells;
 
-    public int SpellCount => _spells?.Count ?? 0;
+    public int SpellCount => _spellCollection.Count;
 
     public int IndexOfLastCast => _indexOfLastCast;
 
     public int LoopCount => _loopCount;
 
-    public int NextCastIndex => _spells != null && _spells.Count > 0
-        ? (_indexOfLastCast + 1) % _spells.Count
+    public int NextCastIndex => _spellCollection.Count > 0
+        ? (_indexOfLastCast + 1) % _spellCollection.Count
         : -1;
 
     public int TotalInvocationCount
     {
         get
         {
-            if (_spells == null) return 0;
+            IReadOnlyList<RuntimeSpell> spells = _spellCollection.RuntimeSpells;
             int total = 0;
-            for (int i = 0; i < _spells.Count; i++)
-                total += _spells[i].invocationCount;
+            for (int i = 0; i < spells.Count; i++)
+                total += spells[i].invocationCount;
             return total;
         }
     }
@@ -64,15 +64,16 @@ public class LoopedSpellCaster
 
     public SpellAttributeMask GetSpellAttributeMask(int loopIndex)
     {
-        if (_spells == null || loopIndex < 0 || loopIndex >= _spells.Count)
+        IReadOnlyList<RuntimeSpell> spells = _spellCollection.RuntimeSpells;
+        if (loopIndex < 0 || loopIndex >= spells.Count)
             return SpellAttributeMask.None;
-        var def = _spells[loopIndex].Definition;
+        var def = spells[loopIndex].Definition;
         return def != null ? def.attributeMask : SpellAttributeMask.None;
     }
 
-    public LoopedSpellCaster(IReadOnlyList<RuntimeSpell> spells, ISpellEmissionHandler emissionHandler)
+    public LoopedSpellCaster(SpellCollection spellCollection, ISpellEmissionHandler emissionHandler)
     {
-        _spells = spells ?? new List<RuntimeSpell>();
+        _spellCollection = spellCollection;
         _emissionHandler = emissionHandler ?? throw new System.ArgumentNullException(nameof(emissionHandler));
         _spellInvoker = new SpellInvoker(_emissionHandler);
         _indexOfLastCast = -1;
@@ -87,10 +88,11 @@ public class LoopedSpellCaster
     {
         if (!castRequestedThisFrame)
             return SpellCastResult.None;
-        if (_spells == null || _spells.Count == 0)
+        IReadOnlyList<RuntimeSpell> spells = _spellCollection.RuntimeSpells;
+        if (spells.Count == 0)
             return SpellCastResult.None;
 
-        int nextIndex = (_indexOfLastCast + 1) % _spells.Count;
+        int nextIndex = (_indexOfLastCast + 1) % spells.Count;
         bool canCastNext;
 
         if (_indexOfLastCast < 0)
@@ -99,7 +101,7 @@ public class LoopedSpellCaster
         }
         else
         {
-            RuntimeSpell last = _spells[_indexOfLastCast];
+            RuntimeSpell last = spells[_indexOfLastCast];
             double requiredElapsed = last.Definition != null ? last.Definition.castCompletionDuration : 0;
             canCastNext = (roundTime - _timeOfLastCast) >= requiredElapsed;
         }
@@ -111,7 +113,7 @@ public class LoopedSpellCaster
         if (loopCompleted)
             _loopCount++;
 
-        RuntimeSpell next = _spells[nextIndex];
+        RuntimeSpell next = spells[nextIndex];
         if (next.Definition == null)
             return SpellCastResult.None;
 

@@ -8,4 +8,6 @@ public sealed class ShopSessionNoOpPresenter : IStatePresenter<ShopSessionViewDa
 	ShopSessionNoOpPresenter() { }
 
 	public void Render(ShopSessionViewData data) { }
+
+	public void SetRootVisible(bool visible) { }
 }

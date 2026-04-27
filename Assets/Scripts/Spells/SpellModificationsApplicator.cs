@@ -47,16 +47,26 @@ namespace BridgeOfBlood.Data.Spells
 			var typeFire = Resolve(mods, SpellModificationProperty.FireDamageScaling, spellAttributeMask);
 			var typeLightning = Resolve(mods, SpellModificationProperty.LightningDamageScaling, spellAttributeMask);
 
-			clone.physicalDamage = Mathf.Max(0f, (source.physicalDamage + typePhys.flat) * typePhys.Multiplier * dmgScaling.Multiplier);
-			clone.coldDamage = Mathf.Max(0f, (source.coldDamage + typeCold.flat) * typeCold.Multiplier * dmgScaling.Multiplier);
-			clone.fireDamage = Mathf.Max(0f, (source.fireDamage + typeFire.flat) * typeFire.Multiplier * dmgScaling.Multiplier);
-			clone.lightningDamage = Mathf.Max(0f, (source.lightningDamage + typeLightning.flat) * typeLightning.Multiplier * dmgScaling.Multiplier);
+			clone.physicalDamageRange = ApplyDamageRange(source.physicalDamageRange, typePhys, dmgScaling);
+			clone.coldDamageRange = ApplyDamageRange(source.coldDamageRange, typeCold, dmgScaling);
+			clone.fireDamageRange = ApplyDamageRange(source.fireDamageRange, typeFire, dmgScaling);
+			clone.lightningDamageRange = ApplyDamageRange(source.lightningDamageRange, typeLightning, dmgScaling);
 
 			var critChance = Resolve(mods, SpellModificationProperty.CritChance, spellAttributeMask);
-			clone.critChance = Mathf.Clamp01(source.critChance * critChance.Multiplier + critChance.flat / 100f);
+			clone.critChanceRange = new FloatRange
+			{
+				min = Mathf.Clamp01(source.critChanceRange.min * critChance.Multiplier + critChance.flat / 100f),
+				max = Mathf.Clamp01(source.critChanceRange.max * critChance.Multiplier + critChance.flat / 100f)
+			};
+			clone.critChanceRange.ClampOrder();
 
 			var critMult = Resolve(mods, SpellModificationProperty.CritMult, spellAttributeMask);
-			clone.critDamageMultiplier = Mathf.Max(1f, source.critDamageMultiplier * critMult.Multiplier + critMult.flat / 100f);
+			clone.critDamageMultiplierRange = new FloatRange
+			{
+				min = Mathf.Max(1f, source.critDamageMultiplierRange.min * critMult.Multiplier + critMult.flat / 100f),
+				max = Mathf.Max(1f, source.critDamageMultiplierRange.max * critMult.Multiplier + critMult.flat / 100f)
+			};
+			clone.critDamageMultiplierRange.ClampOrder();
 
 			var aoe = Resolve(mods, SpellModificationProperty.AreaOfEffect, spellAttributeMask);
 			var h = clone.hitBoxData;
@@ -66,6 +76,18 @@ namespace BridgeOfBlood.Data.Spells
 
 			clone.behaviors = CloneBehaviorsAndApply(source.behaviors, mods, spellAttributeMask);
 			return clone;
+		}
+
+		static FloatRange ApplyDamageRange(FloatRange source, ResolvedModifier typeMod, ResolvedModifier dmgScaling)
+		{
+			float mult = typeMod.Multiplier * dmgScaling.Multiplier;
+			var r = new FloatRange
+			{
+				min = Mathf.Max(0f, (source.min + typeMod.flat) * mult),
+				max = Mathf.Max(0f, (source.max + typeMod.flat) * mult)
+			};
+			r.ClampOrder();
+			return r;
 		}
 
 		static List<AttackEntityBehavior> CloneBehaviorsAndApply(List<AttackEntityBehavior> source, SpellModifications mods, SpellAttributeMask spellMask)

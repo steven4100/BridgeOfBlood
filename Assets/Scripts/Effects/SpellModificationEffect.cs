@@ -8,8 +8,10 @@ namespace BridgeOfBlood.Effects
 	[Serializable, MenuPath("Spell")]
 	public class SpellModificationEffect : IEffect
 	{
-		[SerializeReference, SerializeInterface]
-		public ParameterModifier modifier;
+		// ParameterModifier contains SerializeReference IValue<float> fields; Unity requires this field to be SerializeReference too.
+		// SerializeReference fields start null unless assigned; default instance so new effects show modifier in the inspector.
+		[SerializeReference]
+		public ParameterModifier modifier = new ParameterModifier();
 
 		public bool Apply(EffectContext context)
 		{

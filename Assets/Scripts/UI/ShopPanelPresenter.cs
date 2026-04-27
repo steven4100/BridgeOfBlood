@@ -30,7 +30,6 @@ public class ShopPanelPresenter : MonoBehaviour, IStatePresenter<ShopSessionView
 	bool _hasLastRenderedSnapshot;
 	ShopSessionViewData _lastRenderedSnapshot;
 
-	public event Action OnSuccessfulPurchase;
 	public event Action OnContinueClicked;
 
 	public void BindSession(GameConfig runtime)
@@ -39,7 +38,9 @@ public class ShopPanelPresenter : MonoBehaviour, IStatePresenter<ShopSessionView
 		_hasLastRenderedSnapshot = false;
 	}
 
-	public void SetShopVisible(bool visible)
+	public void SetShopVisible(bool visible) => SetRootVisible(visible);
+
+	public void SetRootVisible(bool visible)
 	{
 		EnsureRoot();
 		if (_shopRoot == null)
@@ -177,8 +178,6 @@ public class ShopPanelPresenter : MonoBehaviour, IStatePresenter<ShopSessionView
 
 	void TryBuy(IPurchasable purchasable)
 	{
-		if (!ShopPurchase.TryPurchase(purchasable, _purchaseContext))
-			return;
-		OnSuccessfulPurchase?.Invoke();
+		ShopPurchase.TryPurchase(purchasable, _purchaseContext);
 	}
 }

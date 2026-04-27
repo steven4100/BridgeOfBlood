@@ -8,4 +8,6 @@ public sealed class NoOpStatePresenter : IStatePresenter<EmptySessionViewData>
 	NoOpStatePresenter() { }
 
 	public void Render(EmptySessionViewData data) { }
+
+	public void SetRootVisible(bool visible) { }
 }

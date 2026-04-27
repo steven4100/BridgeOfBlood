@@ -39,3 +39,4 @@ MonoBehaviour:
   castCompletionDuration: 0.5
   castTime: 0
   attributeMask: 2
+  icon: {fileID: 21300000, guid: 44a1c440624174b4084a7e49540119ec, type: 3}

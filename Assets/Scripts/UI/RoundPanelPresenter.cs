@@ -28,7 +28,9 @@ public class RoundPanelPresenter : MonoBehaviour, IStatePresenter<RoundSessionVi
 	bool _hasItemSnapshot;
 	List<RoundItemRowViewData> _lastItemRows = new List<RoundItemRowViewData>();
 
-	public void SetRoundVisible(bool visible)
+	public void SetRoundVisible(bool visible) => SetRootVisible(visible);
+
+	public void SetRootVisible(bool visible)
 	{
 		EnsureRoot();
 		if (_roundRoot == null)

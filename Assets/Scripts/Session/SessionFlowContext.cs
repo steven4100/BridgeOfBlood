@@ -1,4 +1,5 @@
 using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 /// <summary>

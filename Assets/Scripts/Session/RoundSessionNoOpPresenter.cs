@@ -8,4 +8,6 @@ public sealed class RoundSessionNoOpPresenter : IStatePresenter<RoundSessionView
 	RoundSessionNoOpPresenter() { }
 
 	public void Render(RoundSessionViewData data) { }
+
+	public void SetRootVisible(bool visible) { }
 }

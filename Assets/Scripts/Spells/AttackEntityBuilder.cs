@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using BridgeOfBlood.Data.Shared;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -33,6 +34,25 @@ public struct AttackEntitySpawnPayload
 }
 
 /// <summary>
+/// Per-keyframe inputs for rolling <see cref="AttackEntityData"/> ranges deterministically once per build.
+/// </summary>
+public readonly struct AttackEntityBuildContext
+{
+    public readonly int spellId;
+    public readonly int spellInvocationId;
+    public readonly int keyframeIndex;
+    public readonly int attackDataInstanceId;
+
+    public AttackEntityBuildContext(int spellId, int spellInvocationId, int keyframeIndex, int attackDataInstanceId)
+    {
+        this.spellId = spellId;
+        this.spellInvocationId = spellInvocationId;
+        this.keyframeIndex = keyframeIndex;
+        this.attackDataInstanceId = attackDataInstanceId;
+    }
+}
+
+/// <summary>
 /// Builds AttackEntitySpawnPayload from AttackEntityData (class with optional behaviors list).
 /// Missing behaviors get default runtime policies (unlimited pierce, no expiration, chain disabled).
 /// </summary>
@@ -40,17 +60,31 @@ public static class AttackEntityBuilder
 {
     /// <summary>
     /// Builds a spawn payload from authoring data. Iterates behaviors and applies first of each type.
+    /// Damage and crit stats are rolled once from ranges using <paramref name="context"/>.
     /// </summary>
-    public static AttackEntitySpawnPayload Build(AttackEntityData data, uint visualSeed = 0)
+    public static AttackEntitySpawnPayload Build(AttackEntityData data, in AttackEntityBuildContext context, uint visualSeed = 0)
     {
+        uint seed = AttackEntityBuildRngSeed.Mix(context.spellId, context.spellInvocationId, context.keyframeIndex, context.attackDataInstanceId);
+        var rng = Unity.Mathematics.Random.CreateFromIndex(seed);
+
+        float physicalDamage = data.physicalDamageRange.ResolveUniform(ref rng);
+        float coldDamage = data.coldDamageRange.ResolveUniform(ref rng);
+        float fireDamage = data.fireDamageRange.ResolveUniform(ref rng);
+        float lightningDamage = data.lightningDamageRange.ResolveUniform(ref rng);
+        float critChance = Mathf.Clamp01(data.critChanceRange.ResolveUniform(ref rng));
+        float critDamageMultiplier = Mathf.Max(1f, data.critDamageMultiplierRange.ResolveUniform(ref rng));
+
+        if (visualSeed == 0u)
+            visualSeed = seed ^ 0x9E3779B9u;
+
         var payload = new AttackEntitySpawnPayload
         {
-            physicalDamage = data.physicalDamage,
-            coldDamage = data.coldDamage,
-            fireDamage = data.fireDamage,
-            lightningDamage = data.lightningDamage,
-            critChance = data.critChance,
-            critDamageMultiplier = data.critDamageMultiplier > 0f ? data.critDamageMultiplier : 1f,
+            physicalDamage = physicalDamage,
+            coldDamage = coldDamage,
+            fireDamage = fireDamage,
+            lightningDamage = lightningDamage,
+            critChance = critChance,
+            critDamageMultiplier = critDamageMultiplier,
             velocity = new float2(data.entityVelocity.x, data.entityVelocity.y),
             hitBoxData = data.hitBoxData,
             pierce = PiercePolicyRuntime.Default(),

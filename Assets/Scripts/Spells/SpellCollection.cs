@@ -1,86 +1,102 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Spells;
 
 /// <summary>
-/// Holds one list of <see cref="RuntimeSpell"/> rows keyed by static <see cref="SpellAuthoringData"/> definitions.
-/// List reference is stable for <see cref="LoopedSpellCaster"/>.
+/// Holds one ordered list of <see cref="RuntimeSpell"/> rows; each row has a unique <see cref="RuntimeSpell.spellId"/>.
+/// Owned by <see cref="BridgeOfBlood.Data.Inventory.PlayerInventory"/>; list reference is stable for <see cref="LoopedSpellCaster"/>.
 /// </summary>
-public class SpellCollection
+public class SpellCollection : ISpellInventoryService
 {
     private readonly List<RuntimeSpell> _runtimeSpells;
-
+    private readonly List<RuntimeSpell> _orderScratch = new List<RuntimeSpell>();
     public IReadOnlyList<RuntimeSpell> RuntimeSpells => _runtimeSpells;
     public int Count => _runtimeSpells.Count;
+    Action SpellsUpdated;
+
+    event Action ISpellInventoryService.SpellsUpdated
+    {
+        add
+        {
+            SpellsUpdated += value;
+        }
+
+        remove
+        {
+            SpellsUpdated -= value;
+        }   
+    }
 
     public SpellCollection(IReadOnlyList<SpellAuthoringData> authoringList)
     {
         _runtimeSpells = new List<RuntimeSpell>();
-        RebuildFrom(authoringList);
-    }
-
-    /// <summary>
-    /// Clears and repopulates from <paramref name="sources"/>. Retains the same <c>List&lt;RuntimeSpell&gt;</c> instance.
-    /// </summary>
-    /// <remarks>
-    /// Not used every frame. Each rebuild creates new <see cref="RuntimeSpell"/> instances (invocation counters reset).
-    /// When the definition sequence is unchanged, prefer <see cref="SyncSpellLoopFromInventory"/>.
-    /// </remarks>
-    public void RebuildFrom(IReadOnlyList<SpellAuthoringData> sources)
-    {
-        _runtimeSpells.Clear();
-
-        if (sources == null) return;
-
-        for (int i = 0; i < sources.Count; i++)
+        if (authoringList != null)
         {
-            SpellAuthoringData a = sources[i];
-            if (a == null) continue;
-
-            _runtimeSpells.Add(new RuntimeSpell(a));
+            foreach (var spell in authoringList)
+            {
+                AddSpell(spell);
+            }
         }
     }
 
-    /// <summary>
-    /// If the definition sequence matches, only clears invocation tracking; otherwise <see cref="RebuildFrom"/>.
-    /// </summary>
-    public void SyncSpellLoopFromInventory(IReadOnlyList<SpellAuthoringData> sources)
-    {
-        if (DefinitionSequenceEquals(sources))
-            ClearRuntimeSpellTracking();
-        else
-            RebuildFrom(sources);
+    public void AddSpell(SpellAuthoringData spell){
+        _runtimeSpells.Add(new RuntimeSpell(spell));
+        SpellsUpdated?.Invoke();
     }
 
-    bool DefinitionSequenceEquals(IReadOnlyList<SpellAuthoringData> sources)
+    public void ClearRuntimeSpellTracking()
     {
-        if (sources == null)
-            return _runtimeSpells.Count == 0;
-
-        int n = sources.Count;
-        if (_runtimeSpells.Count != n)
-            return false;
-
-        for (int i = 0; i < n; i++)
+        for (int i = 0; i < _runtimeSpells.Count; i++)
         {
-            if (!ReferenceEquals(_runtimeSpells[i].Definition, sources[i]))
-                return false;
-        }
-
-        return true;
-    }
-
-    static void ClearRuntimeSpellTracking(List<RuntimeSpell> spells)
-    {
-        for (int i = 0; i < spells.Count; i++)
-        {
-            RuntimeSpell s = spells[i];
+            RuntimeSpell s = _runtimeSpells[i];
             s.invocationCount = 0;
             s.roundTimeInvokedAt = 0;
         }
     }
 
-    void ClearRuntimeSpellTracking()
+    List<RuntimeSpellUiDTO> ISpellInventoryService.GetSpellUi()
     {
-        ClearRuntimeSpellTracking(_runtimeSpells);
+        return _runtimeSpells.Select(s => new RuntimeSpellUiDTO(s.Definition.name, s.spellId, s.Definition.icon)).ToList();
+    }
+
+    bool ISpellInventoryService.TrySetSpellOrder(IReadOnlyList<int> spellIdOrder)
+    {
+        if (spellIdOrder.Count != _runtimeSpells.Count)
+            return false;
+
+        _orderScratch.Clear();
+        for (int i = 0; i < spellIdOrder.Count; i++)
+        {
+            int targetId = spellIdOrder[i];
+            RuntimeSpell match = null;
+            for (int j = 0; j < _runtimeSpells.Count; j++)
+            {
+                RuntimeSpell candidate = _runtimeSpells[j];
+                if (candidate.spellId != targetId)
+                    continue;
+                if (_orderScratch.Contains(candidate))
+                {
+                    _orderScratch.Clear();
+                    return false;
+                }
+                match = candidate;
+                break;
+            }
+            if (match == null)
+            {
+                _orderScratch.Clear();
+                return false;
+            }
+            _orderScratch.Add(match);
+        }
+
+        _runtimeSpells.Clear();
+        _runtimeSpells.AddRange(_orderScratch);
+        _orderScratch.Clear();
+
+        SpellsUpdated?.Invoke();
+        return true;
     }
 }

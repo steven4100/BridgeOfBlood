@@ -93,7 +93,7 @@ public class SpellEmissionHandler : ISpellEmissionHandler
         _payloadModifier = payloadModifier;
     }
 
-    public void OnKeyframeFired(SpellKeyFrame keyFrame, float2 origin, float2 forward, RuntimeSpell runtime, float keyframeFireTime, int spellId, int spellInvocationId)
+    public void OnKeyframeFired(SpellKeyFrame keyFrame, float2 origin, float2 forward, RuntimeSpell runtime, float keyframeFireTime, int spellId, int spellInvocationId, int keyframeIndex)
     {
         if (keyFrame?.attackEntityEmitter == null || keyFrame.attackEntityData == null)
             return;
@@ -110,7 +110,8 @@ public class SpellEmissionHandler : ISpellEmissionHandler
         if (emitPoints.Count == 0)
             return;
 
-        AttackEntitySpawnPayload basePayload = AttackEntityBuilder.Build(keyFrame.attackEntityData);
+        var buildContext = new AttackEntityBuildContext(spellId, spellInvocationId, keyframeIndex, keyFrame.attackEntityData.GetInstanceID());
+        AttackEntitySpawnPayload basePayload = AttackEntityBuilder.Build(keyFrame.attackEntityData, buildContext);
         basePayload.spellId = spellId;
         basePayload.spellInvocationId = spellInvocationId;
         _payloadModifier?.Apply(ref basePayload, runtime, keyFrame);
@@ -125,10 +126,11 @@ public class SpellEmissionHandler : ISpellEmissionHandler
         if (subBehavior != null && subBehavior.subEmitter != null && subBehavior.subAttackEntityData != null)
         {
             hasSubEmitter = true;
+            var childBuildContext = new AttackEntityBuildContext(spellId, spellInvocationId, keyframeIndex, subBehavior.subAttackEntityData.GetInstanceID());
             subReg = new SubEmitterRegistration
             {
                 emitter = subBehavior.subEmitter,
-                childPayload = AttackEntityBuilder.Build(subBehavior.subAttackEntityData),
+                childPayload = AttackEntityBuilder.Build(subBehavior.subAttackEntityData, childBuildContext),
                 emitInterval = subBehavior.emitInterval,
                 startDelay = subBehavior.startDelay,
                 spellId = spellId,

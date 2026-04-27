@@ -21,75 +21,7 @@ MonoBehaviour:
     rarity: 2
     shopItemType: 1
     weight: 0.6
-  effects:
-  - rid: 3000000000000000071
+  effects: []
   references:
     version: 2
-    RefIds:
-    - rid: -2
-      type: {class: , ns: , asm: }
-    - rid: 3000000000000000071
-      type: {class: ConditionalEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
-      data:
-        conditions:
-        - rid: 3000000000000000072
-        effects:
-        - rid: 3000000000000000075
-        - rid: 3000000000000000078
-    - rid: 3000000000000000072
-      type: {class: ValueCondition, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
-      data:
-        lhs:
-          rid: 3000000000000000073
-        comparison: 0
-        rhs:
-          rid: 3000000000000000074
-    - rid: 3000000000000000073
-      type: {class: SlotAttributeCheckValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
-      data:
-        slot: 1
-        attributeFilter: 8
-    - rid: 3000000000000000074
-      type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
-      data:
-        value: 0
-    - rid: 3000000000000000075
-      type: {class: SpellModificationEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
-      data:
-        modifier:
-          rid: 3000000000000000076
-    - rid: 3000000000000000076
-      type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
-      data:
-        property: 12
-        filter: 0
-        flatAdditive:
-          rid: -2
-        percentIncreased:
-          rid: 3000000000000000077
-        moreMultiplier:
-          rid: -2
-    - rid: 3000000000000000077
-      type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
-      data:
-        value: 30
-    - rid: 3000000000000000078
-      type: {class: SpellModificationEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
-      data:
-        modifier:
-          rid: 3000000000000000079
-    - rid: 3000000000000000079
-      type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
-      data:
-        property: 7
-        filter: 0
-        flatAdditive:
-          rid: 3000000000000000080
-        percentIncreased:
-          rid: -2
-        moreMultiplier:
-          rid: -2
-    - rid: 3000000000000000080
-      type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
-      data:
-        value: 2
+    RefIds: []

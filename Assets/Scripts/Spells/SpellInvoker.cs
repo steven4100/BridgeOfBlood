@@ -7,7 +7,7 @@ using Unity.Mathematics;
 /// </summary>
 public interface ISpellEmissionHandler
 {
-    void OnKeyframeFired(SpellKeyFrame keyFrame, float2 origin, float2 forward, RuntimeSpell runtime, float keyframeFireTime, int spellId, int spellInvocationId);
+    void OnKeyframeFired(SpellKeyFrame keyFrame, float2 origin, float2 forward, RuntimeSpell runtime, float keyframeFireTime, int spellId, int spellInvocationId, int keyframeIndex);
 
     void Update(float simulationTime);
 
@@ -86,9 +86,10 @@ public class SpellInvoker
             while (cast.nextKeyframeIndex < keyFrames.Count
                    && elapsed >= keyFrames[cast.nextKeyframeIndex].time)
             {
-                float keyframeTime = keyFrames[cast.nextKeyframeIndex].time;
+                int keyframeIndex = cast.nextKeyframeIndex;
+                float keyframeTime = keyFrames[keyframeIndex].time;
                 float keyframeFireTime = cast.startTime + keyframeTime;
-                _emissionHandler.OnKeyframeFired(keyFrames[cast.nextKeyframeIndex], cast.origin, forward, cast.runtime, keyframeFireTime, cast.spellId, cast.spellInvocationId);
+                _emissionHandler.OnKeyframeFired(keyFrames[keyframeIndex], cast.origin, forward, cast.runtime, keyframeFireTime, cast.spellId, cast.spellInvocationId, keyframeIndex);
                 cast.nextKeyframeIndex++;
             }
 

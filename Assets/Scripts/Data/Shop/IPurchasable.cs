@@ -1,5 +1,6 @@
 using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Data.Spells;
 
 namespace BridgeOfBlood.Data.Shop
 {
@@ -17,12 +18,6 @@ namespace BridgeOfBlood.Data.Shop
 		{
 			Inventory = inventory;
 			Wallet = wallet;
-		}
-
-		public void AddPurchasedPayload(IInventoryItem payload, int stackCount = 1)
-		{
-			ShopItemDefinition listing = CurrentShopListing;
-			Inventory.AddPayload(payload, stackCount, listing.ResellValue, listing.IsResellable);
 		}
 	}
 

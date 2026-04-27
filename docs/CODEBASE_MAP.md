@@ -44,10 +44,10 @@ Visual data flow: `SpriteEntityVisual.bakedFrameIndex` > `EnemyAuthoringData.Cre
 1. **Entry**: `TestSceneManager` > `LoopedSpellCaster.AttemptToCastNextSpell(..., mods)` returns `SpellCastResult` (didCast, spellId, invocationCount, loopCompleted, loopCount). Optional `SpellModifications` from `castModifications`.
 2. **Resolve**: `spellData.Modify(modifications)` returns a clone of `SpellAuthoringData` with modifications baked in via `SpellModificationsApplicator.CloneAndApply` (damage, crit, chains, pierce, area, flat additive). If no mods, raw spell is used.
 3. **Invoke**: `SpellInvoker.StartCast(spellToCast, origin, time, spellId, spellInvocationId)` stores active cast with spell provenance; each frame `Update(simulationTime, forward)` fires keyframes.
-4. **Emit**: On keyframe, `ISpellEmissionHandler.OnKeyframeFired` (implemented by `SpellEmissionHandler`) builds payload from keyframe's `AttackEntityData` via `AttackEntityBuilder.Build`, stamps `spellId`/`spellInvocationId` on payload, queues spawns with delays.
+4. **Emit**: On keyframe, `ISpellEmissionHandler.OnKeyframeFired` (implemented by `SpellEmissionHandler`) builds payload from keyframe's `AttackEntityData` via `AttackEntityBuilder.Build` (`AttackEntityBuildContext`: deterministic roll per keyframe from `FloatRange` damage/crit fields), stamps `spellId`/`spellInvocationId` on payload, queues spawns with delays.
 5. **Spawn**: `AttackEntityManager.Spawn(payload, position)` creates `AttackEntity` (with spell provenance) and policy lists (chain, pierce, expiration, rehit).
 
-**Key types**: `SpellAuthoringData`, `SpellModifications`, `SpellModificationsApplicator`, `SpellInvoker`, `SpellEmissionHandler`, `AttackEntityBuilder`, `AttackEntitySpawnPayload`, `AttackEntityManager`, `AttackEntity`, `SpellCastResult`.
+**Key types**: `SpellAuthoringData`, `SpellModifications`, `SpellModificationsApplicator`, `SpellInvoker`, `SpellEmissionHandler`, `AttackEntityBuilder`, `AttackEntityBuildContext`, `FloatRange` (`BridgeOfBlood.Data.Shared`), `AttackEntitySpawnPayload`, `AttackEntityManager`, `AttackEntity`, `SpellCastResult`.
 
 ---
 

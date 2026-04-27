@@ -7,7 +7,6 @@ using BridgeOfBlood.Data.Shop;
 public sealed class ShopSessionPhase : SessionPhaseBase<ShopSessionViewData>
 {
 	readonly ShopPanelPresenter _shopPanel;
-	Action _onPurchase;
 	Action _onContinue;
 	bool _continueRequested;
 
@@ -17,34 +16,26 @@ public sealed class ShopSessionPhase : SessionPhaseBase<ShopSessionViewData>
 		_shopPanel = shopPanel;
 	}
 
-	public override void Enter(SessionFlowContext context)
+	protected override void OnEnter(SessionFlowContext context)
 	{
-		_onPurchase = () =>
-		{
-			context.SpellCollection.SyncSpellLoopFromInventory(context.RuntimeGameConfig.playerInventory.GetSpellLoopAuthoring());
-		};
-
 		_onContinue = () => { _continueRequested = true; };
 		_continueRequested = false;
 
 		if (_shopPanel != null)
 		{
 			_shopPanel.BindSession(context.RuntimeGameConfig);
-			_shopPanel.OnSuccessfulPurchase += _onPurchase;
 			_shopPanel.OnContinueClicked += _onContinue;
 			_shopPanel.SetShopVisible(true);
 		}
 	}
 
-	public override void Exit(SessionFlowContext context)
+	protected override void OnExit(SessionFlowContext context)
 	{
 		if (_shopPanel != null)
 		{
-			_shopPanel.OnSuccessfulPurchase -= _onPurchase;
 			_shopPanel.OnContinueClicked -= _onContinue;
 			_shopPanel.SetShopVisible(false);
 		}
-		_onPurchase = null;
 		_onContinue = null;
 		_continueRequested = false;
 	}

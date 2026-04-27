@@ -75,11 +75,18 @@ namespace BridgeOfBlood.Data.Spells
         }
     }
 
+    public class SpellModificationCollection
+    {
+        public SpellModifications globalModifications = new SpellModifications();
+        public Dictionary<RuntimeSpell, SpellModifications> spellSpecificModifications = new Dictionary<RuntimeSpell, SpellModifications>();
+        public SpellModificationCollection() { }
+
+    }
+
     [System.Serializable]
     public class SpellModifications
     {
         public Dictionary<SpellModificationProperty, List<ParameterModifier>> modifiers = new Dictionary<SpellModificationProperty, List<ParameterModifier>>();
-
         public List<DamageConversion> conversions;
         public List<ExtraDamageAs> extraDamageAs;
 

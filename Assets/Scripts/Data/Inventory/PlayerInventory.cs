@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using BridgeOfBlood.Data.Spells;
 using BridgeOfBlood.Effects;
@@ -7,48 +8,136 @@ namespace BridgeOfBlood.Data.Inventory
 {
 	/// <summary>
 	/// Authoring + runtime inventory. Template lists define the starting layout; call <see cref="RebuildFromStartingDefinition"/>
-	/// after <see cref="Object.Instantiate(UnityEngine.Object)"/> for a new session. During play, rows live in <see cref="_rows"/>.
+	/// after <see cref="Object.Instantiate(UnityEngine.Object)"/> for a new session. During play, rows live in <see cref="inventoryItems"/>.
 	/// </summary>
 	[CreateAssetMenu(fileName = "PlayerInventory", menuName = "Bridge of Blood/Inventory/Player Inventory")]
-	public sealed class PlayerInventory : ScriptableObject
+	public sealed class PlayerInventory : ScriptableObject, IItemInventoryService
 	{
-		[Header("Starting layout (template)")]
-		[Tooltip("Maximum starter spells taken from Starting Spells (first N non-null).")]
 		public int startingNumberOfSpells = 32;
-
 		public List<SpellAuthoringData> startingSpells = new List<SpellAuthoringData>();
 		public List<Item> startingItems = new List<Item>();
 
+		
 		[SerializeField]
-		List<InventoryItem> _rows = new List<InventoryItem>();
+		List<InventoryItem> inventoryItems = new List<InventoryItem>();
 
-		readonly List<SpellAuthoringData> _spellLoopScratch = new List<SpellAuthoringData>();
-		readonly List<Item> _passiveItemScratch = new List<Item>();
+		List<Item> _passiveItemScratch = new List<Item>();
+		readonly List<InventoryItem> _passiveItemRowScratch = new List<InventoryItem>();
 
-		public IReadOnlyList<InventoryItem> StoredRows => _rows;
+		bool _suppressItemsUpdated;
+		Action _itemsUpdated;
+
+		SpellCollection _spellCollection = new SpellCollection(null);
+
+		public SpellCollection SpellCollection => _spellCollection;
+
+		public IReadOnlyList<InventoryItem> StoredRows => inventoryItems;
+
+		IReadOnlyList<InventoryItem> IItemInventoryService.GetPassiveItemRows()
+		{
+			_passiveItemRowScratch.Clear();
+			for (int i = 0; i < inventoryItems.Count; i++)
+			{
+				if (inventoryItems[i].Payload is Item)
+					_passiveItemRowScratch.Add(inventoryItems[i]);
+			}
+			return _passiveItemRowScratch;
+		}
+
+		bool IItemInventoryService.TrySetPassiveItemOrder(IReadOnlyList<InventoryItem> reorderedItemRows)
+		{
+			_passiveItemRowScratch.Clear();
+			for (int i = 0; i < inventoryItems.Count; i++)
+			{
+				if (inventoryItems[i].Payload is Item)
+					_passiveItemRowScratch.Add(inventoryItems[i]);
+			}
+
+			if (reorderedItemRows.Count != _passiveItemRowScratch.Count)
+			{
+				_passiveItemRowScratch.Clear();
+				return false;
+			}
+			if (_passiveItemRowScratch.Count == 0)
+			{
+				_passiveItemRowScratch.Clear();
+				return reorderedItemRows.Count == 0;
+			}
+
+			for (int i = 0; i < reorderedItemRows.Count; i++)
+			{
+				InventoryItem row = reorderedItemRows[i];
+				if (!_passiveItemRowScratch.Contains(row))
+				{
+					_passiveItemRowScratch.Clear();
+					return false;
+				}
+				for (int j = i + 1; j < reorderedItemRows.Count; j++)
+				{
+					if (ReferenceEquals(reorderedItemRows[i], reorderedItemRows[j]))
+					{
+						_passiveItemRowScratch.Clear();
+						return false;
+					}
+				}
+			}
+
+			_passiveItemRowScratch.Clear();
+
+			int o = 0;
+			for (int i = 0; i < inventoryItems.Count; i++)
+			{
+				if (inventoryItems[i].Payload is Item)
+					inventoryItems[i] = reorderedItemRows[o++];
+			}
+
+			NotifyItemsUpdated();
+			return true;
+		}
+
+		event Action IItemInventoryService.ItemsUpdated
+		{
+			add => _itemsUpdated += value;
+			remove => _itemsUpdated -= value;
+		}
+
+		void NotifyItemsUpdated()
+		{
+			if (_suppressItemsUpdated) return;
+			_itemsUpdated?.Invoke();
+		}
 
 		public void Clear()
 		{
-			_rows.Clear();
+			inventoryItems.Clear();
+			NotifyItemsUpdated();
 		}
 
 		public void Add(InventoryItem row)
 		{
 			if (row == null || row.Payload == null) return;
-			_rows.Add(row);
+			inventoryItems.Add(row);
+			NotifyItemsUpdated();
 		}
 
-		public void AddPayload(IInventoryItem payload, int stackCount = 1, int resellValue = 0, bool isResellable = false)
+		public void AddSpell(SpellAuthoringData spell){
+			_spellCollection.AddSpell(spell);
+			inventoryItems.Add(new InventoryItem(spell));
+			NotifyItemsUpdated();
+		}
+
+		public void AddItem(Item item)
 		{
-			if (payload == null) return;
-			_rows.Add(new InventoryItem(payload, stackCount, resellValue, isResellable));
+			_passiveItemScratch.Add(item);
+			inventoryItems.Add(new InventoryItem(item));
+			NotifyItemsUpdated();
 		}
 
 		public IEnumerable<T> GetAllFromInventory<T>() where T : class, IInventoryItem
 		{
-			for (int i = 0; i < _rows.Count; i++)
+			for (int i = 0; i < inventoryItems.Count; i++)
 			{
-				if (_rows[i].Payload is T match)
+				if (inventoryItems[i].Payload is T match)
 					yield return match;
 			}
 		}
@@ -58,9 +147,9 @@ namespace BridgeOfBlood.Data.Inventory
 		/// </summary>
 		public bool OwnsPayload(IInventoryItem asset)
 		{
-			for (int i = 0; i < _rows.Count; i++)
+			for (int i = 0; i < inventoryItems.Count; i++)
 			{
-				if (ReferenceEquals(_rows[i].Payload, asset))
+				if (ReferenceEquals(inventoryItems[i].Payload, asset))
 					return true;
 			}
 			return false;
@@ -71,43 +160,44 @@ namespace BridgeOfBlood.Data.Inventory
 		/// </summary>
 		public void RebuildFromStartingDefinition()
 		{
-			Clear();
-
-			int cap = Mathf.Max(0, startingNumberOfSpells);
-			int addedSpells = 0;
-			if (startingSpells != null)
+			_suppressItemsUpdated = true;
+			try
 			{
-				for (int i = 0; i < startingSpells.Count && addedSpells < cap; i++)
+				inventoryItems.Clear();
+
+				int cap = Mathf.Max(0, startingNumberOfSpells);
+				int addedSpells = 0;
+				if (startingSpells != null)
 				{
-					SpellAuthoringData spell = startingSpells[i];
-					if (spell == null) continue;
-					AddPayload(spell);
-					addedSpells++;
+					for (int i = 0; i < startingSpells.Count && addedSpells < cap; i++)
+					{
+						SpellAuthoringData spell = startingSpells[i];
+						if (spell == null) continue;
+						addedSpells++;
+						Add(new InventoryItem(spell));
+						AddSpell(spell);
+					}
+				}
+
+				if (startingItems != null)
+				{
+					for (int i = 0; i < startingItems.Count; i++)
+					{
+						Item item = startingItems[i];
+						if (item == null) continue;
+						Add(new InventoryItem(item));
+						AddItem(item);
+					}
 				}
 			}
-
-			if (startingItems == null) return;
-			for (int i = 0; i < startingItems.Count; i++)
+			finally
 			{
-				Item item = startingItems[i];
-				if (item != null)
-					AddPayload(item);
+				_suppressItemsUpdated = false;
 			}
+			NotifyItemsUpdated();
 		}
 
-		/// <summary>
-		/// Valid until the next call that mutates inventory or calls this again.
-		/// </summary>
-		public IReadOnlyList<SpellAuthoringData> GetSpellLoopAuthoring()
-		{
-			_spellLoopScratch.Clear();
-			for (int i = 0; i < _rows.Count; i++)
-			{
-				if (_rows[i].Payload is SpellAuthoringData spell && spell != null)
-					_spellLoopScratch.Add(spell);
-			}
-			return _spellLoopScratch;
-		}
+		
 
 		/// <summary>
 		/// Valid until the next call that mutates inventory or calls this again.
@@ -115,9 +205,9 @@ namespace BridgeOfBlood.Data.Inventory
 		public IReadOnlyList<Item> GetPassiveItems()
 		{
 			_passiveItemScratch.Clear();
-			for (int i = 0; i < _rows.Count; i++)
+			for (int i = 0; i < inventoryItems.Count; i++)
 			{
-				if (_rows[i].Payload is Item item && item != null)
+				if (inventoryItems[i].Payload is Item item && item != null)
 					_passiveItemScratch.Add(item);
 			}
 			return _passiveItemScratch;

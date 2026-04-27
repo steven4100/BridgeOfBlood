@@ -1,3 +1,4 @@
+using System.Threading;
 using BridgeOfBlood.Data.Shared;
 
 namespace BridgeOfBlood.Data.Spells
@@ -7,16 +8,19 @@ namespace BridgeOfBlood.Data.Spells
 	/// </summary>
 	public sealed class RuntimeSpell
 	{
+		static int _nextSpellInstanceId;
+
 		public SpellAuthoringData Definition { get; }
 
-		public int spellId;
+		/// <summary>Unique for each <see cref="RuntimeSpell"/> instance (including two slots sharing the same <see cref="Definition"/>).</summary>
+		public readonly int spellId;
 		public int invocationCount;
 		public double roundTimeInvokedAt;
 
 		public RuntimeSpell(SpellAuthoringData definition)
 		{
 			Definition = definition;
-			spellId = definition != null ? definition.GetInstanceID() : 0;
+			spellId = Interlocked.Increment(ref _nextSpellInstanceId);
 			invocationCount = 0;
 			roundTimeInvokedAt = 0;
 		}

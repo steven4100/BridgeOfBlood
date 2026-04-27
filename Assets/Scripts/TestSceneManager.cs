@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Spells;
 using BridgeOfBlood.Data.Enemies;
 using Unity.Mathematics;
@@ -58,6 +59,8 @@ public class TestSceneManager : MonoBehaviour
     [Header("UI")]
     [SerializeField] ShopPanelPresenter shopPanel;
     [SerializeField] RoundPanelPresenter roundPanel;
+    [SerializeField] SpellInventoryController spellInventory;
+    [SerializeField] ItemInventoryController itemInventory;
 
     private Player _player;
     private GameSimulation _simulation;
@@ -68,7 +71,6 @@ public class TestSceneManager : MonoBehaviour
     private DamageNumberController _damageNumberController;
     private EffectSpriteController _effectSpriteController;
     private TelemetryAggregator _telemetryAggregator;
-    private SpellCollection _spellCollection;
     private SessionFlowController _sessionFlow;
     private RoundController _roundController;
     private GameState _currentGameState;
@@ -112,12 +114,11 @@ public class TestSceneManager : MonoBehaviour
 
         CreateRuntimeGameConfigCopy();
 
-        _spellCollection = new SpellCollection(null);
-        _spellCollection.SyncSpellLoopFromInventory(_runtimeGameConfig.playerInventory.GetSpellLoopAuthoring());
-        _loopedSpellCaster = new LoopedSpellCaster(_spellCollection.RuntimeSpells, emissionHandler);
+        PlayerInventory inv = _runtimeGameConfig.playerInventory;
+        _loopedSpellCaster = new LoopedSpellCaster(inv.SpellCollection, emissionHandler);
 
         _attackDebugRenderer = new AttackEntityDebugRenderer(_simulation.AttackEntityManager, attackDebugMaterial);
-        int initialSpellCount = Mathf.Max(8, _spellCollection.Count);
+        int initialSpellCount = Mathf.Max(8, inv.SpellCollection.Count);
         _telemetryAggregator = new TelemetryAggregator(initialSpellCount);
 
         var roundCfg = new RoundControllerConfig
@@ -133,7 +134,11 @@ public class TestSceneManager : MonoBehaviour
             _telemetryAggregator,
             _damageNumberController, _effectSpriteController,
             _spriteInstanceBuilder, _spriteRenderer,
-            _attackDebugRenderer, roundCfg);
+            _attackDebugRenderer,
+            roundCfg,
+            roundEndStrategy: null,
+            roundPanel,
+            renderCamera != null ? renderCamera : Camera.main);
 
         if (debugController != null)
             debugController.Initialize(_simulation.StepCount);
@@ -142,12 +147,12 @@ public class TestSceneManager : MonoBehaviour
             _runtimeGameConfig,
             _roundController,
             shopPanel,
-            _spellCollection,
+            inv.SpellCollection,
             simulationZone);
 
         _sessionFlow = new SessionFlowController(sessionContext,
             new PregameSessionPhase(NoOpStatePresenter.Instance),
-            new RoundSessionPhase(roundPanel, renderCamera != null ? renderCamera : Camera.main),
+            _roundController,
             new ShopSessionPhase(shopPanel),
             new LoseSessionPhase(NoOpStatePresenter.Instance, CreateRuntimeGameConfigCopy));
     }
@@ -159,12 +164,16 @@ public class TestSceneManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Replaces <see cref="_runtimeGameConfig"/> with a new <see cref="GameConfig.CreateRuntimeCopy"/> of the serialized template.
+    /// Replaces <see cref="_runtimeGameConfig"/> with a new <see cref="GameConfig.CreateRuntimeCopy"/> of the serialized template,
+    /// then re-injects the resulting <see cref="SpellCollection"/> and <see cref="PlayerInventory"/> into the spell and item inventory UIs
+    /// so they follow the new instance.
     /// </summary>
     GameConfig CreateRuntimeGameConfigCopy()
     {
         GameConfig.DestroyRuntimeCopy(_runtimeGameConfig);
         _runtimeGameConfig = GameConfig.CreateRuntimeCopy(gameConfig);
+        spellInventory.Initialize(_runtimeGameConfig.playerInventory.SpellCollection);
+        itemInventory.Initialize(_runtimeGameConfig.playerInventory);
         return _runtimeGameConfig;
     }
 

@@ -2,11 +2,12 @@ using System.Collections.Generic;
 using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Shop;
+using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 namespace BridgeOfBlood.Effects
 {
-	[CreateAssetMenu(fileName = "NewItem", menuName = "Bridge of Blood/Item")]
+	[CreateAssetMenu(fileName = "NewItem", menuName = "Bridge of Blood/Items/Joker")]
 	public class Item : ScriptableObject, IEffect, IPurchasable, IInventoryItem
 	{
 		[SerializeField] ShopItemDefinition shopItemDefinition;
@@ -35,7 +36,25 @@ namespace BridgeOfBlood.Effects
 
 		public void OnPurchase(PurchaseContext context)
 		{
-			context.AddPurchasedPayload(this);
+			context.Inventory.AddItem(this);
+		}
+	}
+
+    [CreateAssetMenu(fileName = "NewSpellItem", menuName = "Bridge of Blood/Items/Spell Item")]
+	public class SpellItem : Item
+	{
+		public SpellAttributeMaskCondition attributeMask;
+		
+		public bool CanApplyToSpell(RuntimeSpell spell){
+			return attributeMask.Evaluate(spell);
+		}
+
+		public void OnAppliedToSpell(RuntimeSpell spell){
+			foreach (var effect in effects){
+				if(effect is ConditionalEffect conditionalEffect){
+					conditionalEffect.conditions.Add(new RuntimeSpellCondition(spell));
+				}
+			}
 		}
 	}
 }

@@ -19,6 +19,8 @@ namespace BridgeOfBlood.Data.Spells
 
 		public ShopItemDefinition ShopItemDefinition => shopItemDefinition;
 
+		public Sprite icon;
+
 		float IRandomElement.Weight
 		{
 			get => ((IRandomElement)shopItemDefinition).Weight;
@@ -91,7 +93,7 @@ namespace BridgeOfBlood.Data.Spells
 
 		public void OnPurchase(PurchaseContext context)
 		{
-			context.AddPurchasedPayload(this);
+			context.Inventory.AddSpell(this);
 		}
     }
 

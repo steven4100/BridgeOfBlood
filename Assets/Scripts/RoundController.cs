@@ -13,19 +13,19 @@ using Debug = UnityEngine.Debug;
 /// </summary>
 public enum GameLoopPhase
 {
-    Playing,
-    AwaitingDespawn,
-    RoundEnd,
-    Lose
+	Playing,
+	AwaitingDespawn,
+	RoundEnd,
+	Lose
 }
 
 /// <summary>
-/// Result of one frame of round simulation. The runner uses this to decide transitions.
+/// Result of one frame of round simulation when the session layer must react.
 /// </summary>
 public struct RoundTickResult
 {
-    public bool roundEnded;
-    public bool quotaMet;
+	public bool roundEnded;
+	public SessionState nextSessionState;
 }
 
 /// <summary>
@@ -33,290 +33,358 @@ public struct RoundTickResult
 /// </summary>
 public class RoundControllerConfig
 {
-    public KeyCode castInputKey;
-    public bool debugLogTiming;
-    /// <summary>Session clone from <see cref="GameConfig.CreateRuntimeCopy"/>; use <see cref="GameConfig.playerInventory"/> for items.</summary>
-    public GameConfig gameConfig;
-    public SpellModificationsTestData castModifications;
-    public SimulationDebugController debugController;
+	public KeyCode castInputKey;
+	public bool debugLogTiming;
+	/// <summary>Session clone from <see cref="GameConfig.CreateRuntimeCopy"/>; use <see cref="GameConfig.playerInventory"/> for items.</summary>
+	public GameConfig gameConfig;
+	public SpellModificationsTestData castModifications;
+	public SimulationDebugController debugController;
 }
 
 /// <summary>
-/// Owns round-level state (phase, round number, quota, blood tracking) and runs one frame of
-/// round gameplay: player movement, casting, simulation steps, telemetry, damage/effect spawning,
-/// rendering, and phase evaluation. Reports whether the round ended.
-/// Does not own the systems it operates on; the runner creates them and passes them in.
+/// Session phase for <see cref="SessionState.Round"/> plus round simulation: player movement, casting, steps,
+/// telemetry, damage/effect spawning, rendering, and phase evaluation. Uses <see cref="IRoundEndStrategy"/>
+/// for win/lose and next session state when a round completes.
 /// </summary>
-public class RoundController
+public sealed class RoundController : SessionPhaseBase<RoundSessionViewData>
 {
-    private readonly Player _player;
-    private readonly GameSimulation _simulation;
-    private readonly LoopedSpellCaster _loopedSpellCaster;
-    private readonly TelemetryAggregator _telemetryAggregator;
-    private readonly DamageNumberController _damageNumberController;
-    private readonly EffectSpriteController _effectSpriteController;
-    private readonly SpriteInstanceBuilder _spriteInstanceBuilder;
-    private readonly SpriteInstancedRenderer _spriteRenderer;
-    private readonly AttackEntityDebugRenderer _attackDebugRenderer;
-    private readonly RoundControllerConfig _config;
-    private readonly EffectContext _effectContext = new EffectContext();
-    private readonly List<ItemEvalResult> _lastItemResults = new List<ItemEvalResult>();
+	readonly Player _player;
+	readonly GameSimulation _simulation;
+	readonly LoopedSpellCaster _loopedSpellCaster;
+	readonly TelemetryAggregator _telemetryAggregator;
+	readonly DamageNumberController _damageNumberController;
+	readonly EffectSpriteController _effectSpriteController;
+	readonly SpriteInstanceBuilder _spriteInstanceBuilder;
+	readonly SpriteInstancedRenderer _spriteRenderer;
+	readonly AttackEntityDebugRenderer _attackDebugRenderer;
+	readonly RoundControllerConfig _config;
+	readonly EffectContext _effectContext = new EffectContext();
+	readonly List<ItemEvalResult> _lastItemResults = new List<ItemEvalResult>();
+	readonly IRoundEndStrategy _roundEndStrategy;
+	readonly Camera _camera;
 
-    public GameLoopPhase Phase { get; private set; }
-    public int RoundNumber { get; private set; }
-    public float BloodQuota { get; private set; }
-    public int SpellLoopsPerRound { get; private set; }
-    public float BloodExtractedThisRound { get; private set; }
-    public bool QuotaMet { get; private set; }
+	public GameLoopPhase Phase { get; private set; }
+	public int RoundNumber { get; private set; }
+	public float BloodQuota { get; private set; }
+	public int SpellLoopsPerRound { get; private set; }
+	public float BloodExtractedThisRound { get; private set; }
+	public bool QuotaMet { get; private set; }
 
-    public IReadOnlyList<ItemEvalResult> LastItemResults => _lastItemResults;
+	public List<ItemEvalResult> LastItemResults => _lastItemResults;
+	
 
-    public int SpellLoopSlotCount => _loopedSpellCaster.SpellCount;
+	public RoundController(
+		Player player,
+		GameSimulation simulation,
+		LoopedSpellCaster loopedSpellCaster,
+		TelemetryAggregator telemetryAggregator,
+		DamageNumberController damageNumberController,
+		EffectSpriteController effectSpriteController,
+		SpriteInstanceBuilder spriteInstanceBuilder,
+		SpriteInstancedRenderer spriteRenderer,
+		AttackEntityDebugRenderer attackDebugRenderer,
+		RoundControllerConfig config,
+		IRoundEndStrategy roundEndStrategy,
+		IStatePresenter<RoundSessionViewData> roundHudPresenter,
+		Camera camera)
+		: base(roundHudPresenter ?? RoundSessionNoOpPresenter.Instance)
+	{
+		_player = player;
+		_simulation = simulation;
+		_loopedSpellCaster = loopedSpellCaster;
+		_telemetryAggregator = telemetryAggregator;
+		_damageNumberController = damageNumberController;
+		_effectSpriteController = effectSpriteController;
+		_spriteInstanceBuilder = spriteInstanceBuilder;
+		_spriteRenderer = spriteRenderer;
+		_attackDebugRenderer = attackDebugRenderer;
+		_config = config;
+		_roundEndStrategy = roundEndStrategy ?? new QuotaBasedRoundEndStrategy();
+		_camera = camera;
 
-    public int IndexOfLastCastInLoop => _loopedSpellCaster.IndexOfLastCast;
+		RoundNumber = 1;
+		Phase = GameLoopPhase.Playing;
+		ApplyRoundRuntimeFromConfig();
+	}
 
-    public int LoopsCompletedThisRound => _loopedSpellCaster.LoopCount;
+	/// <summary>
+	/// Swap the active runtime config (e.g. Lose → Retry builds a new <see cref="GameConfig.CreateRuntimeCopy"/>).
+	/// </summary>
+	public void SetGameConfig(GameConfig runtime)
+	{
+		_config.gameConfig = runtime;
+	}
 
-    public RoundController(
-        Player player,
-        GameSimulation simulation,
-        LoopedSpellCaster loopedSpellCaster,
-        TelemetryAggregator telemetryAggregator,
-        DamageNumberController damageNumberController,
-        EffectSpriteController effectSpriteController,
-        SpriteInstanceBuilder spriteInstanceBuilder,
-        SpriteInstancedRenderer spriteRenderer,
-        AttackEntityDebugRenderer attackDebugRenderer,
-        RoundControllerConfig config)
-    {
-        _player = player;
-        _simulation = simulation;
-        _loopedSpellCaster = loopedSpellCaster;
-        _telemetryAggregator = telemetryAggregator;
-        _damageNumberController = damageNumberController;
-        _effectSpriteController = effectSpriteController;
-        _spriteInstanceBuilder = spriteInstanceBuilder;
-        _spriteRenderer = spriteRenderer;
-        _attackDebugRenderer = attackDebugRenderer;
-        _config = config;
+	protected override void OnEnter(SessionFlowContext context)
+	{
+		PrepareForRoundAfterShop();
+		context.RuntimeGameConfig.playerInventory.SpellCollection.ClearRuntimeSpellTracking();
+		ResetForNewRound(context.SimulationZone.rect);
+	}
 
-        RoundNumber = 1;
-        Phase = GameLoopPhase.Playing;
-        ApplyRoundRuntimeFromConfig();
-    }
+	protected override RoundSessionViewData TickAndBuildViewData(SessionFlowContext context, float deltaTime)
+	{
+		RoundTickResult result = TickSimulation(
+			deltaTime,
+			context.SimulationZone.rect,
+			_camera,
+			context.SimulationZone);
 
-    /// <summary>
-    /// Swap the active runtime config (e.g. Lose → Retry builds a new <see cref="GameConfig.CreateRuntimeCopy"/>).
-    /// </summary>
-    public void SetGameConfig(GameConfig runtime)
-    {
-        _config.gameConfig = runtime;
-    }
+		if (result.roundEnded)
+			context.Flow.SetState(result.nextSessionState);
 
-    /// <summary>
-    /// Runs one frame of the round. Returns whether the round ended this frame and the quota result.
-    /// </summary>
-    public RoundTickResult Tick(float deltaTime, Rect rect, Camera cam, RectTransform simulationZone)
-    {
-        var debugCtrl = _config.debugController;
-        bool hasController = debugCtrl != null;
-        if (hasController)
-            debugCtrl.ProcessInput();
+		return BuildRoundSessionViewData(context);
+	}
 
-        _player.Update(deltaTime, rect);
+	RoundSessionViewData BuildRoundSessionViewData(SessionFlowContext context)
+	{
+		var spellLabels = new List<string>();
+		IReadOnlyList<RuntimeSpell> runtimeSpells = context.RuntimeGameConfig.playerInventory.SpellCollection.RuntimeSpells;
+		for (int i = 0; i < runtimeSpells.Count; i++)
+		{
+			SpellAuthoringData def = runtimeSpells[i].Definition;
+			string label = def != null && def.ShopItemDefinition != null
+				&& !string.IsNullOrEmpty(def.ShopItemDefinition.DisplayName)
+				? def.ShopItemDefinition.DisplayName
+				: def.name;
+			spellLabels.Add(label);
+		}
 
-        bool loopsExhausted = _loopedSpellCaster.LoopCount >= SpellLoopsPerRound;
-        bool allowCasting = Phase == GameLoopPhase.Playing && !loopsExhausted;
-        bool castRequested = allowCasting && Input.GetKeyDown(_config.castInputKey);
-        var mods = _config.castModifications != null
-            ? _config.castModifications.GetModifications()
-            : new SpellModifications();
+		int loopsRemaining = Mathf.Max(0, SpellLoopsPerRound - _loopedSpellCaster.LoopCount);
 
-        EvaluateItems(mods);
+		var itemRows = new List<RoundItemRowViewData>();
+		IReadOnlyList<Item> passive = context.RuntimeGameConfig.playerInventory.GetPassiveItems();
+		IReadOnlyList<ItemEvalResult> evals = _lastItemResults;
+		int ei = 0;
+		for (int i = 0; i < passive.Count; i++)
+		{
+			Item item = passive[i];
+			if (item == null)
+				continue;
+			if (ei >= evals.Count)
+				break;
+			ItemEvalResult ev = evals[ei++];
+			string displayName = item.ShopItemDefinition != null
+				&& !string.IsNullOrEmpty(item.ShopItemDefinition.DisplayName)
+				? item.ShopItemDefinition.DisplayName
+				: item.name;
+			itemRows.Add(new RoundItemRowViewData(displayName, ev.applied));
+		}
 
-        var sim = _simulation.State;
-        SpellCastResult castResult = _loopedSpellCaster.AttemptToCastNextSpell(
-            sim.SimulationTime, _player.Position, castRequested, mods);
-        _loopedSpellCaster.Update(sim.SimulationTime, new float2(-1f, 0f));
+		return new RoundSessionViewData(
+			spellLabels,
+			_loopedSpellCaster.IndexOfLastCast,
+			BloodQuota,
+			BloodExtractedThisRound,
+			loopsRemaining,
+			itemRows);
+	}
 
-        bool advanceTime = !hasController || debugCtrl.ShouldAdvanceTime;
-        if (advanceTime)
-        {
-            float dt = hasController ? debugCtrl.DeltaTime : deltaTime;
-            _simulation.AdvanceTime(dt);
-        }
+	/// <summary>
+	/// Runs one frame of the round. Returns session transition when the round ends this frame.
+	/// </summary>
+	RoundTickResult TickSimulation(float deltaTime, Rect rect, Camera cam, RectTransform simulationZone)
+	{
+		var debugCtrl = _config.debugController;
+		bool hasController = debugCtrl != null;
+		if (hasController)
+			debugCtrl.ProcessInput();
 
-        Stopwatch sw = _config.debugLogTiming ? new Stopwatch() : null;
-        long totalMs = 0;
+		_player.Update(deltaTime, rect);
 
-        for (int i = 0; i < _simulation.StepCount; i++)
-        {
-            if (!hasController || debugCtrl.ShouldRunPhase(i, _simulation.GetStepName(i)))
-            {
-                sw?.Restart();
-                _simulation.ExecuteStep(i);
-                if (sw != null)
-                {
-                    long ms = sw.ElapsedMilliseconds;
-                    totalMs += ms;
-                    if (_config.debugLogTiming)
-                        Debug.Log($"[Timing] {_simulation.GetStepName(i)}: {ms}ms");
-                }
-            }
-        }
+		bool loopsExhausted = _loopedSpellCaster.LoopCount >= SpellLoopsPerRound;
+		bool allowCasting = Phase == GameLoopPhase.Playing && !loopsExhausted;
+		bool castRequested = allowCasting && Input.GetKeyDown(_config.castInputKey);
+		var mods = _config.castModifications != null
+			? _config.castModifications.GetModifications()
+			: new SpellModifications();
 
-        float frameDt = hasController ? debugCtrl.DeltaTime : deltaTime;
-        _telemetryAggregator.ProcessFrame(sim, frameDt, castResult);
+		EvaluateItems(mods);
 
-        BloodExtractedThisRound = _telemetryAggregator.CurrentRound.aggregate.bloodExtracted;
+		var sim = _simulation.State;
+		SpellCastResult castResult = _loopedSpellCaster.AttemptToCastNextSpell(
+			sim.SimulationTime, _player.Position, castRequested, mods);
+		_loopedSpellCaster.Update(sim.SimulationTime, new float2(-1f, 0f));
 
-        _damageNumberController.SpawnFromDamageEvents(sim.DamageEvents, sim.EnemyBuffers);
-        _damageNumberController.SpawnFromTickDamageEvents(sim.TickDamageEvents, sim.EnemyBuffers);
-        _effectSpriteController.SpawnFromDamageEvents(sim.DamageEvents);
-        _simulation.ClearFrameCombatEvents();
+		bool advanceTime = !hasController || debugCtrl.ShouldAdvanceTime;
+		if (advanceTime)
+		{
+			float dt = hasController ? debugCtrl.DeltaTime : deltaTime;
+			_simulation.AdvanceTime(dt);
+		}
 
-        if (advanceTime)
-        {
-            float effectDt = hasController ? debugCtrl.DeltaTime : deltaTime;
-            _damageNumberController.Update(effectDt);
-            _effectSpriteController.Update(effectDt);
-        }
+		Stopwatch sw = _config.debugLogTiming ? new Stopwatch() : null;
+		long totalMs = 0;
 
-        _spriteInstanceBuilder.Build(sim.EnemyBuffers, sim.AttackEntities, _effectSpriteController.GetEntities());
-        _spriteRenderer.Render(_spriteInstanceBuilder.Buffer, _spriteInstanceBuilder.Count, simulationZone, cam);
-        _attackDebugRenderer.Render(sim.AttackEntities, simulationZone, cam);
-        _damageNumberController.Render(simulationZone, cam);
+		for (int i = 0; i < _simulation.StepCount; i++)
+		{
+			if (!hasController || debugCtrl.ShouldRunPhase(i, _simulation.GetStepName(i)))
+			{
+				sw?.Restart();
+				_simulation.ExecuteStep(i);
+				if (sw != null)
+				{
+					long ms = sw.ElapsedMilliseconds;
+					totalMs += ms;
+					if (_config.debugLogTiming)
+						Debug.Log($"[Timing] {_simulation.GetStepName(i)}: {ms}ms");
+				}
+			}
+		}
 
-        if (hasController)
-            debugCtrl.NotifyFrameComplete();
+		float frameDt = hasController ? debugCtrl.DeltaTime : deltaTime;
+		_telemetryAggregator.ProcessFrame(sim, frameDt, castResult);
 
-        UpdatePhase(
-            loopsExhausted,
-            _loopedSpellCaster.HasActiveCasts,
-            _loopedSpellCaster.HasPendingSpawns,
-            sim.AttackEntityCount);
+		BloodExtractedThisRound = _telemetryAggregator.CurrentRound.aggregate.bloodExtracted;
 
-        if (Phase == GameLoopPhase.RoundEnd)
-        {
-            _telemetryAggregator.EndRound();
-            EvaluateRoundEnd();
-            return new RoundTickResult { roundEnded = true, quotaMet = QuotaMet };
-        }
+		_damageNumberController.SpawnFromDamageEvents(sim.DamageEvents, sim.EnemyBuffers);
+		_damageNumberController.SpawnFromTickDamageEvents(sim.TickDamageEvents, sim.EnemyBuffers);
+		_effectSpriteController.SpawnFromDamageEvents(sim.DamageEvents);
+		_simulation.ClearFrameCombatEvents();
 
-        return default;
-    }
+		if (advanceTime)
+		{
+			float effectDt = hasController ? debugCtrl.DeltaTime : deltaTime;
+			_damageNumberController.Update(effectDt);
+			_effectSpriteController.Update(effectDt);
+		}
 
-    /// <summary>
-    /// Clears simulation, spell caster, and repositions the player for a fresh round.
-    /// Called by <see cref="RoundSessionPhase.Enter"/> after spell-loop sync.
-    /// </summary>
-    public void ResetForNewRound(Rect simulationRect)
-    {
-        _simulation.ResetForNewRound();
-        _loopedSpellCaster.Reset();
-        _loopedSpellCaster.ClearCastState();
-        _player.PlaceAtRightSide(simulationRect);
-    }
+		_spriteInstanceBuilder.Build(sim.EnemyBuffers, sim.AttackEntities, _effectSpriteController.GetEntities());
+		_spriteRenderer.Render(_spriteInstanceBuilder.Buffer, _spriteInstanceBuilder.Count, simulationZone, cam);
+		_attackDebugRenderer.Render(sim.AttackEntities, simulationZone, cam);
+		_damageNumberController.Render(simulationZone, cam);
 
-    /// <summary>
-    /// If the last round ended with quota met, advances round index and reapplies runtime tuning;
-    /// otherwise no-op on round index (e.g. opening shop before round 1).
-    /// </summary>
-    public void PrepareForRoundAfterShop()
-    {
-        if (Phase == GameLoopPhase.RoundEnd)
-            AdvanceToNextRoundAfterWin();
-    }
+		if (hasController)
+			debugCtrl.NotifyFrameComplete();
 
-    void AdvanceToNextRoundAfterWin()
-    {
-        RoundNumber++;
-        BloodExtractedThisRound = 0f;
-        QuotaMet = false;
-        Phase = GameLoopPhase.Playing;
-        ApplyRoundRuntimeFromConfig();
-        Debug.Log($"[RoundController] Starting round {RoundNumber}. Quota: {BloodQuota:F0}, Loops: {SpellLoopsPerRound}");
-    }
+		UpdatePhase(
+			loopsExhausted,
+			_loopedSpellCaster.HasActiveCasts,
+			_loopedSpellCaster.HasPendingSpawns,
+			sim.AttackEntityCount);
 
-    /// <summary>
-    /// Resets to round 1. Call from Lose → Round transition.
-    /// </summary>
-    public void Retry()
-    {
-        RoundNumber = 1;
-        BloodExtractedThisRound = 0f;
-        QuotaMet = false;
-        Phase = GameLoopPhase.Playing;
-        ApplyRoundRuntimeFromConfig();
-        Debug.Log($"[RoundController] Retrying from round 1. Quota: {BloodQuota:F0}, Loops: {SpellLoopsPerRound}");
-    }
+		if (Phase == GameLoopPhase.RoundEnd)
+		{
+			_telemetryAggregator.EndRound();
+			RoundEndEvaluationInput endInput = new RoundEndEvaluationInput(
+				BloodExtractedThisRound,
+				BloodQuota,
+				RoundNumber);
+			RoundEndEvaluationResult resolution = _roundEndStrategy.Evaluate(in endInput);
+			QuotaMet = resolution.QuotaMet;
+			Phase = resolution.NextInternalPhase;
+			return new RoundTickResult
+			{
+				roundEnded = true,
+				nextSessionState = resolution.NextSessionState
+			};
+		}
 
-    void ApplyRoundRuntimeFromConfig()
-    {
-        GameConfig gc = _config.gameConfig;
-        BloodQuota = gc.bloodQuotaScaling.BuildForRound(RoundNumber).bloodRequirement;
-        SpellLoopsPerRound = Mathf.Max(0, gc.maxSpellLoopsPerRound);
-    }
+		return default;
+	}
 
-    bool UpdatePhase(bool loopsExhausted, bool hasActiveCasts, bool hasPendingSpawns, int attackEntityCount)
-    {
-        GameLoopPhase before = Phase;
+	/// <summary>
+	/// Clears simulation, spell caster, and repositions the player for a fresh round.
+	/// Called from <see cref="Enter"/> after spell-loop sync.
+	/// </summary>
+	public void ResetForNewRound(Rect simulationRect)
+	{
+		_simulation.ResetForNewRound();
+		_loopedSpellCaster.Reset();
+		_loopedSpellCaster.ClearCastState();
+		_player.PlaceAtRightSide(simulationRect);
+	}
 
-        switch (Phase)
-        {
-            case GameLoopPhase.Playing:
-                if (loopsExhausted)
-                    Phase = GameLoopPhase.AwaitingDespawn;
-                break;
+	/// <summary>
+	/// If the last round ended with quota met, advances round index and reapplies runtime tuning;
+	/// otherwise no-op on round index (e.g. opening shop before round 1).
+	/// </summary>
+	public void PrepareForRoundAfterShop()
+	{
+		if (Phase == GameLoopPhase.RoundEnd)
+			AdvanceToNextRoundAfterWin();
+	}
 
-            case GameLoopPhase.AwaitingDespawn:
-                if (!hasActiveCasts && !hasPendingSpawns && attackEntityCount == 0)
-                    Phase = GameLoopPhase.RoundEnd;
-                break;
-        }
+	void AdvanceToNextRoundAfterWin()
+	{
+		RoundNumber++;
+		BloodExtractedThisRound = 0f;
+		QuotaMet = false;
+		Phase = GameLoopPhase.Playing;
+		ApplyRoundRuntimeFromConfig();
+		Debug.Log($"[RoundController] Starting round {RoundNumber}. Quota: {BloodQuota:F0}, Loops: {SpellLoopsPerRound}");
+	}
 
-        return Phase != before;
-    }
+	/// <summary>
+	/// Resets to round 1. Call from Lose → Round transition.
+	/// </summary>
+	public void Retry()
+	{
+		RoundNumber = 1;
+		BloodExtractedThisRound = 0f;
+		QuotaMet = false;
+		Phase = GameLoopPhase.Playing;
+		ApplyRoundRuntimeFromConfig();
+		Debug.Log($"[RoundController] Retrying from round 1. Quota: {BloodQuota:F0}, Loops: {SpellLoopsPerRound}");
+	}
 
-    void EvaluateRoundEnd()
-    {
-        QuotaMet = BloodExtractedThisRound >= BloodQuota;
-        if (!QuotaMet)
-            Phase = GameLoopPhase.Lose;
-        // Quota met: stay on RoundEnd until session shop → PrepareForRoundAfterShop.
-        Debug.Log($"[RoundController] Round {RoundNumber} ended. Blood: {BloodExtractedThisRound:F0} / {BloodQuota:F0} — {(QuotaMet ? "QUOTA MET" : "QUOTA FAILED")}");
-    }
+	void ApplyRoundRuntimeFromConfig()
+	{
+		GameConfig gc = _config.gameConfig;
+		BloodQuota = gc.bloodQuotaScaling.BuildForRound(RoundNumber).bloodRequirement;
+		SpellLoopsPerRound = Mathf.Max(0, gc.maxSpellLoopsPerRound);
+	}
 
-    void EvaluateItems(SpellModifications mods)
-    {
-        _effectContext.frameMetrics = _telemetryAggregator.CurrentFrame.aggregate;
-        _effectContext.spellCastMetrics = _telemetryAggregator.CurrentSpellCast.aggregate;
-        _effectContext.spellLoopMetrics = _telemetryAggregator.CurrentSpellLoop.aggregate;
-        _effectContext.roundMetrics = _telemetryAggregator.CurrentRound.aggregate;
-        _effectContext.gameMetrics = _telemetryAggregator.Game.aggregate;
-        _effectContext.spellModifications = mods;
+	bool UpdatePhase(bool loopsExhausted, bool hasActiveCasts, bool hasPendingSpawns, int attackEntityCount)
+	{
+		GameLoopPhase before = Phase;
 
-        _effectContext.spellInvocation = new SpellInvocationContext
-        {
-            totalSpellsCasted = _loopedSpellCaster.TotalInvocationCount,
-            spellLoopNumber = _loopedSpellCaster.LoopCount + 1,
-            spellSlotNumber = _loopedSpellCaster.NextCastIndex + 1,
-            spellLoopSlotCount = _loopedSpellCaster.SpellCount,
-            spellLoopsPerRound = SpellLoopsPerRound,
-            spells = _loopedSpellCaster.Spells,
-        };
+		switch (Phase)
+		{
+			case GameLoopPhase.Playing:
+				if (loopsExhausted)
+					Phase = GameLoopPhase.AwaitingDespawn;
+				break;
 
-        _lastItemResults.Clear();
-        var items = _config.gameConfig.playerInventory.GetPassiveItems();
-        for (int i = 0; i < items.Count; i++)
-        {
-            var item = items[i];
-            if (item == null) continue;
-            _lastItemResults.Add(new ItemEvalResult
-            {
-                itemName = item.name,
-                applied = item.Apply(_effectContext)
-            });
-        }
-    }
+			case GameLoopPhase.AwaitingDespawn:
+				if (!hasActiveCasts && !hasPendingSpawns && attackEntityCount == 0)
+					Phase = GameLoopPhase.RoundEnd;
+				break;
+		}
+
+		return Phase != before;
+	}
+
+	void EvaluateItems(SpellModifications mods)
+	{
+		_effectContext.frameMetrics = _telemetryAggregator.CurrentFrame.aggregate;
+		_effectContext.spellCastMetrics = _telemetryAggregator.CurrentSpellCast.aggregate;
+		_effectContext.spellLoopMetrics = _telemetryAggregator.CurrentSpellLoop.aggregate;
+		_effectContext.roundMetrics = _telemetryAggregator.CurrentRound.aggregate;
+		_effectContext.gameMetrics = _telemetryAggregator.Game.aggregate;
+		_effectContext.spellModifications = mods;
+
+		_effectContext.spellInvocation = new SpellInvocationContext
+		{
+			totalSpellsCasted = _loopedSpellCaster.TotalInvocationCount,
+			spellLoopNumber = _loopedSpellCaster.LoopCount + 1,
+			spellSlotNumber = _loopedSpellCaster.NextCastIndex + 1,
+			spellLoopSlotCount = _loopedSpellCaster.SpellCount,
+			spellLoopsPerRound = SpellLoopsPerRound,
+			spells = _loopedSpellCaster.Spells,
+		};
+
+		_lastItemResults.Clear();
+		var items = _config.gameConfig.playerInventory.GetPassiveItems();
+		for (int i = 0; i < items.Count; i++)
+		{
+			var item = items[i];
+			if (item == null) continue;
+			_lastItemResults.Add(new ItemEvalResult
+			{
+				itemName = item.name,
+				applied = item.Apply(_effectContext)
+			});
+		}
+	}
 }

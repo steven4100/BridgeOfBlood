@@ -26,23 +26,10 @@ MonoBehaviour:
   references:
     version: 2
     RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
     - rid: 2000000000000000001
       type: {class: SpellModificationEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
         modifier:
-          rid: 2000000000000000002
-    - rid: 2000000000000000002
-      type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
-      data:
-        property: 10
-        filter: 0
-        flatAdditive:
-          rid: 2000000000000000003
-        percentIncreased:
-          rid: 0
-        moreMultiplier:
-          rid: 0
-    - rid: 2000000000000000003
-      type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
-      data:
-        value: 15
+          rid: -2

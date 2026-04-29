@@ -1,16 +1,20 @@
 using BridgeOfBlood.Data.Enemies;
 using BridgeOfBlood.Data.Shared;
 using Unity.Collections;
+using Unity.Mathematics;
 using UnityEngine;
 
 /// <summary>
 /// Consumes HitEvents (from HitResolver + ChainSystem), applies damage to enemies, increments enemiesHit,
 /// and emits EnemyHitEvent / EnemyKilledEvent. Crit is rolled per hit: if roll < critChance, damage is multiplied by critDamageMultiplier.
+/// Hits where the target already has no HP remaining are ignored (no damage, events, or enemiesHit).
 /// Assumes hit indices are valid; caller (e.g. AttackEntityManager.ValidateHitEvents) must validate upstream.
 /// </summary>
 public class DamageSystem
 {
     public const float WeaknessMultiplier = 1.5f;
+
+    static readonly float KnockbackDirectionEpsilonSq = 1e-12f;
 
     public void ProcessHits(
         NativeArray<HitEvent>.ReadOnly hitEvents,
@@ -28,19 +32,24 @@ public class DamageSystem
         {
             HitEvent hit = hitEvents[i];
 
-            AttackEntity atk = attackEntities[hit.attackEntityIndex];
             int ei = hit.enemyIndex;
+            EnemyVitality vit = enemies.Vitality[ei];
+            if (vit.health <= 0f)
+                continue;
+
+            AttackEntity atk = attackEntities[hit.attackEntityIndex];
             int entityId = enemies.EntityIds[ei];
             EnemyCombatTraits traits = enemies.CombatTraits[ei];
-            EnemyVitality vit = enemies.Vitality[ei];
             StatusAilmentFlag status = enemies.Status[ei];
+            EnemyMotion motion = enemies.Motion[ei];
+            EnemyPresentation presentation = enemies.Presentation[ei];
 
             float physical = ApplyDamageType(atk.physicalDamage, DamageType.Physical, entityId, traits.elementalWeakness, outHitEvents);
             float cold = ApplyDamageType(atk.coldDamage, DamageType.Cold, entityId, traits.elementalWeakness, outHitEvents);
             float fire = ApplyDamageType(atk.fireDamage, DamageType.Fire, entityId, traits.elementalWeakness, outHitEvents);
             float lightning = ApplyDamageType(atk.lightningDamage, DamageType.Lightning, entityId, traits.elementalWeakness, outHitEvents);
 
-            bool isCrit = atk.critChance > 0f && atk.critDamageMultiplier >= 1f && Random.value < atk.critChance;
+            bool isCrit = atk.critChance > 0f && atk.critDamageMultiplier >= 1f && UnityEngine.Random.value < atk.critChance;
             if (isCrit)
             {
                 float m = atk.critDamageMultiplier;
@@ -64,6 +73,21 @@ public class DamageSystem
             bool killed = healthBefore > 0f && vit.health <= 0f;
             float overkill = killed ? -vit.health : 0f;
 
+            if (totalDamage > 0f && atk.knockbackStrength > 0f)
+            {
+                float2 delta = motion.position - atk.position;
+                float2 dir;
+                if (math.lengthsq(delta) > KnockbackDirectionEpsilonSq)
+                    dir = math.normalize(delta);
+                else if (math.lengthsq(atk.velocity) > KnockbackDirectionEpsilonSq)
+                    dir = math.normalize(-atk.velocity);
+                else
+                    dir = new float2(-1f, 0f);
+
+                motion.knockbackVelocity += dir * atk.knockbackStrength;
+                enemies.Motion[ei] = motion;
+            }
+
             if (emitDamageEvents && totalDamage > 0f)
             {
                 outDamageEvents.Add(new DamageEvent
@@ -82,6 +106,7 @@ public class DamageSystem
                     wasKill = killed,
                     overkillDamage = overkill,
                     bloodExtracted = totalDamage + overkill,
+                    onDamageSound = atk.onDamageSound,
                     onHitEffectForVfx = atk.onHitEffect,
                     onKillEffectForVfx = atk.onKillEffect
                 });
@@ -92,9 +117,12 @@ public class DamageSystem
                 outKillEvents.Add(new EnemyKilledEvent
                 {
                     enemyEntityId = entityId,
+                    spellId = atk.spellId,
+                    spellInvocationId = atk.spellInvocationId,
+                    position = motion.position,
                     overkillDamage = overkill,
-                    corruptionFlag = traits.corruptionFlag,
-                    finalStatusAilments = status
+                    onDeathSound = presentation.onDeathSound,
+                    finalStatusAilments = status,
                 });
             }
 

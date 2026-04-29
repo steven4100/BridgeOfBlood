@@ -37,8 +37,9 @@ public struct ShockedTrackAndApplyJob : IJob
             if (!proc)
                 continue;
 
-            int entityId = EntityIds[hit.enemyIndex];
-            StatusAilmentFlag flags = Status[hit.enemyIndex];
+            int ei = hit.enemyIndex;
+            int entityId = EntityIds[ei];
+            StatusAilmentFlag flags = Status[ei];
             bool alreadyHad = (flags & StatusAilmentFlag.Shocked) != 0;
 
             Tracker.Add(new EnemyShockedStatus
@@ -52,7 +53,7 @@ public struct ShockedTrackAndApplyJob : IJob
             });
 
             flags |= StatusAilmentFlag.Shocked;
-            Status[hit.enemyIndex] = flags;
+            Status[ei] = flags;
 
             if (!alreadyHad)
             {
@@ -60,7 +61,9 @@ public struct ShockedTrackAndApplyJob : IJob
                 {
                     spellId = hit.spellId,
                     spellInvocationId = hit.spellInvocationId,
-                    enemyIndex = hit.enemyIndex,
+                    enemyIndex = ei,
+                    enemyEntityId = entityId,
+                    position = hit.position,
                     ailmentFlag = StatusAilmentFlag.Shocked
                 });
             }

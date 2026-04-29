@@ -17,7 +17,9 @@ public class AttackEntityData : ScriptableObject
 	public FloatRange critChanceRange;
 	public FloatRange critDamageMultiplierRange;
 
-	
+	[Header("Knockback")]
+	[Tooltip("Added to enemy knockback velocity along the vector from this attack toward the enemy. Scaled by spell modifications (KnockbackStrength).")]
+	public float knockbackStrength;
 
 	public Vector2 entityVelocity;
 	public HitBoxData hitBoxData;
@@ -35,6 +37,10 @@ public class AttackEntityData : ScriptableObject
 	[Header("Visual")]
 	[Tooltip("Sprite visual for atlas-based rendering. Run Tools > BridgeOfBlood > Rebuild Sprite Rendering Data after assigning.")]
 	public SpriteProvider visual;
+
+	[Header("Audio")]
+	[Tooltip("Optional audio unit emitted when this attack deals damage.")]
+	public AudioUnit onDamageSound;
 
 	public void OnBeforeSerialize() { }
 
@@ -76,5 +82,7 @@ public class AttackEntityData : ScriptableObject
 			critDamageMultiplierRange.min = Mathf.Max(1f, critDamageMultiplierRange.min);
 			critDamageMultiplierRange.max = Mathf.Max(1f, critDamageMultiplierRange.max);
 		}
+
+		knockbackStrength = Mathf.Max(0f, knockbackStrength);
 	}
 }

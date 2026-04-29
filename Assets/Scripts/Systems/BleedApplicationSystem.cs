@@ -1,6 +1,5 @@
 using BridgeOfBlood.Data.Enemies;
 using BridgeOfBlood.Data.Shared;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -36,8 +35,9 @@ public struct BleedTrackAndApplyJob : IJob
             if (!proc)
                 continue;
 
-            int entityId = EntityIds[hit.enemyIndex];
-            StatusAilmentFlag flags = Status[hit.enemyIndex];
+            int ei = hit.enemyIndex;
+            int entityId = EntityIds[ei];
+            StatusAilmentFlag flags = Status[ei];
             bool alreadyHad = (flags & StatusAilmentFlag.Bleeding) != 0;
 
             const float frac = 0.2f;
@@ -55,7 +55,7 @@ public struct BleedTrackAndApplyJob : IJob
             });
 
             flags |= StatusAilmentFlag.Bleeding;
-            Status[hit.enemyIndex] = flags;
+            Status[ei] = flags;
 
             if (!alreadyHad)
             {
@@ -63,7 +63,9 @@ public struct BleedTrackAndApplyJob : IJob
                 {
                     spellId = hit.spellId,
                     spellInvocationId = hit.spellInvocationId,
-                    enemyIndex = hit.enemyIndex,
+                    enemyIndex = ei,
+                    enemyEntityId = entityId,
+                    position = hit.position,
                     ailmentFlag = StatusAilmentFlag.Bleeding
                 });
             }

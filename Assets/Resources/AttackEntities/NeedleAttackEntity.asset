@@ -12,12 +12,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
   m_Name: NeedleAttackEntity
   m_EditorClassIdentifier: 
-  physicalDamage: 25
-  coldDamage: 0
-  fireDamage: 0
-  lightningDamage: 0
-  critChance: 0
-  critDamageMultiplier: 0
+  physicalDamageRange:
+    min: 15
+    max: 25
+  coldDamageRange:
+    min: 0
+    max: 0
+  fireDamageRange:
+    min: 0
+    max: 0
+  lightningDamageRange:
+    min: 0
+    max: 0
+  critChanceRange:
+    min: 0
+    max: 0
+  critDamageMultiplierRange:
+    min: 1
+    max: 1
   entityVelocity: {x: 0, y: 0}
   hitBoxData:
     isSphere: 1
@@ -33,6 +45,7 @@ MonoBehaviour:
   - rid: 4884261957644320833
   - rid: 4044632016599121996
   visual: {fileID: 11400000, guid: 6a89cbba6c71e5440a3a15edec0394fe, type: 2}
+  onDamageSound: {fileID: 0}
   references:
     version: 2
     RefIds:

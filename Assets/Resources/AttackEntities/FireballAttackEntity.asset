@@ -12,12 +12,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
   m_Name: FireballAttackEntity
   m_EditorClassIdentifier: 
-  physicalDamage: 0
-  coldDamage: 0
-  fireDamage: 99
-  lightningDamage: 0
-  critChance: 0
-  critDamageMultiplier: 0
+  physicalDamageRange:
+    min: 0
+    max: 0
+  coldDamageRange:
+    min: 0
+    max: 0
+  fireDamageRange:
+    min: 40
+    max: 80
+  lightningDamageRange:
+    min: 0
+    max: 0
+  critChanceRange:
+    min: 0
+    max: 0
+  critDamageMultiplierRange:
+    min: 1
+    max: 1
   entityVelocity: {x: -250.14, y: 0}
   hitBoxData:
     isSphere: 1
@@ -32,6 +44,7 @@ MonoBehaviour:
   - rid: 4884261957644320834
   - rid: 4884261957644320835
   visual: {fileID: 11400000, guid: 6c03777a1f3524145980b04cac24ecd0, type: 2}
+  onDamageSound: {fileID: 11400000, guid: c8c9c7244ecabe24888b59279c10d0c9, type: 2}
   references:
     version: 2
     RefIds:
@@ -41,6 +54,7 @@ MonoBehaviour:
         isActive: 1
         maxTimeAlive: 3
         maxDistanceTravelled: 0
+        maxFrames: 0
     - rid: 72257236218675259
       type: {class: PierceBehavior, ns: , asm: Assembly-CSharp}
       data:

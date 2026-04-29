@@ -17,6 +17,7 @@ public class ApplyIgnitedBehavior : AttackEntityBehavior
     public override void ApplyTo(ref AttackEntitySpawnPayload payload) => payload.ignitedApplier = ToRuntime();
 }
 
+[Serializable]
 public struct IgnitedApplierRuntime
 {
     public bool isActive;

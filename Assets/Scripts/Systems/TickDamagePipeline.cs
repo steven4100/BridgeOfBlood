@@ -17,6 +17,7 @@ public static class TickDamagePipeline
     public const float DotFlashDurationSeconds = 0.16f;
 
     /// <param name="entityIdToEnemyIndex">Entity id → index into <paramref name="enemies"/>; caller builds once per frame.</param>
+    /// <param name="outKillEvents">When created, receives <see cref="EnemyKilledEvent"/> for deaths from DoT (unified with hit kills).</param>
     public static void ProcessTimeBasedDotTicks(
         NativeList<EnemyIgniteStatus> ignite,
         NativeList<EnemyPoisonStatus> poison,
@@ -25,7 +26,8 @@ public static class TickDamagePipeline
         NativeHashMap<int, int> entityIdToEnemyIndex,
         float deltaTime,
         float simulationTime,
-        NativeList<TickDamageEvent> outEvents)
+        NativeList<TickDamageEvent> outEvents,
+        NativeList<EnemyKilledEvent> outKillEvents)
     {
         if (deltaTime <= 0f)
             return;
@@ -56,7 +58,8 @@ public static class TickDamagePipeline
                 row.spellId,
                 row.spellInvocationId,
                 position,
-                outEvents);
+                outEvents,
+                outKillEvents);
 
             row.lastTimeTicked = simulationTime;
             ignite[i] = row;
@@ -88,7 +91,8 @@ public static class TickDamagePipeline
                 row.spellId,
                 row.spellInvocationId,
                 position,
-                outEvents);
+                outEvents,
+                outKillEvents);
 
             row.lastTimeTicked = simulationTime;
             poison[i] = row;
@@ -120,7 +124,8 @@ public static class TickDamagePipeline
                 row.spellId,
                 row.spellInvocationId,
                 position,
-                outEvents);
+                outEvents,
+                outKillEvents);
 
             row.lastTimeTicked = simulationTime;
             bleed[i] = row;
@@ -135,7 +140,8 @@ public static class TickDamagePipeline
         int spellId,
         int spellInvocationId,
         float2 position,
-        NativeList<TickDamageEvent> outEvents)
+        NativeList<TickDamageEvent> outEvents,
+        NativeList<EnemyKilledEvent> outKillEvents)
     {
         if (enemyIndex < 0 || enemyIndex >= enemies.Length)
             return;
@@ -168,6 +174,23 @@ public static class TickDamagePipeline
             lightningDamage = light,
             source = source
         });
+
+        if (killed && outKillEvents.IsCreated)
+        {
+            int entityId = enemies.EntityIds[enemyIndex];
+            EnemyPresentation pres = enemies.Presentation[enemyIndex];
+            StatusAilmentFlag status = enemies.Status[enemyIndex];
+            outKillEvents.Add(new EnemyKilledEvent
+            {
+                enemyEntityId = entityId,
+                spellId = spellId,
+                spellInvocationId = spellInvocationId,
+                position = enemies.Motion[enemyIndex].position,
+                overkillDamage = overkill,
+                onDeathSound = pres.onDeathSound,
+                finalStatusAilments = status,
+            });
+        }
 
         EnemyPresentation p = enemies.Presentation[enemyIndex];
         p.ailmentFlashTimer = DotFlashDurationSeconds;

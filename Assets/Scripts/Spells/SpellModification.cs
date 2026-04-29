@@ -41,6 +41,8 @@ namespace BridgeOfBlood.Data.Spells
         ColdPenetration = 21,
         FirePenetration = 22,
         LightningPenetration = 23,
+
+        KnockbackStrength = 24,
     }
 
     [Serializable]

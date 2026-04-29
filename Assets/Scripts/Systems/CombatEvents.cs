@@ -69,6 +69,8 @@ public struct DamageEvent
     public float overkillDamage;
     /// <summary>Blood collected from this hit. Currently damageDealt + overkillDamage; future blood multipliers apply here.</summary>
     public float bloodExtracted;
+    /// <summary>Snapshotted at hit time for centralized audio playback.</summary>
+    public AudioUnitRuntime onDamageSound;
     /// <summary>Snapshotted at hit time so VFX work after the attack entity row is removed (swap-back / expiration).</summary>
     public EffectSpriteConfigRuntime onHitEffectForVfx;
     /// <summary>Snapshotted at hit time; use with <see cref="wasKill"/>.</summary>
@@ -85,6 +87,8 @@ public struct StatusAilmentAppliedEvent
     public int spellId;
     public int spellInvocationId;
     public int enemyIndex;
+    public int enemyEntityId;
+    public float2 position;
     public StatusAilmentFlag ailmentFlag;
 }
 

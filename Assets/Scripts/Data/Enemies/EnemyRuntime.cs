@@ -9,6 +9,7 @@ namespace BridgeOfBlood.Data.Enemies
 	{
 		public float2 position;
 		public float moveSpeed;
+		public float2 knockbackVelocity;
 	}
 
 	/// <summary>Health pool; hot path for damage and death checks.</summary>
@@ -29,6 +30,7 @@ namespace BridgeOfBlood.Data.Enemies
 	public struct EnemyPresentation
 	{
 		public EntityVisual visual;
+		public AudioUnitRuntime onDeathSound;
 		public float visualTime;
 		public float ailmentFlashTimer;
 		public TickDamageSource ailmentFlashSource;
@@ -134,13 +136,41 @@ namespace BridgeOfBlood.Data.Enemies
 		public DamageType damageType;
 	}
 
+	/// <summary>Immutable combat context for item/reaction code. Ailment paths resolve this from live enemy column views when combat reactions run, not in the ailment application hot path.</summary>
+	public struct EnemyCombatSnapshot
+	{
+		public float maxHealth;
+		public float health;
+		public EnemyCombatTraits traits;
+	}
+
 	public struct EnemyKilledEvent
 	{
 		public int enemyEntityId;
 		public int spellId;
 		public int spellInvocationId;
+		public float2 position;
 		public float overkillDamage;
-		public EnemyCorruptionFlag corruptionFlag;
+		public AudioUnitRuntime onDeathSound;
 		public StatusAilmentFlag finalStatusAilments;
+	}
+
+	public static class EnemyCombatSnapshotUtil
+	{
+		public static EnemyCombatSnapshot FromEnemyIndex(
+			int enemyIndex,
+			NativeArray<EnemyVitality> vitality,
+			NativeArray<EnemyCombatTraits> combatTraits)
+		{
+			return new EnemyCombatSnapshot
+			{
+				maxHealth = vitality[enemyIndex].maxHealth,
+				health = vitality[enemyIndex].health,
+				traits = combatTraits[enemyIndex],
+			};
+		}
+
+		public static EnemyCombatSnapshot FromBuffers(in EnemyBuffers enemies, int enemyIndex) =>
+			FromEnemyIndex(enemyIndex, enemies.Vitality, enemies.CombatTraits);
 	}
 }

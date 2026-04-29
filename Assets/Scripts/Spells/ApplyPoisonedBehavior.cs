@@ -17,6 +17,7 @@ public class ApplyPoisonedBehavior : AttackEntityBehavior
     public override void ApplyTo(ref AttackEntitySpawnPayload payload) => payload.poisonedApplier = ToRuntime();
 }
 
+[Serializable]
 public struct PoisonedApplierRuntime
 {
     public bool isActive;

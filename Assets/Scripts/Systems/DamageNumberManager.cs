@@ -32,6 +32,8 @@ public class DamageNumberManager
 
     private const float DefaultLifetime = 0.8f;
     private const float DefaultRiseSpeed = 40f;
+    private const float VelocityJitterX = 12f;
+    private const float VelocityJitterY = 10f;
 
     public DamageNumberManager()
     {
@@ -55,10 +57,13 @@ public class DamageNumberManager
 
         float scale = ScaleFromDamage(damageValue);
 
+        float vx = velocityX + UnityEngine.Random.Range(-VelocityJitterX, VelocityJitterX);
+        float vy = DefaultRiseSpeed + UnityEngine.Random.Range(-VelocityJitterY, VelocityJitterY);
+
         _numbers.Add(new DamageNumber
         {
             position = position,
-            velocity = new float2(velocityX, DefaultRiseSpeed),
+            velocity = new float2(vx, vy),
             timeAlive = 0f,
             lifetime = lifetime,
             opacity = 1f,

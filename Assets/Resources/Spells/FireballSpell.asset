@@ -39,3 +39,5 @@ MonoBehaviour:
   castCompletionDuration: 1
   castTime: 0
   attributeMask: 8
+  castAudio: {fileID: 11400000, guid: a4e1c965eda5e764e8bc21a2637d5e25, type: 2}
+  icon: {fileID: 21300000, guid: 1b042da6561ffed4fb214b105ebd6f3d, type: 3}

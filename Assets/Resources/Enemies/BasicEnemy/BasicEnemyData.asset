@@ -18,3 +18,4 @@ MonoBehaviour:
   corruptionFlag: 0
   elementalWeakness: 4
   visual: {fileID: 11400000, guid: 351a5faaadb963f4d9aa9ebd9240e782, type: 2}
+  onDeathSound: {fileID: 11400000, guid: c8c9c7244ecabe24888b59279c10d0c9, type: 2}

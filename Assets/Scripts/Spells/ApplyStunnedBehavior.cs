@@ -17,6 +17,7 @@ public class ApplyStunnedBehavior : AttackEntityBehavior
     public override void ApplyTo(ref AttackEntitySpawnPayload payload) => payload.stunnedApplier = ToRuntime();
 }
 
+[Serializable]
 public struct StunnedApplierRuntime
 {
     public bool isActive;

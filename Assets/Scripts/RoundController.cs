@@ -54,6 +54,7 @@ public sealed class RoundController : SessionPhaseBase<RoundSessionViewData>
 	readonly TelemetryAggregator _telemetryAggregator;
 	readonly DamageNumberController _damageNumberController;
 	readonly EffectSpriteController _effectSpriteController;
+	readonly GameAudioManager _gameAudioManager;
 	readonly SpriteInstanceBuilder _spriteInstanceBuilder;
 	readonly SpriteInstancedRenderer _spriteRenderer;
 	readonly AttackEntityDebugRenderer _attackDebugRenderer;
@@ -80,6 +81,7 @@ public sealed class RoundController : SessionPhaseBase<RoundSessionViewData>
 		TelemetryAggregator telemetryAggregator,
 		DamageNumberController damageNumberController,
 		EffectSpriteController effectSpriteController,
+		GameAudioManager gameAudioManager,
 		SpriteInstanceBuilder spriteInstanceBuilder,
 		SpriteInstancedRenderer spriteRenderer,
 		AttackEntityDebugRenderer attackDebugRenderer,
@@ -95,6 +97,7 @@ public sealed class RoundController : SessionPhaseBase<RoundSessionViewData>
 		_telemetryAggregator = telemetryAggregator;
 		_damageNumberController = damageNumberController;
 		_effectSpriteController = effectSpriteController;
+		_gameAudioManager = gameAudioManager;
 		_spriteInstanceBuilder = spriteInstanceBuilder;
 		_spriteRenderer = spriteRenderer;
 		_attackDebugRenderer = attackDebugRenderer;
@@ -204,6 +207,7 @@ public sealed class RoundController : SessionPhaseBase<RoundSessionViewData>
 		var sim = _simulation.State;
 		SpellCastResult castResult = _loopedSpellCaster.AttemptToCastNextSpell(
 			sim.SimulationTime, _player.Position, castRequested, mods);
+		PlayCastAudio(castResult);
 		_loopedSpellCaster.Update(sim.SimulationTime, new float2(-1f, 0f));
 
 		bool advanceTime = !hasController || debugCtrl.ShouldAdvanceTime;
@@ -232,6 +236,13 @@ public sealed class RoundController : SessionPhaseBase<RoundSessionViewData>
 			}
 		}
 
+		CombatReactionProcessor.ProcessAfterSimulationFrame(
+			sim.KillEvents,
+			sim.StatusAilmentAppliedEvents,
+			sim.EnemyBuffers,
+			_config.gameConfig.playerInventory,
+			_simulation.AttackEntityManager);
+
 		float frameDt = hasController ? debugCtrl.DeltaTime : deltaTime;
 		_telemetryAggregator.ProcessFrame(sim, frameDt, castResult);
 
@@ -240,6 +251,7 @@ public sealed class RoundController : SessionPhaseBase<RoundSessionViewData>
 		_damageNumberController.SpawnFromDamageEvents(sim.DamageEvents, sim.EnemyBuffers);
 		_damageNumberController.SpawnFromTickDamageEvents(sim.TickDamageEvents, sim.EnemyBuffers);
 		_effectSpriteController.SpawnFromDamageEvents(sim.DamageEvents);
+		_gameAudioManager.EnqueueFromCombatEvents(sim.DamageEvents, sim.KillEvents);
 		_simulation.ClearFrameCombatEvents();
 
 		if (advanceTime)
@@ -385,6 +397,32 @@ public sealed class RoundController : SessionPhaseBase<RoundSessionViewData>
 				itemName = item.name,
 				applied = item.Apply(_effectContext)
 			});
+		}
+	}
+
+	void PlayCastAudio(in SpellCastResult castResult)
+	{
+		if (!castResult.didCast)
+			return;
+
+		IReadOnlyList<RuntimeSpell> spells = _loopedSpellCaster.Spells;
+		for (int i = 0; i < spells.Count; i++)
+		{
+			RuntimeSpell spell = spells[i];
+			if (spell.spellId != castResult.spellId)
+				continue;
+
+			AudioUnit unit = spell.Definition.castAudio;
+			if (unit != null)
+			{
+				uint seed = AttackEntityBuildRngSeed.Mix(
+					castResult.spellId,
+					castResult.invocationCount,
+					0,
+					0x41A3F5C);
+				_gameAudioManager.RequestOneShot(unit.ToRuntime(seed), _player.Position);
+			}
+			return;
 		}
 	}
 }

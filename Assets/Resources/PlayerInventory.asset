@@ -14,11 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BridgeOfBlood.Data.Inventory.PlayerInventory
   startingNumberOfSpells: 5
   startingSpells:
-  - {fileID: 11400000, guid: 41f330be07da5944d8a78091cb0d9386, type: 2}
-  - {fileID: 11400000, guid: be1f8095bd6b208419dcaeae500cd1fa, type: 2}
+  - {fileID: 11400000, guid: 59ef9384f24cdc3468994b4de0e80511, type: 2}
   startingItems:
   - {fileID: 11400000, guid: c7c2307d0f9612a459297e9bb4db4c2b, type: 2}
-  _rows: []
+  inventoryItems: []
   references:
     version: 2
     RefIds: []

@@ -1,8 +1,10 @@
+using System;
 using Unity.Collections;
 
 /// <summary>
 /// One entry in the per-entity rehit list: enemy ID and the attack entity's timeAlive when that enemy was hit.
 /// </summary>
+[Serializable]
 public struct RehitEntry
 {
     public int enemyId;

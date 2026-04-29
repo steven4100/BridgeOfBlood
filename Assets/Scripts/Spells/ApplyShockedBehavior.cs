@@ -25,6 +25,7 @@ public class ApplyShockedBehavior : AttackEntityBehavior
     public override void ApplyTo(ref AttackEntitySpawnPayload payload) => payload.shockedApplier = ToRuntime();
 }
 
+[Serializable]
 public struct ShockedApplierRuntime
 {
     public bool isActive;

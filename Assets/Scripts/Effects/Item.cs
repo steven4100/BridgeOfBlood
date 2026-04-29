@@ -15,6 +15,9 @@ namespace BridgeOfBlood.Effects
 		[SerializeReference, SerializeInterface]
 		public List<IEffect> effects;
 
+		[Tooltip("Post-simulation combat reactions (on kill / ailment apply). Separate from per-frame IEffect modifiers.")]
+		public List<CombatAttackSpawnReaction> combatReactions = new List<CombatAttackSpawnReaction>();
+
 		public ShopItemDefinition ShopItemDefinition => shopItemDefinition;
 
 		float IRandomElement.Weight

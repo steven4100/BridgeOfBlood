@@ -17,6 +17,7 @@ public class ApplyBleedBehavior : AttackEntityBehavior
     public override void ApplyTo(ref AttackEntitySpawnPayload payload) => payload.bleedApplier = ToRuntime();
 }
 
+[Serializable]
 public struct BleedApplierRuntime
 {
     public bool isActive;

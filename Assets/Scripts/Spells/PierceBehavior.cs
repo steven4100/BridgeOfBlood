@@ -30,6 +30,7 @@ public class PierceBehavior : AttackEntityBehavior
 /// <summary>
 /// Runtime pierce policy. State (hits so far) lives on AttackEntity.enemiesHit.
 /// </summary>
+[Serializable]
 public struct PiercePolicyRuntime
 {
     /// <summary>When false, pierce filtering and removal are skipped for this entity.</summary>

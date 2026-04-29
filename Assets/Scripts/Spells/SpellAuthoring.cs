@@ -16,6 +16,7 @@ namespace BridgeOfBlood.Data.Spells
 		public float castCompletionDuration = 1f;
 		public float castTime = 0.5f;
 		public SpellAttributeMask attributeMask;
+		public AudioUnit castAudio;
 
 		public ShopItemDefinition ShopItemDefinition => shopItemDefinition;
 
@@ -64,6 +65,7 @@ namespace BridgeOfBlood.Data.Spells
 			clone.castCompletionDuration = castCompletionDuration;
 			clone.castTime = castTime;
 			clone.attributeMask = attributeMask;
+			clone.castAudio = castAudio;
 
 			if (SpellAnimation?.keyFrames != null && SpellAnimation.keyFrames.Count > 0)
 			{

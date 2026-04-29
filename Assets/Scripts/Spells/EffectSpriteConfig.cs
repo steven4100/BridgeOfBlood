@@ -35,6 +35,7 @@ public class EffectSpriteConfig : ScriptableObject
 /// spawned into EffectSpriteController when events occur.
 /// A frameIndex of -1 means no effect is configured.
 /// </summary>
+[System.Serializable]
 public struct EffectSpriteConfigRuntime
 {
     public EntityVisual visual;

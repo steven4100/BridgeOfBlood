@@ -17,6 +17,7 @@ public class ApplyFrozenBehavior : AttackEntityBehavior
     public override void ApplyTo(ref AttackEntitySpawnPayload payload) => payload.frozenApplier = ToRuntime();
 }
 
+[Serializable]
 public struct FrozenApplierRuntime
 {
     public bool isActive;

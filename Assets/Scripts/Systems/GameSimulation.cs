@@ -170,6 +170,7 @@ public partial class GameSimulation
     /// <summary>Clears transient combat event lists after consumers have read them this frame.</summary>
     public void ClearFrameCombatEvents()
     {
+        _killEvents.Clear();
         _damageEvents.Clear();
         _tickDamageEvents.Clear();
         _statusAilmentAppliedEvents.Clear();
@@ -300,7 +301,8 @@ public partial class GameSimulation
             _enemyEntityIdToIndex,
             _frameDeltaTime,
             _simulationTime,
-            _tickDamageEvents);
+            _tickDamageEvents,
+            _killEvents);
 
         ProcessDeadFromHealthDepleted();
         _ailmentSystem.TickStatusAilmentDurations(_enemyManager.GetBuffers(), _frameDeltaTime);

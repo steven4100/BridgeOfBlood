@@ -33,6 +33,10 @@ namespace BridgeOfBlood.Data.Enemies
 		[Tooltip("Sprite visual for atlas-based rendering. Run Tools > BridgeOfBlood > Rebuild Sprite Rendering Data after assigning.")]
 		public SpriteProvider visual;
 
+		[Header("Audio")]
+		[Tooltip("Optional audio unit emitted when this enemy dies.")]
+		public AudioUnit onDeathSound;
+
 		/// <summary>
 		/// Appends one enemy as parallel column rows. Uses deterministic random seed for moveSpeed.
 		/// </summary>
@@ -50,7 +54,7 @@ namespace BridgeOfBlood.Data.Enemies
 			var random = Unity.Mathematics.Random.CreateFromIndex(randomSeed);
 			float moveSpeed = random.NextFloat(minMoveSpeed, maxMoveSpeed);
 
-			motion.Add(new EnemyMotion { position = position, moveSpeed = moveSpeed });
+			motion.Add(new EnemyMotion { position = position, moveSpeed = moveSpeed, knockbackVelocity = float2.zero });
 			vitality.Add(new EnemyVitality { health = healthPoints, maxHealth = healthPoints });
 			entityIds.Add(entityId);
 			combatTraits.Add(new EnemyCombatTraits
@@ -62,6 +66,7 @@ namespace BridgeOfBlood.Data.Enemies
 			presentation.Add(new EnemyPresentation
 			{
 				visual = visual != null ? visual.Resolve(randomSeed) : EntityVisual.None,
+				onDeathSound = onDeathSound != null ? onDeathSound.ToRuntime(randomSeed ^ 0x2C7E31A1u) : AudioUnitRuntime.None,
 				visualTime = 0f,
 				ailmentFlashTimer = 0f,
 				ailmentFlashSource = default

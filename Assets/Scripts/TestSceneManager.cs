@@ -41,6 +41,7 @@ public class TestSceneManager : MonoBehaviour
     public Material attackDebugMaterial;
     public Material damageNumberMaterial;
     public SpriteRenderDatabase spriteRenderDatabase;
+    [SerializeField] GameAudioManager gameAudioManager;
 
     [Header("Player")]
     public float playerMoveSpeed = 100f;
@@ -91,6 +92,12 @@ public class TestSceneManager : MonoBehaviour
         _spriteInstanceBuilder = new SpriteInstanceBuilder(spriteRenderDatabase);
         _damageNumberController = new DamageNumberController(damageNumberMaterial);
         _effectSpriteController = new EffectSpriteController();
+        if (gameAudioManager == null)
+        {
+            var audioRoot = new GameObject("GameAudioManager");
+            audioRoot.transform.SetParent(transform, false);
+            gameAudioManager = audioRoot.AddComponent<GameAudioManager>();
+        }
 
         Rect r = rect;
         _player = new Player(
@@ -133,10 +140,11 @@ public class TestSceneManager : MonoBehaviour
             _player, _simulation, _loopedSpellCaster,
             _telemetryAggregator,
             _damageNumberController, _effectSpriteController,
+            gameAudioManager,
             _spriteInstanceBuilder, _spriteRenderer,
             _attackDebugRenderer,
             roundCfg,
-            roundEndStrategy: null,
+            null,
             roundPanel,
             renderCamera != null ? renderCamera : Camera.main);
 

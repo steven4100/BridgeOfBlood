@@ -34,6 +34,7 @@ public class ExpirationBehavior : AttackEntityBehavior
 /// <summary>
 /// Runtime expiration policy. State (timeAlive, distanceTravelled) lives on AttackEntity.
 /// </summary>
+[Serializable]
 public struct ExpirationPolicyRuntime
 {
     /// <summary>When false, expiration removal is skipped for this entity.</summary>

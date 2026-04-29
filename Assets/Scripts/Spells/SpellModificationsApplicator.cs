@@ -74,6 +74,9 @@ namespace BridgeOfBlood.Data.Spells
 			if (h.isRect) h.rectDimension = h.rectDimension * aoe.Multiplier + new Vector2(aoe.flat, aoe.flat);
 			clone.hitBoxData = h;
 
+			var knockback = Resolve(mods, SpellModificationProperty.KnockbackStrength, spellAttributeMask);
+			clone.knockbackStrength = Mathf.Max(0f, source.knockbackStrength * knockback.Multiplier + knockback.flat);
+
 			clone.behaviors = CloneBehaviorsAndApply(source.behaviors, mods, spellAttributeMask);
 			return clone;
 		}

@@ -12,12 +12,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
   m_Name: EarthquakeAttackEntity
   m_EditorClassIdentifier: 
-  physicalDamage: 50
-  coldDamage: 0
-  fireDamage: 0
-  lightningDamage: 0
-  critChance: 0
-  critDamageMultiplier: 0
+  physicalDamageRange:
+    min: 25
+    max: 50
+  coldDamageRange:
+    min: 0
+    max: 0
+  fireDamageRange:
+    min: 0
+    max: 0
+  lightningDamageRange:
+    min: 0
+    max: 0
+  critChanceRange:
+    min: 0
+    max: 0
+  critDamageMultiplierRange:
+    min: 1
+    max: 1
+  knockbackStrength: 300
   entityVelocity: {x: 0, y: 0}
   hitBoxData:
     isSphere: 1
@@ -33,6 +46,7 @@ MonoBehaviour:
   - rid: 4044632107998511173
   - rid: 4044632107998511174
   visual: {fileID: 0}
+  onDamageSound: {fileID: 11400000, guid: c8c9c7244ecabe24888b59279c10d0c9, type: 2}
   references:
     version: 2
     RefIds:

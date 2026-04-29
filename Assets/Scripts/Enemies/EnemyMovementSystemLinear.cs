@@ -8,6 +8,9 @@ using Unity.Mathematics;
 [BurstCompile]
 public struct MoveEnemiesJob : IJobParallelFor
 {
+    /// <summary>Higher values decay knockback velocity faster (per second).</summary>
+    public const float KnockbackDecayPerSecond = 8f;
+
     public NativeArray<EnemyMotion> Motion;
     [ReadOnly] public NativeArray<StatusAilmentFlag> Status;
     public float DeltaTime;
@@ -15,6 +18,11 @@ public struct MoveEnemiesJob : IJobParallelFor
     public void Execute(int index)
     {
         EnemyMotion m = Motion[index];
+
+        m.position += m.knockbackVelocity * DeltaTime;
+        float decay = math.exp(-KnockbackDecayPerSecond * DeltaTime);
+        m.knockbackVelocity *= decay;
+
         if ((Status[index] & (StatusAilmentFlag.Frozen | StatusAilmentFlag.Stunned)) == 0)
         {
             float dx = m.moveSpeed * DeltaTime;

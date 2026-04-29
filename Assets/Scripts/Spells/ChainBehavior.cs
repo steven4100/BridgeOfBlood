@@ -56,6 +56,7 @@ public static class ChainPolicyConstants
 /// Runtime chain policy and state per attack entity. Holds config and runtime data for multi-frame chaining:
 /// projectile hits a target (frame N), is redirected to the next target, hits again (frame N+k), up to chainCount.
 /// </summary>
+[Serializable]
 public struct ChainPolicyRuntime
 {
     /// <summary>When false, chain redirect and chain-limit removal are skipped for this entity.</summary>

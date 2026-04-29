@@ -27,9 +27,11 @@ public struct AttackEntity
     public float lightningDamage;
     public float critChance;
     public float critDamageMultiplier;
+    public float knockbackStrength;
     public HitBoxData hitBox;
     public float currentHitBoxScale;
     public EntityVisual visual;
+    public AudioUnitRuntime onDamageSound;
     public EffectSpriteConfigRuntime onHitEffect;
     public EffectSpriteConfigRuntime onKillEffect;
     public int spellId;
@@ -95,9 +97,11 @@ public class AttackEntityManager
             lightningDamage = payload.lightningDamage,
             critChance = payload.critChance,
             critDamageMultiplier = payload.critDamageMultiplier > 0f ? payload.critDamageMultiplier : 1f,
+            knockbackStrength = payload.knockbackStrength,
             hitBox = payload.hitBoxData,
             currentHitBoxScale = 1f,
             visual = payload.visual,
+            onDamageSound = payload.onDamageSound,
             onHitEffect = payload.onHitEffect,
             onKillEffect = payload.onKillEffect,
             spellId = payload.spellId,

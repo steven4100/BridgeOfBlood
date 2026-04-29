@@ -40,6 +40,9 @@ public partial class GameSimulation
         /// <summary>DoT / tick damage events produced during AilmentTime.</summary>
         public NativeArray<TickDamageEvent> TickDamageEvents => _owner._tickDamageEvents.AsArray();
 
+        /// <summary>Enemy kills from hit damage (Damage step) and from DoT (AilmentTime).</summary>
+        public NativeArray<EnemyKilledEvent> KillEvents => _owner._killEvents.AsArray();
+
         /// <summary>Status ailments applied during StepDamage.</summary>
         public NativeArray<StatusAilmentAppliedEvent> StatusAilmentAppliedEvents =>
             _owner._statusAilmentAppliedEvents.AsArray();

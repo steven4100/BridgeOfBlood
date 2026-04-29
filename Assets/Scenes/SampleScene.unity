@@ -223,6 +223,53 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 6167149570323140327, guid: 33de8273be0e54545816da512a4c7225, type: 3}
   m_PrefabInstance: {fileID: 980446078}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &209425565
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 209425567}
+  - component: {fileID: 209425566}
+  m_Layer: 0
+  m_Name: AudioManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &209425566
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 209425565}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 871ccae1188c5d741bcfee958db96201, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxPlaysPerFrame: 6
+  preloadFromResources: 1
+  spatialBlend: 0
+--- !u!4 &209425567
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 209425565}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: -40.03407, z: 90}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -929,7 +976,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6167149570323140327, guid: d4e5f6a7b8c960a7b6d7e8f9a0b1c253, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 78.05
+      value: 78.04999
       objectReference: {fileID: 0}
     - target: {fileID: 6167149570323140327, guid: d4e5f6a7b8c960a7b6d7e8f9a0b1c253, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -1200,7 +1247,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 04e02f0386b6d374398cac082da0060c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  spawnRate: 3
+  spawnRate: 6.34
   simulationZone: {fileID: 1669307496}
   spawnTable: {fileID: 11400000, guid: accb87cdda325fa4faafbbe633ce99b5, type: 2}
   gizmoRadius: 1.04
@@ -1209,6 +1256,7 @@ MonoBehaviour:
   attackDebugMaterial: {fileID: 2100000, guid: 5cb69cd1c6441e44496eaf809f96136c, type: 2}
   damageNumberMaterial: {fileID: 0}
   spriteRenderDatabase: {fileID: 11400000, guid: 77a5fc279edf81d4c9cb56cd88810a36, type: 2}
+  gameAudioManager: {fileID: 209425566}
   playerMoveSpeed: 500
   playerRenderer: {fileID: 22834934}
   gameConfig: {fileID: 11400000, guid: 0a1b2c3d4e5f6789012345678aabbccd, type: 2}
@@ -1399,3 +1447,4 @@ SceneRoots:
   - {fileID: 832575519}
   - {fileID: 1476589141}
   - {fileID: 1770549541}
+  - {fileID: 209425567}

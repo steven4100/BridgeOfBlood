@@ -63,7 +63,8 @@ public struct StunnedTrackAndApplyJob : IJob
                     enemyIndex = ei,
                     enemyEntityId = entityId,
                     position = hit.position,
-                    ailmentFlag = StatusAilmentFlag.Stunned
+                    ailmentFlag = StatusAilmentFlag.Stunned,
+                    triggeringHitDamage = hit.damageDealt
                 });
             }
         }

@@ -13,15 +13,16 @@ public sealed class SessionFlowController
 
 	public SessionState CurrentState => _currentState;
 
-	public SessionFlowController(SessionFlowContext context, PregameSessionPhase pregame, RoundController round, ShopSessionPhase shop, LoseSessionPhase lose)
+	public SessionFlowController(SessionFlowContext context)
 	{
 		_context = context;
 		context.Flow = this;
 		_currentState = SessionState.Shop;
-		_phases[SessionState.Pregame] = pregame;
-		_phases[SessionState.Round] = round;
-		_phases[SessionState.Shop] = shop;
-		_phases[SessionState.Lose] = lose;
+	}
+
+	public void AddPhase(ISessionPhase phase, SessionState state)
+	{
+		_phases[state] = phase;
 	}
 
 	public void SetState(SessionState next)

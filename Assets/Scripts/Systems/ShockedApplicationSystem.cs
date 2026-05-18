@@ -64,7 +64,8 @@ public struct ShockedTrackAndApplyJob : IJob
                     enemyIndex = ei,
                     enemyEntityId = entityId,
                     position = hit.position,
-                    ailmentFlag = StatusAilmentFlag.Shocked
+                    ailmentFlag = StatusAilmentFlag.Shocked,
+                    triggeringHitDamage = hit.damageDealt
                 });
             }
         }

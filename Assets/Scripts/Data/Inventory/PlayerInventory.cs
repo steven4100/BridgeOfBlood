@@ -11,7 +11,7 @@ namespace BridgeOfBlood.Data.Inventory
 	/// after <see cref="Object.Instantiate(UnityEngine.Object)"/> for a new session. During play, rows live in <see cref="inventoryItems"/>.
 	/// </summary>
 	[CreateAssetMenu(fileName = "PlayerInventory", menuName = "Bridge of Blood/Inventory/Player Inventory")]
-	public sealed class PlayerInventory : ScriptableObject, IItemInventoryService
+	public sealed class PlayerInventory : ScriptableObject, IInventoryService
 	{
 		public int startingNumberOfSpells = 32;
 		public List<SpellAuthoringData> startingSpells = new List<SpellAuthoringData>();
@@ -33,7 +33,9 @@ namespace BridgeOfBlood.Data.Inventory
 
 		public IReadOnlyList<InventoryItem> StoredRows => inventoryItems;
 
-		IReadOnlyList<InventoryItem> IItemInventoryService.GetPassiveItemRows()
+		public void AddInventoryItem(InventoryItem row) => Add(row);
+
+		IReadOnlyList<InventoryItem> IInventoryService.GetPassiveItemRows()
 		{
 			_passiveItemRowScratch.Clear();
 			for (int i = 0; i < inventoryItems.Count; i++)
@@ -44,7 +46,7 @@ namespace BridgeOfBlood.Data.Inventory
 			return _passiveItemRowScratch;
 		}
 
-		bool IItemInventoryService.TrySetPassiveItemOrder(IReadOnlyList<InventoryItem> reorderedItemRows)
+		bool IInventoryService.TrySetPassiveItemOrder(IReadOnlyList<InventoryItem> reorderedItemRows)
 		{
 			_passiveItemRowScratch.Clear();
 			for (int i = 0; i < inventoryItems.Count; i++)
@@ -95,7 +97,7 @@ namespace BridgeOfBlood.Data.Inventory
 			return true;
 		}
 
-		event Action IItemInventoryService.ItemsUpdated
+		event Action IInventoryService.ItemsUpdated
 		{
 			add => _itemsUpdated += value;
 			remove => _itemsUpdated -= value;
@@ -164,6 +166,7 @@ namespace BridgeOfBlood.Data.Inventory
 			try
 			{
 				inventoryItems.Clear();
+				_spellCollection.ClearSpells();
 
 				int cap = Mathf.Max(0, startingNumberOfSpells);
 				int addedSpells = 0;
@@ -174,7 +177,6 @@ namespace BridgeOfBlood.Data.Inventory
 						SpellAuthoringData spell = startingSpells[i];
 						if (spell == null) continue;
 						addedSpells++;
-						Add(new InventoryItem(spell));
 						AddSpell(spell);
 					}
 				}
@@ -185,7 +187,6 @@ namespace BridgeOfBlood.Data.Inventory
 					{
 						Item item = startingItems[i];
 						if (item == null) continue;
-						Add(new InventoryItem(item));
 						AddItem(item);
 					}
 				}

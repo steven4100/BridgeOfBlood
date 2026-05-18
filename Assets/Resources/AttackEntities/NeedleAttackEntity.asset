@@ -30,6 +30,7 @@ MonoBehaviour:
   critDamageMultiplierRange:
     min: 1
     max: 1
+  knockbackStrength: 0
   entityVelocity: {x: 0, y: 0}
   hitBoxData:
     isSphere: 1
@@ -45,7 +46,7 @@ MonoBehaviour:
   - rid: 4884261957644320833
   - rid: 4044632016599121996
   visual: {fileID: 11400000, guid: 6a89cbba6c71e5440a3a15edec0394fe, type: 2}
-  onDamageSound: {fileID: 0}
+  onDamageSound: {fileID: 11400000, guid: c8c9c7244ecabe24888b59279c10d0c9, type: 2}
   references:
     version: 2
     RefIds:

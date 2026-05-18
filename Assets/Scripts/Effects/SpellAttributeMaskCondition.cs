@@ -1,8 +1,10 @@
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
+using System;
 
 namespace BridgeOfBlood.Effects
 {
+	[Serializable]
 	public class SpellAttributeMaskCondition : ICondition
 	{
 		public SpellAttributeMask attributeMask;

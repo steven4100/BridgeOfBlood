@@ -90,6 +90,8 @@ public struct StatusAilmentAppliedEvent
     public int enemyEntityId;
     public float2 position;
     public StatusAilmentFlag ailmentFlag;
+    /// <summary>Hit damage when the ailment was applied from a hit; 0 for tick-only or unknown.</summary>
+    public float triggeringHitDamage;
 }
 
 /// <summary>Which ailment produced a resolved <see cref="TickDamageEvent"/>.</summary>

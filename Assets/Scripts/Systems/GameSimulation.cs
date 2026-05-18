@@ -4,6 +4,7 @@ using System.Diagnostics;
 using Debug = UnityEngine.Debug;
 using BridgeOfBlood.Data.Enemies;
 using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Effects;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -67,6 +68,11 @@ public partial class GameSimulation
     private float _frameDeltaTime;
     private readonly List<IDebugDrawable> _debugDrawables = new List<IDebugDrawable>();
 
+    /// <summary>Per-frame baked combat reaction contracts; owned by the coordinator (disposed after steps). Cleared at end of <see cref="StepCombatReactions"/>.</summary>
+    private NativeArray<CombatSpawnContract> _frameCombatContracts;
+
+    private NativeList<CombatReactionSpawnRequest> _combatReactionSpawnRequests;
+
     private readonly SimulationState _state;
 
     /// <summary>LCD read of simulation-domain buffers and scalars.</summary>
@@ -112,6 +118,7 @@ public partial class GameSimulation
         _shockDamageMultiplierScratch = new NativeHashMap<int, float>(256, Allocator.Persistent);
         _enemyEntityIdToIndex = new NativeHashMap<int, int>(256, Allocator.Persistent);
         _enemyRemovals = new EnemyRemovalBatch(Allocator.Persistent);
+        _combatReactionSpawnRequests = new NativeList<CombatReactionSpawnRequest>(32, Allocator.Persistent);
 
         _debugDrawables.Add(_enemyManager.Grid);
         _debugDrawables.Add(new EnemyManagerGizmoDrawer(_enemyManager, _gizmoRadius));
@@ -130,6 +137,7 @@ public partial class GameSimulation
             new SimulationStepCommand { Name = "AilmentTime", Execute = StepAilmentTime },
             new SimulationStepCommand { Name = "RemoveDeadEnemies", Execute = ProcessDeadFromHealthDepleted },
             new SimulationStepCommand { Name = "AttackExpire", Execute = StepAttackExpire },
+            new SimulationStepCommand { Name = "CombatReactions", Execute = StepCombatReactions },
         };
 
         _state = new SimulationState(this);
@@ -167,6 +175,18 @@ public partial class GameSimulation
     /// <summary>Mutation/capability handle for attack entities (e.g. spell emission).</summary>
     public AttackEntityManager AttackEntityManager => _attackEntityManager;
 
+    /// <summary>Combat reaction contracts for the current frame; does not take ownership of backing allocations.</summary>
+    public void SetFrameCombatReactionContracts(NativeArray<CombatSpawnContract> contracts)
+    {
+        _frameCombatContracts = contracts;
+    }
+
+    /// <summary>Clears references to frame combat reaction buffers without disposing them (caller owns allocations).</summary>
+    public void ClearFrameCombatReactionContracts()
+    {
+        _frameCombatContracts = default;
+    }
+
     /// <summary>Clears transient combat event lists after consumers have read them this frame.</summary>
     public void ClearFrameCombatEvents()
     {
@@ -198,6 +218,8 @@ public partial class GameSimulation
         _tickDamageEvents.Clear();
         _enemyEntityIdToIndex.Clear();
         _enemyRemovals.Clear();
+        ClearFrameCombatReactionContracts();
+        _combatReactionSpawnRequests.Clear();
     }
 
     public IReadOnlyList<IDebugDrawable> GetDebugDrawables() => _debugDrawables;
@@ -218,6 +240,7 @@ public partial class GameSimulation
         if (_tickDamageEvents.IsCreated) _tickDamageEvents.Dispose();
         if (_shockDamageMultiplierScratch.IsCreated) _shockDamageMultiplierScratch.Dispose();
         if (_enemyEntityIdToIndex.IsCreated) _enemyEntityIdToIndex.Dispose();
+        if (_combatReactionSpawnRequests.IsCreated) _combatReactionSpawnRequests.Dispose();
         _enemyRemovals.Dispose();
         _ailmentSystem.Dispose();
     }
@@ -460,6 +483,29 @@ public partial class GameSimulation
         _chainSystem.CollectRemovals(entities, _attackEntityManager.GetChainPolicies(), _attackRemovalEvents);
         _attackEntityManager.ApplyRemovals(_attackRemovalEvents);
         _attackRemovalEvents.Clear();
+    }
+
+    private void StepCombatReactions()
+    {
+        if (!_frameCombatContracts.IsCreated)
+            return;
+
+        _combatReactionSpawnRequests.Clear();
+
+        NativeArray<CombatSpawnContract> contracts = _frameCombatContracts;
+        CombatReactionProcessor.ProcessFrameCombatReactions(
+            _killEvents.AsArray(),
+            _statusAilmentAppliedEvents.AsArray(),
+            contracts,
+            _combatReactionSpawnRequests);
+
+        for (int i = 0; i < _combatReactionSpawnRequests.Length; i++)
+        {
+            CombatReactionSpawnRequest req = _combatReactionSpawnRequests[i];
+            _attackEntityManager.Spawn(req.payload, req.origin);
+        }
+
+        _frameCombatContracts = default;
     }
 
     private struct AttackEntityManagerAilmentAppliers : AilmentSystem.AilmentApplierProvider

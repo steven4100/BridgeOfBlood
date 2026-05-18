@@ -1,5 +1,7 @@
 using System.Threading;
 using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Effects;
+using System.Collections.Generic;
 
 namespace BridgeOfBlood.Data.Spells
 {
@@ -16,6 +18,9 @@ namespace BridgeOfBlood.Data.Spells
 		public readonly int spellId;
 		public int invocationCount;
 		public double roundTimeInvokedAt;
+		public int numGemSlots;
+
+		public List<RuntimeSpellItem> spellItems = new List<RuntimeSpellItem>();
 
 		public RuntimeSpell(SpellAuthoringData definition)
 		{
@@ -23,7 +28,18 @@ namespace BridgeOfBlood.Data.Spells
 			spellId = Interlocked.Increment(ref _nextSpellInstanceId);
 			invocationCount = 0;
 			roundTimeInvokedAt = 0;
+			numGemSlots = 2;
 		}
+
+		public void AddRuntimeSpellItem(RuntimeSpellItem spellItem)
+		{
+			spellItems.Add(spellItem);
+		}
+	}
+
+	public class RuntimeSpellItem
+	{
+		public SpellItem spellItem;
 	}
 
 	/// <summary>

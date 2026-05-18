@@ -17,6 +17,7 @@ namespace BridgeOfBlood.Data.Shop
 			finally
 			{
 				context.CurrentShopListing = null;
+				context.SpellGemTarget = null;
 			}
 
 			return true;

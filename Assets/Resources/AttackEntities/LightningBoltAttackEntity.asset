@@ -12,12 +12,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
   m_Name: LightningBoltAttackEntity
   m_EditorClassIdentifier: 
-  physicalDamage: 0
-  coldDamage: 0
-  fireDamage: 0
-  lightningDamage: 3
-  critChance: 0
-  critDamageMultiplier: 0
+  physicalDamageRange:
+    min: 0
+    max: 0
+  coldDamageRange:
+    min: 0
+    max: 0
+  fireDamageRange:
+    min: 0
+    max: 0
+  lightningDamageRange:
+    min: 3
+    max: 15
+  critChanceRange:
+    min: 0
+    max: 0
+  critDamageMultiplierRange:
+    min: 1
+    max: 1
+  knockbackStrength: 0
   entityVelocity: {x: 0, y: 0}
   hitBoxData:
     isSphere: 1
@@ -32,17 +45,18 @@ MonoBehaviour:
   - rid: 4044631629293158465
   - rid: 4044631629293158466
   visual: {fileID: 11400000, guid: 3467a9aa04ed0fb48abbc8ba59624aeb, type: 2}
+  onDamageSound: {fileID: 11400000, guid: 2d4f694410b8696498a314cdcaabe39e, type: 2}
   references:
     version: 2
     RefIds:
     - rid: 4044631629293158462
       type: {class: OnHitEffectBehavior, ns: , asm: Assembly-CSharp}
       data:
-        config: {fileID: 11400000, guid: 469335601d0786d4ea6b11cc3dd255c1, type: 2}
+        config: {fileID: 11400000, guid: 0f5b616e3aa80fc4cb4aac8f28c08762, type: 2}
     - rid: 4044631629293158463
       type: {class: OnKillEffectBehavior, ns: , asm: Assembly-CSharp}
       data:
-        config: {fileID: 11400000, guid: 0f5b616e3aa80fc4cb4aac8f28c08762, type: 2}
+        config: {fileID: 11400000, guid: 469335601d0786d4ea6b11cc3dd255c1, type: 2}
     - rid: 4044631629293158465
       type: {class: PierceBehavior, ns: , asm: Assembly-CSharp}
       data:
@@ -54,3 +68,4 @@ MonoBehaviour:
         isActive: 1
         maxTimeAlive: 1
         maxDistanceTravelled: 10000000
+        maxFrames: 0

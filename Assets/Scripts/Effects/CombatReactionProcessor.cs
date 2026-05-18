@@ -1,79 +1,92 @@
-using System.Collections.Generic;
 using BridgeOfBlood.Data.Enemies;
-using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Data.Spells;
 using Unity.Collections;
+using Unity.Mathematics;
 
 namespace BridgeOfBlood.Effects
 {
 	/// <summary>
-	/// Dispatches item-authored <see cref="CombatAttackSpawnReaction"/> after simulation using frame combat events.
-	/// Resolves <see cref="EnemyCombatSnapshot"/> for ailments from live <see cref="EnemyBuffers"/> here (not in ailment/kill emitters).
-	/// Run before <see cref="GameSimulation.ClearFrameCombatEvents"/> so lists are still populated.
+	/// Resolves baked <see cref="CombatSpawnContract"/> entries into <see cref="CombatReactionSpawnRequest"/>s (no I/O); consumer spawns.
+	/// Run (via <see cref="GameSimulation"/>) before <see cref="GameSimulation.ClearFrameCombatEvents"/> so event lists are still populated.
 	/// </summary>
 	public static class CombatReactionProcessor
 	{
-		static readonly Dictionary<int, int> ScratchEntityToIndex = new Dictionary<int, int>(256);
-
-		static void RebuildEntityIdToIndex(EnemyBuffers buffers)
-		{
-			ScratchEntityToIndex.Clear();
-			int n = buffers.Length;
-			for (int i = 0; i < n; i++)
-				ScratchEntityToIndex[buffers.EntityIds[i]] = i;
-		}
-
-		static EnemyCombatSnapshot ResolveSnapshotForEntity(int enemyEntityId, EnemyBuffers buffers)
-		{
-			if (!ScratchEntityToIndex.TryGetValue(enemyEntityId, out int idx))
-				return default;
-			if (idx < 0 || idx >= buffers.Length)
-				return default;
-			return EnemyCombatSnapshotUtil.FromEnemyIndex(idx, buffers.Vitality, buffers.CombatTraits);
-		}
-
-		public static void ProcessAfterSimulationFrame(
+		public static void ProcessFrameCombatReactions(
 			NativeArray<EnemyKilledEvent> killEvents,
 			NativeArray<StatusAilmentAppliedEvent> ailmentEvents,
-			EnemyBuffers enemyBuffers,
-			PlayerInventory inventory,
-			AttackEntityManager attackEntities)
+			NativeArray<CombatSpawnContract> contracts,
+			NativeList<CombatReactionSpawnRequest> spawnRequestsOut)
 		{
-			RebuildEntityIdToIndex(enemyBuffers);
-
-			IReadOnlyList<Item> items = inventory.GetPassiveItems();
-
-			for (int i = 0; i < items.Count; i++)
+			for (int c = 0; c < contracts.Length; c++)
 			{
-				Item item = items[i];
-				if (item.combatReactions == null)
-					continue;
+				CombatSpawnContract contract = contracts[c];
+				CombatAttackSpawnReactionRuntime snap = contract.filters;
 
-				for (int r = 0; r < item.combatReactions.Count; r++)
+				if (snap.trigger == CombatReactionTrigger.EnemyKilled)
 				{
-					CombatAttackSpawnReaction reaction = item.combatReactions[r];
-					if (reaction == null)
-						continue;
+					for (int k = 0; k < killEvents.Length; k++)
+					{
+						EnemyKilledEvent ke = killEvents[k];
+						if (!MatchesSpellId(ke.spellId, in contract))
+							continue;
 
-					if (reaction.trigger == CombatReactionTrigger.EnemyKilled)
-					{
-						for (int k = 0; k < killEvents.Length; k++)
+						AttackEntitySpawnPayload payload = contract.templatePayload.WithSpellProvenanceForNewEntity(
+							ke.spellId,
+							ke.spellInvocationId);
+						if (snap.damageMode == CombatReactionSpawnDamageMode.ScaleByTriggeringHitDamage)
 						{
-							EnemyKilledEvent ke = killEvents[k];
-							reaction.TrySpawnFromKill(in ke, attackEntities);
+							CombatAttackSpawnReaction.ApplyEventScaledDamage(
+								ref payload,
+								ke.killingBlowDamage,
+								snap.eventDamageCoefficient,
+								snap.minScaledDamage);
 						}
+
+						spawnRequestsOut.Add(new CombatReactionSpawnRequest { payload = payload, origin = ke.position + snap.spawnOffsetWorld });
 					}
-					else if (reaction.trigger == CombatReactionTrigger.StatusAilmentApplied)
+				}
+				else if (snap.trigger == CombatReactionTrigger.StatusAilmentApplied)
+				{
+					for (int a = 0; a < ailmentEvents.Length; a++)
 					{
-						for (int a = 0; a < ailmentEvents.Length; a++)
+						StatusAilmentAppliedEvent ae = ailmentEvents[a];
+						if (!MatchesSpellId(ae.spellId, in contract))
+							continue;
+						if (!MatchesAilmentFlag(snap.ailmentMaskFilter, ae.ailmentFlag))
+							continue;
+
+						AttackEntitySpawnPayload payload = contract.templatePayload.WithSpellProvenanceForNewEntity(
+							ae.spellId,
+							ae.spellInvocationId);
+						if (snap.damageMode == CombatReactionSpawnDamageMode.ScaleByTriggeringHitDamage)
 						{
-							StatusAilmentAppliedEvent ae = ailmentEvents[a];
-							EnemyCombatSnapshot snap = ResolveSnapshotForEntity(ae.enemyEntityId, enemyBuffers);
-							reaction.TrySpawnFromAilment(in ae, in snap, attackEntities);
+							CombatAttackSpawnReaction.ApplyEventScaledDamage(
+								ref payload,
+								ae.triggeringHitDamage,
+								snap.eventDamageCoefficient,
+								snap.minScaledDamage);
 						}
+
+						spawnRequestsOut.Add(new CombatReactionSpawnRequest { payload = payload, origin = ae.position + snap.spawnOffsetWorld });
 					}
 				}
 			}
+		}
+
+		static bool MatchesSpellId(int eventSpellId, in CombatSpawnContract contract)
+		{
+			if (contract.filters.spellDefinitionInstanceIdFilter != 0)
+				return contract.definitionSpellResolved && eventSpellId == contract.definitionFilterSpellId;
+
+			return true;
+		}
+
+		static bool MatchesAilmentFlag(StatusAilmentFlag maskFilter, StatusAilmentFlag eventFlag)
+		{
+			if (maskFilter == StatusAilmentFlag.None)
+				return true;
+			return (eventFlag & maskFilter) != 0;
 		}
 	}
 }

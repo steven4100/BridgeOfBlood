@@ -150,6 +150,8 @@ namespace BridgeOfBlood.Data.Enemies
 		public int spellId;
 		public int spellInvocationId;
 		public float2 position;
+		/// <summary>Damage from the hit or tick that killed the enemy (before overkill). Used for proc scaling.</summary>
+		public float killingBlowDamage;
 		public float overkillDamage;
 		public AudioUnitRuntime onDeathSound;
 		public StatusAilmentFlag finalStatusAilments;

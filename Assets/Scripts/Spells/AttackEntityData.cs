@@ -17,8 +17,6 @@ public class AttackEntityData : ScriptableObject
 	public FloatRange critChanceRange;
 	public FloatRange critDamageMultiplierRange;
 
-	[Header("Knockback")]
-	[Tooltip("Added to enemy knockback velocity along the vector from this attack toward the enemy. Scaled by spell modifications (KnockbackStrength).")]
 	public float knockbackStrength;
 
 	public Vector2 entityVelocity;

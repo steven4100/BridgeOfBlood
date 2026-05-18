@@ -95,7 +95,7 @@ namespace BridgeOfBlood.Data.Spells
 
 		public void OnPurchase(PurchaseContext context)
 		{
-			context.Inventory.AddSpell(this);
+			context.SpellInventory.AddSpell(this);
 		}
     }
 

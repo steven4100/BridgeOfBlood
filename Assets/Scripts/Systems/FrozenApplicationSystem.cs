@@ -63,7 +63,8 @@ public struct FrozenTrackAndApplyJob : IJob
                     enemyIndex = ei,
                     enemyEntityId = entityId,
                     position = hit.position,
-                    ailmentFlag = StatusAilmentFlag.Frozen
+                    ailmentFlag = StatusAilmentFlag.Frozen,
+                    triggeringHitDamage = hit.damageDealt
                 });
             }
         }

@@ -120,6 +120,7 @@ public class DamageSystem
                     spellId = atk.spellId,
                     spellInvocationId = atk.spellInvocationId,
                     position = motion.position,
+                    killingBlowDamage = totalDamage,
                     overkillDamage = overkill,
                     onDeathSound = presentation.onDeathSound,
                     finalStatusAilments = status,

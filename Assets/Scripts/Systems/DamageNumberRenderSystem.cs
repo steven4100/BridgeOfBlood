@@ -48,12 +48,8 @@ public class DamageNumberRenderSystem
     public DamageNumberRenderSystem(Material material)
     {
         _mesh = CreateQuadMesh();
-
-        if (material != null)
-            _material = new Material(material);
-        else
-            _material = CreateDefaultMaterial();
-
+        _material = new Material(material);
+        _material.SetTexture("_DigitAtlas", GenerateDigitAtlas());
         _mpb = new MaterialPropertyBlock();
 
         _bufferCapacity = InitialCapacity;
@@ -170,24 +166,11 @@ public class DamageNumberRenderSystem
         return mesh;
     }
 
-    private static Material CreateDefaultMaterial()
-    {
-        var shader = Shader.Find("BridgeOfBlood/DamageNumberUnlit");
-        if (shader == null)
-        {
-            Debug.LogError("DamageNumberRenderSystem: Shader 'BridgeOfBlood/DamageNumberUnlit' not found.");
-            shader = Shader.Find("Universal Render Pipeline/Unlit");
-        }
-        var mat = new Material(shader);
-        mat.SetTexture("_DigitAtlas", GenerateDigitAtlas());
-        return mat;
-    }
-
     /// <summary>
     /// Generates a 352x32 digit atlas texture at runtime (white digits on transparent black).
     /// 11 cells: 0-9 and exclamation (for crits). Each cell is 32x32 pixels.
     /// </summary>
-    public static Texture2D GenerateDigitAtlas()
+    static Texture2D GenerateDigitAtlas()
     {
         const int cellSize = 32;
         const int cellCount = 11;

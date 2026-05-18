@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using EZServiceLocation;
 using UnityEngine;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Inventory;
+using BridgeOfBlood.Data.Shop;
 using BridgeOfBlood.Data.Spells;
 using BridgeOfBlood.Data.Enemies;
 using Unity.Mathematics;
@@ -22,10 +24,7 @@ public struct ItemEvalResult
     public bool applied;
 }
 
-/// <summary>
-/// Thin scene runner: creates all systems, delegates round simulation to <see cref="RoundController"/>,
-/// and drives high-level session flow via <see cref="SessionFlowController"/>.
-/// </summary>
+[DefaultExecutionOrder(-40)]
 public class TestSceneManager : MonoBehaviour
 {
     [Header("Simulation")]
@@ -57,12 +56,6 @@ public class TestSceneManager : MonoBehaviour
     public bool debugLogTiming;
     public SimulationDebugController debugController;
 
-    [Header("UI")]
-    [SerializeField] ShopPanelPresenter shopPanel;
-    [SerializeField] RoundPanelPresenter roundPanel;
-    [SerializeField] SpellInventoryController spellInventory;
-    [SerializeField] ItemInventoryController itemInventory;
-
     private Player _player;
     private GameSimulation _simulation;
     private LoopedSpellCaster _loopedSpellCaster;
@@ -85,6 +78,11 @@ public class TestSceneManager : MonoBehaviour
     public GameSimulation Simulation => _simulation;
     public RoundController RoundController => _roundController;
     public SessionFlowController SessionFlow => _sessionFlow;
+
+    void Awake()
+    {
+        CreateRuntimeGameConfigCopy();
+    }
 
     void Start()
     {
@@ -119,8 +117,6 @@ public class TestSceneManager : MonoBehaviour
         _emissionTargetProvider = new EnemyEmissionTargetProvider(_simulation.EnemyManager);
         var emissionHandler = new SpellEmissionHandler(_simulation.AttackEntityManager, _emissionTargetProvider);
 
-        CreateRuntimeGameConfigCopy();
-
         PlayerInventory inv = _runtimeGameConfig.playerInventory;
         _loopedSpellCaster = new LoopedSpellCaster(inv.SpellCollection, emissionHandler);
 
@@ -136,6 +132,16 @@ public class TestSceneManager : MonoBehaviour
             castModifications = castModifications,
             debugController = debugController
         };
+        var sessionContext = new SessionFlowContext(
+           _runtimeGameConfig,
+           _roundController,
+           inv.SpellCollection,
+           simulationZone);
+
+        _sessionFlow = new SessionFlowController(sessionContext);
+
+        
+
         _roundController = new RoundController(
             _player, _simulation, _loopedSpellCaster,
             _telemetryAggregator,
@@ -145,24 +151,17 @@ public class TestSceneManager : MonoBehaviour
             _attackDebugRenderer,
             roundCfg,
             null,
-            roundPanel,
-            renderCamera != null ? renderCamera : Camera.main);
+            renderCamera != null ? renderCamera : Camera.main,
+            _sessionFlow);
 
         if (debugController != null)
             debugController.Initialize(_simulation.StepCount);
 
-        var sessionContext = new SessionFlowContext(
-            _runtimeGameConfig,
-            _roundController,
-            shopPanel,
-            inv.SpellCollection,
-            simulationZone);
 
-        _sessionFlow = new SessionFlowController(sessionContext,
-            new PregameSessionPhase(NoOpStatePresenter.Instance),
-            _roundController,
-            new ShopSessionPhase(shopPanel),
-            new LoseSessionPhase(NoOpStatePresenter.Instance, CreateRuntimeGameConfigCopy));
+        _sessionFlow.AddPhase(_roundController, SessionState.Round);
+        _sessionFlow.AddPhase(new PregameSessionPhase(_sessionFlow), SessionState.Pregame);
+        _sessionFlow.AddPhase(new ShopSessionPhase(_sessionFlow), SessionState.Shop);
+        SessionFlow.AddPhase(new LoseSessionPhase(_sessionFlow, CreateRuntimeGameConfigCopy), SessionState.Lose);
     }
 
     void Update()
@@ -173,15 +172,19 @@ public class TestSceneManager : MonoBehaviour
 
     /// <summary>
     /// Replaces <see cref="_runtimeGameConfig"/> with a new <see cref="GameConfig.CreateRuntimeCopy"/> of the serialized template,
-    /// then re-injects the resulting <see cref="SpellCollection"/> and <see cref="PlayerInventory"/> into the spell and item inventory UIs
-    /// so they follow the new instance.
+    /// then re-registers session services so inventory and shop UIs follow the new instance.
     /// </summary>
     GameConfig CreateRuntimeGameConfigCopy()
     {
         GameConfig.DestroyRuntimeCopy(_runtimeGameConfig);
         _runtimeGameConfig = GameConfig.CreateRuntimeCopy(gameConfig);
-        spellInventory.Initialize(_runtimeGameConfig.playerInventory.SpellCollection);
-        itemInventory.Initialize(_runtimeGameConfig.playerInventory);
+        ServiceLocator.Current.RegisterInstance<ISpellInventoryService>(_runtimeGameConfig.playerInventory.SpellCollection);
+        ServiceLocator.Current.RegisterInstance<IInventoryService>(_runtimeGameConfig.playerInventory);
+        ServiceLocator.Current.RegisterInstance<IWalletService>(_runtimeGameConfig.playerWallet);
+        ServiceLocator.Current.RegisterInstance<IShopService>(
+            new RepositoryShopService(
+                new ShopRepository(_runtimeGameConfig.shopConfig),
+                _runtimeGameConfig.playerInventory));
         return _runtimeGameConfig;
     }
 

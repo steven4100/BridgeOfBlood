@@ -60,6 +60,11 @@ namespace EZServiceLocation
             return link.InvokeObject(requiresNew, parameters);
         }
 
+        public void RegisterInstance<TInterface>(TInterface instance) where TInterface : class
+        {
+            _links[typeof(TInterface)] = new InstanceLink<TInterface>(instance);
+        }
+
         public void LoadServiceMap<TServiceMap>() where TServiceMap : ServiceMap, new()
         {
             var mapper = new TServiceMap();

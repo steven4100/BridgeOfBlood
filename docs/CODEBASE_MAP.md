@@ -129,6 +129,12 @@ High-level session flow managed by `SessionStateMachine` (plain class); `TestSce
 
 **Key types**: `SessionState` (enum), `SessionStateMachine`, `RoundController`, `RoundControllerConfig`, `RoundTickResult`.
 
+Session phase enter/exit events use the shared generic event bus:
+
+- **Bus**: `SharedGameEventBus` wraps `GenericEventBus<SharedGameEvent>`.
+- **Events**: `RoundEnterEvent`, `RoundExitEvent`, `ShopEnterEvent`, `ShopExitEvent` in `Assets/Scripts/Data/Shared/SessionPhaseEvents.cs`.
+- **Unity bridge**: `SharedGameEventReceiver` lets prefabs select a concrete `SharedGameEvent` type via `[SerializeReference]` and wire a `UnityEvent<SharedGameEvent>`.
+
 ---
 
 ## Game loop / rounds

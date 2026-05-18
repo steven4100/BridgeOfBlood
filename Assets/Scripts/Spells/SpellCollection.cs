@@ -36,6 +36,7 @@ public class SpellCollection : ISpellInventoryService
         {
             foreach (var spell in authoringList)
             {
+                if (spell == null) continue;
                 AddSpell(spell);
             }
         }
@@ -43,6 +44,13 @@ public class SpellCollection : ISpellInventoryService
 
     public void AddSpell(SpellAuthoringData spell){
         _runtimeSpells.Add(new RuntimeSpell(spell));
+        SpellsUpdated?.Invoke();
+    }
+
+    /// <summary>Clears all spells (e.g. before <see cref="BridgeOfBlood.Data.Inventory.PlayerInventory.RebuildFromStartingDefinition"/>).</summary>
+    public void ClearSpells()
+    {
+        _runtimeSpells.Clear();
         SpellsUpdated?.Invoke();
     }
 
@@ -56,9 +64,10 @@ public class SpellCollection : ISpellInventoryService
         }
     }
 
-    List<RuntimeSpellUiDTO> ISpellInventoryService.GetSpellUi()
+    IReadOnlyList<RuntimeSpell> ISpellInventoryService.GetSpells()
     {
-        return _runtimeSpells.Select(s => new RuntimeSpellUiDTO(s.Definition.name, s.spellId, s.Definition.icon)).ToList();
+        return _runtimeSpells;
+        //return _runtimeSpells.Select(s => new RuntimeSpellUiDTO(s.Definition.name, s.spellId, s.Definition.icon)).ToList();
     }
 
     bool ISpellInventoryService.TrySetSpellOrder(IReadOnlyList<int> spellIdOrder)
@@ -98,5 +107,10 @@ public class SpellCollection : ISpellInventoryService
 
         SpellsUpdated?.Invoke();
         return true;
+    }
+
+    public void NotifySpellsChanged()
+    {
+        SpellsUpdated?.Invoke();
     }
 }

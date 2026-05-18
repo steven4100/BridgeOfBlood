@@ -186,6 +186,7 @@ public static class TickDamagePipeline
                 spellId = spellId,
                 spellInvocationId = spellInvocationId,
                 position = enemies.Motion[enemyIndex].position,
+                killingBlowDamage = d,
                 overkillDamage = overkill,
                 onDeathSound = pres.onDeathSound,
                 finalStatusAilments = status,

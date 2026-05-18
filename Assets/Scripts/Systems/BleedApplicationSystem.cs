@@ -66,7 +66,8 @@ public struct BleedTrackAndApplyJob : IJob
                     enemyIndex = ei,
                     enemyEntityId = entityId,
                     position = hit.position,
-                    ailmentFlag = StatusAilmentFlag.Bleeding
+                    ailmentFlag = StatusAilmentFlag.Bleeding,
+                    triggeringHitDamage = hit.damageDealt
                 });
             }
         }

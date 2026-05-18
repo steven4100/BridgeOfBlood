@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f0f9075115459e4499e46c5afe2d1f2b, type: 3}
   m_Name: SoundOnHit
   m_EditorClassIdentifier: 
-  clip: {fileID: 8300000, guid: 6318f4c176e6c5f4e804137c77f4d44e, type: 3}
+  clip: {fileID: 8300000, guid: 9d5bc9d00678fd041b6eb4b89d039c5c, type: 3}
   volumeRange:
-    min: 0.5
-    max: 0.55
+    min: 0.3
+    max: 0.35
   pitchRange:
-    min: 0.9
+    min: 0.7
     max: 1
   usePlayOneShot: 1

@@ -37,27 +37,9 @@ namespace BridgeOfBlood.Effects
 			return anyApplied;
 		}
 
-		public void OnPurchase(PurchaseContext context)
+		public virtual void OnPurchase(PurchaseContext context)
 		{
-			context.Inventory.AddItem(this);
-		}
-	}
-
-    [CreateAssetMenu(fileName = "NewSpellItem", menuName = "Bridge of Blood/Items/Spell Item")]
-	public class SpellItem : Item
-	{
-		public SpellAttributeMaskCondition attributeMask;
-		
-		public bool CanApplyToSpell(RuntimeSpell spell){
-			return attributeMask.Evaluate(spell);
-		}
-
-		public void OnAppliedToSpell(RuntimeSpell spell){
-			foreach (var effect in effects){
-				if(effect is ConditionalEffect conditionalEffect){
-					conditionalEffect.conditions.Add(new RuntimeSpellCondition(spell));
-				}
-			}
+			context.Inventory.AddInventoryItem(new InventoryItem(this));
 		}
 	}
 }

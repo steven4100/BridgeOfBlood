@@ -7,10 +7,12 @@ namespace BridgeOfBlood.Data.Inventory
 	/// at session start <see cref="Object.Instantiate(UnityEngine.Object)"/> so <see cref="TrySpend"/> does not mutate the shared template.
 	/// </summary>
 	[CreateAssetMenu(fileName = "PlayerWallet", menuName = "Bridge of Blood/Inventory/Player Wallet")]
-	public class PlayerWallet : ScriptableObject
+	public class PlayerWallet : ScriptableObject, IWalletService
 	{
 		[Tooltip("Starting gold when this asset is instantiated for a session.")]
 		public int gold;
+
+		public int Gold => gold;
 
 		public bool TrySpend(int amount)
 		{

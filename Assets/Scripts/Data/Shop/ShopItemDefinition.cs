@@ -13,6 +13,7 @@ namespace BridgeOfBlood.Data.Shop
 		[Header("Display")]
 		[SerializeField] string displayName;
 		[SerializeField, TextArea] string description;
+		[SerializeField] Sprite sprite;
 
 		[Header("Economy")]
 		[SerializeField] int price;
@@ -31,6 +32,7 @@ namespace BridgeOfBlood.Data.Shop
 		public bool IsResellable => isResellable;
 		public Rarity Rarity => rarity;
 		public ShopItemType ShopItemType => shopItemType;
+		public Sprite Sprite => sprite;
 
 		float IRandomElement.Weight
 		{

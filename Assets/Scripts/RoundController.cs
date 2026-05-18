@@ -4,6 +4,7 @@ using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
 using BridgeOfBlood.Effects;
+using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
@@ -46,7 +47,7 @@ public class RoundControllerConfig
 /// telemetry, damage/effect spawning, rendering, and phase evaluation. Uses <see cref="IRoundEndStrategy"/>
 /// for win/lose and next session state when a round completes.
 /// </summary>
-public sealed class RoundController : SessionPhaseBase<RoundSessionViewData>
+public sealed class RoundController : SessionPhaseBase
 {
 	readonly Player _player;
 	readonly GameSimulation _simulation;
@@ -87,9 +88,9 @@ public sealed class RoundController : SessionPhaseBase<RoundSessionViewData>
 		AttackEntityDebugRenderer attackDebugRenderer,
 		RoundControllerConfig config,
 		IRoundEndStrategy roundEndStrategy,
-		IStatePresenter<RoundSessionViewData> roundHudPresenter,
-		Camera camera)
-		: base(roundHudPresenter ?? RoundSessionNoOpPresenter.Instance)
+		Camera camera,
+		SessionFlowController sessionFlowController)
+		: base(sessionFlowController)
 	{
 		_player = player;
 		_simulation = simulation;
@@ -123,70 +124,35 @@ public sealed class RoundController : SessionPhaseBase<RoundSessionViewData>
 		PrepareForRoundAfterShop();
 		context.RuntimeGameConfig.playerInventory.SpellCollection.ClearRuntimeSpellTracking();
 		ResetForNewRound(context.SimulationZone.rect);
-	}
-
-	protected override RoundSessionViewData TickAndBuildViewData(SessionFlowContext context, float deltaTime)
-	{
-		RoundTickResult result = TickSimulation(
-			deltaTime,
-			context.SimulationZone.rect,
-			_camera,
-			context.SimulationZone);
-
-		if (result.roundEnded)
-			context.Flow.SetState(result.nextSessionState);
-
-		return BuildRoundSessionViewData(context);
-	}
-
-	RoundSessionViewData BuildRoundSessionViewData(SessionFlowContext context)
-	{
-		var spellLabels = new List<string>();
-		IReadOnlyList<RuntimeSpell> runtimeSpells = context.RuntimeGameConfig.playerInventory.SpellCollection.RuntimeSpells;
-		for (int i = 0; i < runtimeSpells.Count; i++)
+		SharedGameEventBus.Bus.Raise(new RoundEnterEvent
 		{
-			SpellAuthoringData def = runtimeSpells[i].Definition;
-			string label = def != null && def.ShopItemDefinition != null
-				&& !string.IsNullOrEmpty(def.ShopItemDefinition.DisplayName)
-				? def.ShopItemDefinition.DisplayName
-				: def.name;
-			spellLabels.Add(label);
-		}
-
-		int loopsRemaining = Mathf.Max(0, SpellLoopsPerRound - _loopedSpellCaster.LoopCount);
-
-		var itemRows = new List<RoundItemRowViewData>();
-		IReadOnlyList<Item> passive = context.RuntimeGameConfig.playerInventory.GetPassiveItems();
-		IReadOnlyList<ItemEvalResult> evals = _lastItemResults;
-		int ei = 0;
-		for (int i = 0; i < passive.Count; i++)
-		{
-			Item item = passive[i];
-			if (item == null)
-				continue;
-			if (ei >= evals.Count)
-				break;
-			ItemEvalResult ev = evals[ei++];
-			string displayName = item.ShopItemDefinition != null
-				&& !string.IsNullOrEmpty(item.ShopItemDefinition.DisplayName)
-				? item.ShopItemDefinition.DisplayName
-				: item.name;
-			itemRows.Add(new RoundItemRowViewData(displayName, ev.applied));
-		}
-
-		return new RoundSessionViewData(
-			spellLabels,
-			_loopedSpellCaster.IndexOfLastCast,
-			BloodQuota,
-			BloodExtractedThisRound,
-			loopsRemaining,
-			itemRows);
+			state = SessionState.Round,
+			roundNumber = RoundNumber,
+			bloodQuota = BloodQuota,
+			spellLoopsPerRound = SpellLoopsPerRound
+		});
 	}
 
-	/// <summary>
-	/// Runs one frame of the round. Returns session transition when the round ends this frame.
-	/// </summary>
-	RoundTickResult TickSimulation(float deltaTime, Rect rect, Camera cam, RectTransform simulationZone)
+	protected override void OnExit(SessionFlowContext context)
+	{
+		SharedGameEventBus.Bus.Raise(new RoundExitEvent
+		{
+			state = SessionState.Round,
+			roundNumber = RoundNumber,
+			bloodExtracted = BloodExtractedThisRound,
+			quotaMet = QuotaMet
+		});
+	}
+
+    public override void Tick(SessionFlowContext context, float deltaTime)
+    {
+        TickSimulation(deltaTime, context.SimulationZone.rect, Camera.main, context.SimulationZone);
+    }
+
+    /// <summary>
+    /// Runs one frame of the round. Returns session transition when the round ends this frame.
+    /// </summary>
+    RoundTickResult TickSimulation(float deltaTime, Rect rect, Camera cam, RectTransform simulationZone)
 	{
 		var debugCtrl = _config.debugController;
 		bool hasController = debugCtrl != null;
@@ -220,28 +186,38 @@ public sealed class RoundController : SessionPhaseBase<RoundSessionViewData>
 		Stopwatch sw = _config.debugLogTiming ? new Stopwatch() : null;
 		long totalMs = 0;
 
-		for (int i = 0; i < _simulation.StepCount; i++)
+		CombatReactionContractBuilder.Build(
+			_config.gameConfig.playerInventory,
+			mods,
+			_loopedSpellCaster.Spells,
+			Allocator.TempJob,
+			out NativeArray<CombatSpawnContract> combatContracts);
+		try
 		{
-			if (!hasController || debugCtrl.ShouldRunPhase(i, _simulation.GetStepName(i)))
+			_simulation.SetFrameCombatReactionContracts(combatContracts);
+
+			for (int i = 0; i < _simulation.StepCount; i++)
 			{
-				sw?.Restart();
-				_simulation.ExecuteStep(i);
-				if (sw != null)
+				if (!hasController || debugCtrl.ShouldRunPhase(i, _simulation.GetStepName(i)))
 				{
-					long ms = sw.ElapsedMilliseconds;
-					totalMs += ms;
-					if (_config.debugLogTiming)
-						Debug.Log($"[Timing] {_simulation.GetStepName(i)}: {ms}ms");
+					sw?.Restart();
+					_simulation.ExecuteStep(i);
+					if (sw != null)
+					{
+						long ms = sw.ElapsedMilliseconds;
+						totalMs += ms;
+						if (_config.debugLogTiming)
+							Debug.Log($"[Timing] {_simulation.GetStepName(i)}: {ms}ms");
+					}
 				}
 			}
 		}
-
-		CombatReactionProcessor.ProcessAfterSimulationFrame(
-			sim.KillEvents,
-			sim.StatusAilmentAppliedEvents,
-			sim.EnemyBuffers,
-			_config.gameConfig.playerInventory,
-			_simulation.AttackEntityManager);
+		finally
+		{
+			_simulation.ClearFrameCombatReactionContracts();
+			if (combatContracts.IsCreated)
+				combatContracts.Dispose();
+		}
 
 		float frameDt = hasController ? debugCtrl.DeltaTime : deltaTime;
 		_telemetryAggregator.ProcessFrame(sim, frameDt, castResult);

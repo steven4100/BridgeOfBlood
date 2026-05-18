@@ -38,32 +38,14 @@ public struct AttackEntitySpawnPayload
     public int spellInvocationId;
 
     /// <summary>
-    /// Copy for spawning a new entity from a baked template (e.g. item combat reaction): stamps spell ids from the
-    /// triggering event and clears chain/rehit transient state while keeping baked config.
+    /// Copy with spell provenance from the triggering event (e.g. item combat reaction baked template).
+    /// Baked templates from <see cref="AttackEntityBuilder.Build"/> already have clean chain/rehit runtime fields.
     /// </summary>
     public AttackEntitySpawnPayload WithSpellProvenanceForNewEntity(int spellId, int spellInvocationId)
     {
         var p = this;
         p.spellId = spellId;
         p.spellInvocationId = spellInvocationId;
-
-        ChainPolicyRuntime tc = p.chain;
-        p.chain = new ChainPolicyRuntime
-        {
-            isActive = tc.isActive,
-            chainCount = tc.chainCount,
-            chainRange = tc.chainRange,
-            targetSelect = tc.targetSelect,
-            excludePreviouslyHit = tc.excludePreviouslyHit,
-            enabled = tc.enabled,
-            chainHitsSoFar = 0,
-            hitEnemyIds = default
-        };
-
-        float cd = p.rehit.rehitCooldownSeconds;
-        p.rehit = RehitPolicyRuntime.Default();
-        p.rehit.rehitCooldownSeconds = cd;
-
         return p;
     }
 }

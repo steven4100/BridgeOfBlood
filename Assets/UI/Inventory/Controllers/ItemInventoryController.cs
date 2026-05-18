@@ -1,26 +1,35 @@
 using System;
 using System.Collections.Generic;
 using BridgeOfBlood.Data.Inventory;
+using EZServiceLocation;
 using UnityEngine;
 
 /// <summary>
 /// Renders passive <see cref="Item"/> rows as a horizontal strip and commits drag-reorder to the
-/// owning <see cref="IItemInventoryService"/> on release. Initializes from an explicit
-/// <see cref="Initialize"/> call; the service is not available at <c>OnEnable</c>.
+/// owning <see cref="IInventoryService"/> on release. Binds from <see cref="ServiceLocator.Current"/>
+/// (<see cref="Initialize()"/> / <c>Start</c>) after installers or session code register
+/// <see cref="IInventoryService"/>; explicit <see cref="Initialize(IInventoryService)"/> remains for tests.
 /// </summary>
+[DefaultExecutionOrder(50)]
 public class ItemInventoryController : MonoBehaviour
 {
     [SerializeField] private Transform LayoutGroupRoot;
     [SerializeField] private RuntimeItemPresenter RuntimeItemPresenterPrefab;
 
-    private IItemInventoryService _service;
+    private IInventoryService _service;
     private HorizontalLayoutReorderGroup _reorderGroup;
 
     private readonly List<RuntimeItemPresenter> _itemUiInstances = new List<RuntimeItemPresenter>();
     private readonly List<InventoryItem> _orderScratch = new List<InventoryItem>();
     private bool _poolSeeded;
 
-    public void Initialize(IItemInventoryService service)
+    /// <summary>Resolves <see cref="IInventoryService"/> from <see cref="ServiceLocator.Current"/>.</summary>
+    public void Initialize()
+    {
+        Initialize(ServiceLocator.Current.GetService<IInventoryService>());
+    }
+
+    public void Initialize(IInventoryService service)
     {
         if (ReferenceEquals(_service, service))
             return;
@@ -44,6 +53,11 @@ public class ItemInventoryController : MonoBehaviour
         _reorderGroup.ReorderEndDrag += CommitReorderedItemOrder;
 
         OnItemsUpdated();
+    }
+
+    private void Start()
+    {
+        Initialize();
     }
 
     private void OnDestroy()
@@ -116,9 +130,17 @@ public class ItemInventoryController : MonoBehaviour
     }
 }
 
-public interface IItemInventoryService
+public interface IInventoryService
 {
+    public void AddInventoryItem(InventoryItem item);
     IReadOnlyList<InventoryItem> GetPassiveItemRows();
     bool TrySetPassiveItemOrder(IReadOnlyList<InventoryItem> reorderedItemRows);
     event Action ItemsUpdated;
+}
+
+public interface IWalletService
+{
+    public int Gold { get; }
+
+    public bool TrySpend(int amount);
 }

@@ -11,7 +11,7 @@ public class DamageNumberController
     private readonly DamageNumberManager _manager;
     private readonly DamageNumberRenderSystem _renderSystem;
 
-    public DamageNumberController(Material material = null)
+    public DamageNumberController(Material material)
     {
         _manager = new DamageNumberManager();
         _renderSystem = new DamageNumberRenderSystem(material);

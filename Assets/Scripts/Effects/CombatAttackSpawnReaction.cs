@@ -1,82 +1,127 @@
-using System;
-using BridgeOfBlood.Data.Enemies;
 using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Data.Spells;
 using Unity.Mathematics;
 using UnityEngine;
 
 namespace BridgeOfBlood.Effects
 {
 	/// <summary>
-	/// Authoring entry: trigger + filters + baked spawn payload (no ScriptableObject references).
-	/// Spell provenance on spawn uses the triggering event's spell id / invocation id.
+	/// Authoring entry: trigger, filters, spell / attack template references, damage mode.
+	/// Runtime bake is <see cref="CombatAttackSpawnReactionRuntime"/>; spawn uses <see cref="AttackEntityBuilder"/> + spell mods.
 	/// </summary>
-	[Serializable]
+	[System.Serializable]
 	public class CombatAttackSpawnReaction
 	{
-		public const int SpellIdMatchAny = 0;
-
 		[Header("Trigger")]
 		[Tooltip("Kill vs ailment application.")]
 		public CombatReactionTrigger trigger;
 
 		[Header("Filters")]
-		[Tooltip("Only react when event spell id equals this runtime spell id. Use 0 to match any spell.")]
-		public int spellIdFilter;
+		[Tooltip("Only react when the event spell maps to this definition. Leave empty to match any spell.")]
+		public SpellAuthoringData spellFilter;
+
+		[Tooltip("Used for SpellModificationsApplicator when spellFilter is null; typically the mask for this proc.")]
+		public SpellAttributeMask modificationAttributeMask;
 
 		[Tooltip("For StatusAilmentApplied: require (event flag & mask) != 0. Use None to match any ailment application.")]
 		public StatusAilmentFlag ailmentMaskFilter;
 
 		[Header("Spawn")]
-		[Tooltip("Baked AttackEntitySpawnPayload (spell id / invocation on the asset are ignored; overwritten from the combat event when spawning).")]
-		public AttackEntitySpawnPayload spawnPayload;
+		[Tooltip("Projectile/effect template; CloneAndApply + Build runs each spawn.")]
+		public AttackEntityData attackEntity;
+
+		[Header("Damage")]
+		public CombatReactionSpawnDamageMode damageMode;
+
+		[Tooltip("For ScaleByTriggeringHitDamage: multiplied by event killing-blow / triggering-hit damage.")]
+		public float eventDamageCoefficient = 1f;
+
+		[Tooltip("Floor for scaled proc damage.")]
+		public float minScaledDamage;
 
 		[Tooltip("Added to the victim position when spawning.")]
 		public Vector2 spawnOffsetWorld;
 
-		[Tooltip("Optional last-mile tweaks after baking.")]
-		[SerializeReference]
-		public IAttackSpawnModifier spawnModifier;
-
-		internal bool MatchesSpell(int eventSpellId)
+		public CombatAttackSpawnReactionRuntime BakeRuntimeSnapshot()
 		{
-			if (spellIdFilter == SpellIdMatchAny)
-				return true;
-			return spellIdFilter == eventSpellId;
+			int defFilter = spellFilter != null ? spellFilter.GetInstanceID() : 0;
+			SpellAttributeMask mask = spellFilter != null ? spellFilter.attributeMask : modificationAttributeMask;
+			return new CombatAttackSpawnReactionRuntime
+			{
+				trigger = this.trigger,
+				ailmentMaskFilter = this.ailmentMaskFilter,
+				spellDefinitionInstanceIdFilter = defFilter,
+				spawnOffsetWorld = new float2(this.spawnOffsetWorld.x, this.spawnOffsetWorld.y),
+				modificationMask = mask,
+				damageMode = this.damageMode,
+				eventDamageCoefficient = this.eventDamageCoefficient,
+				minScaledDamage = this.minScaledDamage,
+			};
 		}
 
-		internal bool MatchesAilmentFlag(StatusAilmentFlag eventFlag)
+		public static bool MatchesSpellFilter(RuntimeSpell runtimeSpell, in CombatAttackSpawnReactionRuntime snap)
 		{
-			if (ailmentMaskFilter == StatusAilmentFlag.None)
-				return true;
-			return (eventFlag & ailmentMaskFilter) != 0;
+			if (snap.spellDefinitionInstanceIdFilter != 0)
+				return runtimeSpell.Definition.GetInstanceID() == snap.spellDefinitionInstanceIdFilter;
+
+			return true;
 		}
 
-		internal void TrySpawnFromKill(in EnemyKilledEvent evt, AttackEntityManager mgr)
+		/// <summary>
+		/// Rolls template damage via <see cref="AttackEntityBuilder.Build"/> with placeholder spell ids; does not apply event scaling (handled in <see cref="CombatReactionProcessor"/>).
+		/// </summary>
+		public AttackEntitySpawnPayload BakeTemplatePayload(in CombatAttackSpawnReactionRuntime snap, SpellModifications mods)
 		{
-			if (trigger != CombatReactionTrigger.EnemyKilled)
-				return;
-			if (!MatchesSpell(evt.spellId))
-				return;
-
-			AttackEntitySpawnPayload payload = bakedSpawnPayload.ToAttackEntitySpawnPayload(evt.spellId, evt.spellInvocationId);
-			spawnModifier?.ModifyKillSpawn(in evt, ref payload);
-			float2 origin = evt.position + new float2(spawnOffsetWorld.x, spawnOffsetWorld.y);
-			mgr.Spawn(payload, origin);
+			AttackEntityData modified = SpellModificationsApplicator.CloneAndApply(attackEntity, snap.modificationMask, mods);
+			const int placeholderSpellId = 0;
+			const int placeholderInvocationId = 0;
+			var ctx = new AttackEntityBuildContext(placeholderSpellId, placeholderInvocationId, 0, modified.GetInstanceID());
+			AttackEntitySpawnPayload payload = AttackEntityBuilder.Build(modified, ctx);
+			if (!ReferenceEquals(modified, attackEntity))
+				Object.Destroy(modified);
+			return payload;
 		}
 
-		internal void TrySpawnFromAilment(in StatusAilmentAppliedEvent evt, in EnemyCombatSnapshot combatSnapshot, AttackEntityManager mgr)
+		internal static void ApplyEventScaledDamage(ref AttackEntitySpawnPayload payload, float eventDamage, float coefficient, float minScaled)
 		{
-			if (trigger != CombatReactionTrigger.StatusAilmentApplied)
-				return;
-			if (!MatchesSpell(evt.spellId))
-				return;
-			if (!MatchesAilmentFlag(evt.ailmentFlag))
-				return;
-
-			AttackEntitySpawnPayload payload = bakedSpawnPayload.ToAttackEntitySpawnPayload(evt.spellId, evt.spellInvocationId);
-			spawnModifier?.ModifyAilmentSpawn(in evt, in combatSnapshot, ref payload);
-			float2 origin = evt.position + new float2(spawnOffsetWorld.x, spawnOffsetWorld.y);
-			mgr.Spawn(payload, origin);
+			float scaled = Mathf.Max(minScaled, eventDamage * coefficient);
+			float sum = payload.physicalDamage + payload.coldDamage + payload.fireDamage + payload.lightningDamage;
+			
+			float factor = scaled / sum;
+			payload.physicalDamage *= factor;
+			payload.coldDamage *= factor;
+			payload.fireDamage *= factor;
+			payload.lightningDamage *= factor;
 		}
+	}
+
+	/// <summary>
+	/// How proc spawn damage is derived from <see cref="AttackEntityData"/> vs the triggering combat event.
+	/// </summary>
+	public enum CombatReactionSpawnDamageMode : byte
+	{
+		/// <summary>Rolled damage and crit from template + spell modifications.</summary>
+		StandaloneAttackTemplate = 0,
+
+		/// <summary>Template defines shape/behaviors; magnitude scales from event damage × coefficient.</summary>
+		ScaleByTriggeringHitDamage = 1,
+	}
+
+	/// <summary>
+	/// Value-only bake of <see cref="CombatAttackSpawnReaction"/> for hot-path spawn logic (no UnityEngine.Object refs).
+	/// </summary>
+	public struct CombatAttackSpawnReactionRuntime
+	{
+		public CombatReactionTrigger trigger;
+		public StatusAilmentFlag ailmentMaskFilter;
+
+		/// <summary>SpellAuthoringData.GetInstanceID() when filtering by asset; 0 = match any spell.</summary>
+		public int spellDefinitionInstanceIdFilter;
+
+		public float2 spawnOffsetWorld;
+		public SpellAttributeMask modificationMask;
+		public CombatReactionSpawnDamageMode damageMode;
+		public float eventDamageCoefficient;
+		public float minScaledDamage;
 	}
 }

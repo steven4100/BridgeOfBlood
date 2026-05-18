@@ -1,13 +1,16 @@
 using System;
 using System.Collections.Generic;
+using BridgeOfBlood.Data.Spells;
+using EZServiceLocation;
 using UnityEngine;
 
 /// <summary>
 /// Renders the player's spell loop as a horizontal strip and commits drag-reorder to the
-/// owning <see cref="ISpellInventoryService"/> on release. Lifecycle is driven by an explicit
-/// <see cref="Initialize"/> call from the owning scene/session controller — the service is not
-/// available at <c>OnEnable</c>, so subscriptions happen there instead.
+/// owning <see cref="ISpellInventoryService"/> on release. Binds from <see cref="ServiceLocator.Current"/>
+/// (<see cref="Initialize()"/> / <c>Start</c>) after installers or session code register
+/// <see cref="ISpellInventoryService"/>; explicit <see cref="Initialize(ISpellInventoryService)"/> remains for tests.
 /// </summary>
+[DefaultExecutionOrder(50)]
 public class SpellInventoryController : MonoBehaviour
 {
     [SerializeField] private Transform LayoutGroupRoot;
@@ -19,6 +22,18 @@ public class SpellInventoryController : MonoBehaviour
     private readonly List<RuntimeSpellPresenter> spellUiInstances = new List<RuntimeSpellPresenter>();
     private readonly List<int> _orderScratch = new List<int>();
     private bool _poolSeeded;
+
+    /// <summary>Fired when a spell tile’s click button is used (<see cref="RuntimeSpellPresenter"/>).</summary>
+    public event Action<int> SpellTileClicked;
+
+    /// <summary>Fired after the spell strip finishes binding tiles (same frame as <c>RenderSpells</c>).</summary>
+    public event Action SpellStripRendered;
+
+    /// <summary>Resolves <see cref="ISpellInventoryService"/> from <see cref="ServiceLocator.Current"/>.</summary>
+    public void Initialize()
+    {
+        Initialize(ServiceLocator.Current.GetService<ISpellInventoryService>());
+    }
 
     public void Initialize(ISpellInventoryService service)
     {
@@ -46,6 +61,11 @@ public class SpellInventoryController : MonoBehaviour
         OnSpellsUpdated();
     }
 
+    private void Start()
+    {
+        Initialize();
+    }
+
     private void OnDestroy()
     {
         if (_service != null)
@@ -56,10 +76,10 @@ public class SpellInventoryController : MonoBehaviour
 
     private void OnSpellsUpdated()
     {
-        RenderSpells(_service.GetSpellUi());
+        RenderSpells(_service.GetSpells());
     }
 
-    private void RenderSpells(List<RuntimeSpellUiDTO> runtimeSpellUiDTOs)
+    private void RenderSpells(IReadOnlyList<RuntimeSpell> runtimeSpellUiDTOs)
     {
         EnsureEnoughRuntimeSpellInstances(runtimeSpellUiDTOs.Count);
 
@@ -73,6 +93,41 @@ public class SpellInventoryController : MonoBehaviour
 
         for (int i = runtimeSpellUiDTOs.Count; i < spellUiInstances.Count; i++)
             spellUiInstances[i].SetVisible(false);
+
+        RefreshSpellClickHandlers();
+        SpellStripRendered?.Invoke();
+    }
+
+    public void ApplyShopHighlights(Func<RuntimeSpell, ShopSpellHighlight> selector)
+    {
+        if (_service == null)
+            return;
+
+        IReadOnlyList<RuntimeSpell> spells = _service.GetSpells();
+        for (int i = 0; i < spellUiInstances.Count; i++)
+        {
+            if (i < spells.Count && spellUiInstances[i].gameObject.activeSelf)
+                spellUiInstances[i].SetShopHighlight(selector(spells[i]));
+            else
+                spellUiInstances[i].SetShopHighlight(ShopSpellHighlight.None);
+        }
+    }
+
+    public void ClearShopHighlights()
+    {
+        for (int i = 0; i < spellUiInstances.Count; i++)
+            spellUiInstances[i].SetShopHighlight(ShopSpellHighlight.None);
+    }
+
+    void RefreshSpellClickHandlers()
+    {
+        for (int i = 0; i < spellUiInstances.Count; i++)
+            spellUiInstances[i].SetSpellTileClickHandler(OnPresenterSpellTileClicked);
+    }
+
+    void OnPresenterSpellTileClicked(int spellId)
+    {
+        SpellTileClicked?.Invoke(spellId);
     }
 
     private void EnsureEnoughRuntimeSpellInstances(int needed)
@@ -119,12 +174,16 @@ public class SpellInventoryController : MonoBehaviour
 
 public interface ISpellInventoryService
 {
-    public List<RuntimeSpellUiDTO> GetSpellUi();
+    void AddSpell(SpellAuthoringData spell);
 
-    public bool TrySetSpellOrder(IReadOnlyList<int> spellIdOrder);
+    IReadOnlyList<RuntimeSpell> GetSpells();
 
-    public event Action SpellsUpdated;
+    bool TrySetSpellOrder(IReadOnlyList<int> spellIdOrder);
 
+    /// <summary>Notify listeners after in-place mutation of runtime spells (e.g. gem attached).</summary>
+    void NotifySpellsChanged();
+
+    event Action SpellsUpdated;
 }
 
 public struct RuntimeSpellUiDTO

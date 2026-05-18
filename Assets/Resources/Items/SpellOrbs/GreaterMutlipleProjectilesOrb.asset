@@ -1,0 +1,76 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a815c06db81fa2749a462ef766fc76f1, type: 3}
+  m_Name: GreaterMutlipleProjectilesOrb
+  m_EditorClassIdentifier: Assembly-CSharp:BridgeOfBlood.Effects:SpellItem
+  shopItemDefinition:
+    displayName: GMP
+    description: Greater Multiple Porjectiles
+    sprite: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
+    price: 6
+    resellValue: 2
+    isResellable: 1
+    rarity: 0
+    shopItemType: 0
+    weight: 1
+  effects:
+  - rid: 9019951566717976635
+  combatReactions: []
+  attributeMask:
+    attributeMask: 65535
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 9019951550505418811
+      type: {class: SpellModificationEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        modifier:
+          rid: 9019951550505418812
+    - rid: 9019951550505418812
+      type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
+      data:
+        property: 7
+        filter: 65535
+        flatAdditive:
+          rid: 9019951550505418813
+        percentIncreased:
+          rid: -2
+        moreMultiplier:
+          rid: -2
+    - rid: 9019951550505418813
+      type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        value: 3
+    - rid: 9019951566717976635
+      type: {class: ConditionalEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        conditions:
+        - rid: 9019951566717976636
+        - rid: 9019951566717976637
+        - rid: 9019951566717976638
+        - rid: 9019951566717976639
+        effects:
+        - rid: 9019951550505418811
+    - rid: 9019951566717976636
+      type: {class: RuntimeSpellCondition, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data: 
+    - rid: 9019951566717976637
+      type: {class: RuntimeSpellCondition, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data: 
+    - rid: 9019951566717976638
+      type: {class: RuntimeSpellCondition, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data: 
+    - rid: 9019951566717976639
+      type: {class: RuntimeSpellCondition, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data: 

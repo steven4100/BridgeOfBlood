@@ -68,7 +68,8 @@ public struct PoisonedTrackAndApplyJob : IJob
                     enemyIndex = ei,
                     enemyEntityId = entityId,
                     position = hit.position,
-                    ailmentFlag = StatusAilmentFlag.Poisoned
+                    ailmentFlag = StatusAilmentFlag.Poisoned,
+                    triggeringHitDamage = hit.damageDealt
                 });
             }
         }

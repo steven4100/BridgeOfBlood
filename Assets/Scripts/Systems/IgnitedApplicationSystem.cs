@@ -68,7 +68,8 @@ public struct IgnitedTrackAndApplyJob : IJob
                     enemyIndex = ei,
                     enemyEntityId = entityId,
                     position = hit.position,
-                    ailmentFlag = StatusAilmentFlag.Ignited
+                    ailmentFlag = StatusAilmentFlag.Ignited,
+                    triggeringHitDamage = hit.damageDealt
                 });
             }
         }

@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a815c06db81fa2749a462ef766fc76f1, type: 3}
+  m_Name: DamageAgainstFrozenEnemiesOrb
+  m_EditorClassIdentifier: Assembly-CSharp::BridgeOfBlood.Effects.SpellItem
+  shopItemDefinition:
+    displayName: 
+    description: 
+    sprite: {fileID: 0}
+    price: 0
+    resellValue: 0
+    isResellable: 0
+    rarity: 0
+    shopItemType: 0
+    weight: 1
+  effects: []
+  combatReactions: []
+  attributeMask:
+    attributeMask: 0
+  references:
+    version: 2
+    RefIds: []

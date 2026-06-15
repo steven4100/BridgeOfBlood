@@ -47,6 +47,20 @@ public class SpellCollection : ISpellInventoryService
         SpellsUpdated?.Invoke();
     }
 
+    public bool RemoveSpell(SpellAuthoringData spell)
+    {
+        for (int i = 0; i < _runtimeSpells.Count; i++)
+        {
+            if (ReferenceEquals(_runtimeSpells[i].Definition, spell))
+            {
+                _runtimeSpells.RemoveAt(i);
+                SpellsUpdated?.Invoke();
+                return true;
+            }
+        }
+        return false;
+    }
+
     /// <summary>Clears all spells (e.g. before <see cref="BridgeOfBlood.Data.Inventory.PlayerInventory.RebuildFromStartingDefinition"/>).</summary>
     public void ClearSpells()
     {

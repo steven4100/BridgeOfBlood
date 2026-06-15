@@ -110,9 +110,10 @@ Items use `ICondition` / `IEffect` / `IValue<float>` (all in `BridgeOfBlood.Effe
 
 ## Enemy spawning
 
-- **Config**: `SimulationConfig.SpawnTable` (`EnemySpawnTable`) only. TestSceneManager assigns spawn table; no spawns if null. Spawn pattern is provided by the table (per entry or table fallback).
-- **Spawner**: `EnemySpawner.GetSpawnEventOrigins(time)` returns event origins (left edge, random Y in local line space). Caller converts to world and applies pattern.
-- **Per event**: For each origin, `EnemySpawnTable.PickEnemyByWeight(seed)` returns `EnemySpawnPick` (enemy + optional pattern). Pattern is chosen uniformly from `EnemySpawnEntry.spawnPatterns` per pick; if empty, table `fallbackSpawnPattern` is used; if both empty, one position at origin. `SpawnPattern.GetPositions(origin, list, seed)` fills positions; `EnemyManager.CreateEnemies(positions, authoring)`.
+- **Contract**: `IEnemySpawner.CollectSpawnRequests(time, playfield)` returns `EnemySpawnRequest` batches (`enemy` + playfield-local `positions`). `GameSimulation` only calls `EnemyManager.CreateEnemies` per request.
+- **Ownership**: Each spawner implementation owns an `EnemySpawnTable` (serialized on `EnemySpawner` or `BrushStrokeEnemySpawner` in `SimulationConfig.spawner`).
+- **EnemySpawner** (rate / left edge): per spawn event, table pick + `SpawnPattern` expansion + `positionScale` (private resolve on the spawner).
+- **BrushStrokeEnemySpawner** (lab): brush circle fill is final placement; one table pick per drained batch; no `SpawnPattern` pass.
 - **Pattern**: `SpawnPattern` (ScriptableObject): fill shape (circle/rectangle/triangle), spawn density (points per unit area), distribution (Random | Grid), optional omission zones. `SpawnShape` struct: type, center, size, rotation; helpers `GetArea()`, `Contains(point)`.
 - **Editor**: `SpawnPatternEditor` (CustomEditor): edit shape/density/omissions, preview point count and points; Scene view draws fill and omission shapes plus preview points when asset is selected.
 

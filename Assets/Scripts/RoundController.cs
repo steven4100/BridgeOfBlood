@@ -20,14 +20,7 @@ public enum GameLoopPhase
 	Lose
 }
 
-/// <summary>
-/// Result of one frame of round simulation when the session layer must react.
-/// </summary>
-public struct RoundTickResult
-{
-	public bool roundEnded;
-	public SessionState nextSessionState;
-}
+
 
 /// <summary>
 /// Configuration passed to <see cref="RoundController"/> so it doesn't reference MonoBehaviour fields directly.
@@ -43,9 +36,10 @@ public class RoundControllerConfig
 }
 
 /// <summary>
-/// Session phase for <see cref="SessionState.Round"/> plus round simulation: player movement, casting, steps,
-/// telemetry, damage/effect spawning, rendering, and phase evaluation. Uses <see cref="IRoundEndStrategy"/>
-/// for win/lose and next session state when a round completes.
+/// Session phase for <see cref="SessionState.Round"/> plus round simulation: player movement, casting,
+/// simulation steps, telemetry, and phase evaluation. Combat-scene visuals/audio are delegated to
+/// <see cref="CombatPresentationLayer"/>. Uses <see cref="IRoundEndStrategy"/> for win/lose and next
+/// session state when a round completes.
 /// </summary>
 public sealed class RoundController : SessionPhaseBase
 {
@@ -53,17 +47,11 @@ public sealed class RoundController : SessionPhaseBase
 	readonly GameSimulation _simulation;
 	readonly LoopedSpellCaster _loopedSpellCaster;
 	readonly TelemetryAggregator _telemetryAggregator;
-	readonly DamageNumberController _damageNumberController;
-	readonly EffectSpriteController _effectSpriteController;
-	readonly GameAudioManager _gameAudioManager;
-	readonly SpriteInstanceBuilder _spriteInstanceBuilder;
-	readonly SpriteInstancedRenderer _spriteRenderer;
-	readonly AttackEntityDebugRenderer _attackDebugRenderer;
+	readonly CombatPresentationLayer _presentation;
 	readonly RoundControllerConfig _config;
 	readonly EffectContext _effectContext = new EffectContext();
 	readonly List<ItemEvalResult> _lastItemResults = new List<ItemEvalResult>();
 	readonly IRoundEndStrategy _roundEndStrategy;
-	readonly Camera _camera;
 
 	public GameLoopPhase Phase { get; private set; }
 	public int RoundNumber { get; private set; }
@@ -80,15 +68,9 @@ public sealed class RoundController : SessionPhaseBase
 		GameSimulation simulation,
 		LoopedSpellCaster loopedSpellCaster,
 		TelemetryAggregator telemetryAggregator,
-		DamageNumberController damageNumberController,
-		EffectSpriteController effectSpriteController,
-		GameAudioManager gameAudioManager,
-		SpriteInstanceBuilder spriteInstanceBuilder,
-		SpriteInstancedRenderer spriteRenderer,
-		AttackEntityDebugRenderer attackDebugRenderer,
+		CombatPresentationLayer presentation,
 		RoundControllerConfig config,
 		IRoundEndStrategy roundEndStrategy,
-		Camera camera,
 		SessionFlowController sessionFlowController)
 		: base(sessionFlowController)
 	{
@@ -96,15 +78,9 @@ public sealed class RoundController : SessionPhaseBase
 		_simulation = simulation;
 		_loopedSpellCaster = loopedSpellCaster;
 		_telemetryAggregator = telemetryAggregator;
-		_damageNumberController = damageNumberController;
-		_effectSpriteController = effectSpriteController;
-		_gameAudioManager = gameAudioManager;
-		_spriteInstanceBuilder = spriteInstanceBuilder;
-		_spriteRenderer = spriteRenderer;
-		_attackDebugRenderer = attackDebugRenderer;
+		_presentation = presentation;
 		_config = config;
 		_roundEndStrategy = roundEndStrategy ?? new QuotaBasedRoundEndStrategy();
-		_camera = camera;
 
 		RoundNumber = 1;
 		Phase = GameLoopPhase.Playing;
@@ -152,7 +128,7 @@ public sealed class RoundController : SessionPhaseBase
     /// <summary>
     /// Runs one frame of the round. Returns session transition when the round ends this frame.
     /// </summary>
-    RoundTickResult TickSimulation(float deltaTime, Rect rect, Camera cam, RectTransform simulationZone)
+    void TickSimulation(float deltaTime, Rect rect, Camera cam, RectTransform simulationZone)
 	{
 		var debugCtrl = _config.debugController;
 		bool hasController = debugCtrl != null;
@@ -173,7 +149,7 @@ public sealed class RoundController : SessionPhaseBase
 		var sim = _simulation.State;
 		SpellCastResult castResult = _loopedSpellCaster.AttemptToCastNextSpell(
 			sim.SimulationTime, _player.Position, castRequested, mods);
-		PlayCastAudio(castResult);
+		_presentation.PlayCastAudio(castResult, _loopedSpellCaster.Spells, _player.Position);
 		_loopedSpellCaster.Update(sim.SimulationTime, new float2(-1f, 0f));
 
 		bool advanceTime = !hasController || debugCtrl.ShouldAdvanceTime;
@@ -224,23 +200,16 @@ public sealed class RoundController : SessionPhaseBase
 
 		BloodExtractedThisRound = _telemetryAggregator.CurrentRound.aggregate.bloodExtracted;
 
-		_damageNumberController.SpawnFromDamageEvents(sim.DamageEvents, sim.EnemyBuffers);
-		_damageNumberController.SpawnFromTickDamageEvents(sim.TickDamageEvents, sim.EnemyBuffers);
-		_effectSpriteController.SpawnFromDamageEvents(sim.DamageEvents);
-		_gameAudioManager.EnqueueFromCombatEvents(sim.DamageEvents, sim.KillEvents);
+		_presentation.ConsumeFrame(sim);
 		_simulation.ClearFrameCombatEvents();
 
 		if (advanceTime)
 		{
 			float effectDt = hasController ? debugCtrl.DeltaTime : deltaTime;
-			_damageNumberController.Update(effectDt);
-			_effectSpriteController.Update(effectDt);
+			_presentation.Update(effectDt);
 		}
 
-		_spriteInstanceBuilder.Build(sim.EnemyBuffers, sim.AttackEntities, _effectSpriteController.GetEntities());
-		_spriteRenderer.Render(_spriteInstanceBuilder.Buffer, _spriteInstanceBuilder.Count, simulationZone, cam);
-		_attackDebugRenderer.Render(sim.AttackEntities, simulationZone, cam);
-		_damageNumberController.Render(simulationZone, cam);
+		_presentation.Render(sim, simulationZone, cam);
 
 		if (hasController)
 			debugCtrl.NotifyFrameComplete();
@@ -261,14 +230,7 @@ public sealed class RoundController : SessionPhaseBase
 			RoundEndEvaluationResult resolution = _roundEndStrategy.Evaluate(in endInput);
 			QuotaMet = resolution.QuotaMet;
 			Phase = resolution.NextInternalPhase;
-			return new RoundTickResult
-			{
-				roundEnded = true,
-				nextSessionState = resolution.NextSessionState
-			};
 		}
-
-		return default;
 	}
 
 	/// <summary>
@@ -376,29 +338,4 @@ public sealed class RoundController : SessionPhaseBase
 		}
 	}
 
-	void PlayCastAudio(in SpellCastResult castResult)
-	{
-		if (!castResult.didCast)
-			return;
-
-		IReadOnlyList<RuntimeSpell> spells = _loopedSpellCaster.Spells;
-		for (int i = 0; i < spells.Count; i++)
-		{
-			RuntimeSpell spell = spells[i];
-			if (spell.spellId != castResult.spellId)
-				continue;
-
-			AudioUnit unit = spell.Definition.castAudio;
-			if (unit != null)
-			{
-				uint seed = AttackEntityBuildRngSeed.Mix(
-					castResult.spellId,
-					castResult.invocationCount,
-					0,
-					0x41A3F5C);
-				_gameAudioManager.RequestOneShot(unit.ToRuntime(seed), _player.Position);
-			}
-			return;
-		}
-	}
 }

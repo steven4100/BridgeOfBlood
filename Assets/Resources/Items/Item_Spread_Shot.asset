@@ -15,6 +15,7 @@ MonoBehaviour:
   shopItemDefinition:
     displayName: TestItem
     description: Test Item Description
+    sprite: {fileID: 0}
     price: 10
     resellValue: 3
     isResellable: 1
@@ -23,6 +24,7 @@ MonoBehaviour:
     weight: 1
   effects:
   - rid: 4884261721581813819
+  combatReactions: []
   references:
     version: 2
     RefIds:
@@ -54,7 +56,7 @@ MonoBehaviour:
       data:
         coefficient: 1
         scope: 1
-        property: 0
+        property: 1
     - rid: 4884261778024038402
       type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
@@ -64,21 +66,13 @@ MonoBehaviour:
       data:
         modifier:
           rid: 4884261816470863935
-    - rid: 4884261816470863932
-      type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
-      data:
-        value: 100
-    - rid: 4884261816470863933
-      type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
-      data:
-        value: 150
     - rid: 4884261816470863934
       type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
       data:
         property: 2
         filter: 0
         flatAdditive:
-          rid: 4884261816470863932
+          rid: 9019951980704956477
         percentIncreased:
           rid: -2
         moreMultiplier:
@@ -89,8 +83,20 @@ MonoBehaviour:
         property: 7
         filter: 0
         flatAdditive:
-          rid: 4884261816470863933
+          rid: 9019951980704956476
         percentIncreased:
           rid: -2
         moreMultiplier:
           rid: -2
+    - rid: 9019951980704956476
+      type: {class: CombatMetricValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        coefficient: 1
+        scope: 1
+        property: 1
+    - rid: 9019951980704956477
+      type: {class: CombatMetricValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        coefficient: 0.2
+        scope: 1
+        property: 1

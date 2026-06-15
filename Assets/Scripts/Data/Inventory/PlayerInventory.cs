@@ -112,6 +112,7 @@ namespace BridgeOfBlood.Data.Inventory
 		public void Clear()
 		{
 			inventoryItems.Clear();
+			_spellCollection.ClearSpells();
 			NotifyItemsUpdated();
 		}
 
@@ -133,6 +134,23 @@ namespace BridgeOfBlood.Data.Inventory
 			_passiveItemScratch.Add(item);
 			inventoryItems.Add(new InventoryItem(item));
 			NotifyItemsUpdated();
+		}
+
+		/// <summary>
+		/// Removes the given row from the inventory. If the payload is a <see cref="SpellAuthoringData"/>,
+		/// also removes a matching <see cref="RuntimeSpell"/> from <see cref="SpellCollection"/>. Returns true if removed.
+		/// </summary>
+		public bool RemoveRow(InventoryItem row)
+		{
+			int idx = inventoryItems.IndexOf(row);
+			if (idx < 0) return false;
+
+			if (row.Payload is SpellAuthoringData spell)
+				_spellCollection.RemoveSpell(spell);
+
+			inventoryItems.RemoveAt(idx);
+			NotifyItemsUpdated();
+			return true;
 		}
 
 		public IEnumerable<T> GetAllFromInventory<T>() where T : class, IInventoryItem

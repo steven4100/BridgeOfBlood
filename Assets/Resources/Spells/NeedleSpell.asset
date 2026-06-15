@@ -15,6 +15,7 @@ MonoBehaviour:
   shopItemDefinition:
     displayName: Needle
     description: sharp needle
+    sprite: {fileID: 0}
     price: 3
     resellValue: 1
     isResellable: 1
@@ -30,7 +31,7 @@ MonoBehaviour:
         forwardDegrees: -180
         emitDuration: 0
         baseEmitCount: 2
-        speed: 666.2
+        speed: 173.6
         relativeToPlayerSpawnCriteria:
           offsetFromPlayer: {x: 0, y: 0}
         targetRange: 5
@@ -39,4 +40,5 @@ MonoBehaviour:
   castCompletionDuration: 0.5
   castTime: 0
   attributeMask: 2
+  castAudio: {fileID: 0}
   icon: {fileID: 21300000, guid: 44a1c440624174b4084a7e49540119ec, type: 3}

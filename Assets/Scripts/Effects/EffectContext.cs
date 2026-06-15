@@ -12,6 +12,7 @@ namespace BridgeOfBlood.Effects
 		public CombatMetrics roundMetrics;
 		public CombatMetrics gameMetrics;
 		public SpellModifications spellModifications;
+		public AttackEntityFactory attackEntityFactory;
 		public SpellInvocationContext spellInvocation;
 
 		public CombatMetrics GetMetrics(MetricsScope scope) => scope switch

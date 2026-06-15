@@ -12,11 +12,12 @@ public class GameAudioManager : MonoBehaviour
         public Vector3 worldPosition;
     }
 
-    [SerializeField] int maxPlaysPerFrame = 6;
+    [SerializeField] int maxPlaysPerFrame = 1;
+    [SerializeField] int maxQueueLengthPerClip = 1;
     [SerializeField] bool preloadFromResources = true;
     [SerializeField] float spatialBlend = 0f;
 
-    readonly Queue<AudioPlayRequest> _queue = new Queue<AudioPlayRequest>(256);
+    readonly Dictionary<int, Queue<AudioPlayRequest>> _queueByClipIndex = new Dictionary<int, Queue<AudioPlayRequest>>(64);
     readonly Dictionary<int, AudioSource> _voiceByClipIndex = new Dictionary<int, AudioSource>(64);
 
     void Awake()
@@ -31,10 +32,11 @@ public class GameAudioManager : MonoBehaviour
 
     public void EnqueueFromCombatEvents(NativeArray<DamageEvent> damageEvents, NativeArray<EnemyKilledEvent> killEvents)
     {
+        Debug.Log($"Enqueing {damageEvents.Length} damaage events and {killEvents.Length} kill events audio");
         for (int i = 0; i < damageEvents.Length; i++)
         {
             DamageEvent evt = damageEvents[i];
-            if (!evt.onDamageSound.IsValid)
+             if(!evt.onDamageSound.IsValid)
                 continue;
 
             Enqueue(evt.onDamageSound, new Vector3(evt.position.x, evt.position.y, 0f));
@@ -73,39 +75,67 @@ public class GameAudioManager : MonoBehaviour
 
     public void UpdateDrain()
     {
-        int budget = Mathf.Max(1, maxPlaysPerFrame);
-        for (int i = 0; i < budget && _queue.Count > 0; i++)
+        int budgetPerQueue = Mathf.Max(1, maxPlaysPerFrame);
+        foreach (KeyValuePair<int, Queue<AudioPlayRequest>> entry in _queueByClipIndex)
         {
-            AudioPlayRequest request = _queue.Dequeue();
-            AudioClip clip = AudioClipRegistry.Get(request.unit.clipIndex);
-            if (clip == null)
-                continue;
+            Queue<AudioPlayRequest> queue = entry.Value;
+            Debug.Log($"Draining queue for clip index {entry.Key} with {queue.Count} requests");
+            for (int i = 0; i < budgetPerQueue && queue.Count > 0; i++)
+               PlayRequest(queue.Dequeue());
+        }
+    }
 
-            AudioSource source = GetOrCreateVoice(request.unit.clipIndex);
-            source.transform.position = request.worldPosition;
-            source.pitch = request.unit.pitch;
+    void PlayRequest(in AudioPlayRequest request)
+    {
+        AudioClip clip = AudioClipRegistry.Get(request.unit.clipIndex);
+        if (clip == null)
+            return;
 
-            if (request.unit.playOneShot)
-            {
-                source.volume = 1f;
-                source.PlayOneShot(clip, request.unit.volume);
-            }
-            else
-            {
-                source.clip = clip;
-                source.volume = request.unit.volume;
-                source.Play();
-            }
+        AudioSource source = GetOrCreateVoice(request.unit.clipIndex);
+        //source.transform.position = request.worldPosition;
+        source.pitch = request.unit.pitch;
+
+        if (request.unit.playOneShot)
+        {
+            source.volume = 1f;
+            source.PlayOneShot(clip, request.unit.volume);
+            Debug.Log("playing clip " + request.unit.clipIndex.ToString() + " " + source.isVirtual);
+        }
+        else
+        {
+            source.clip = clip;
+            source.volume = request.unit.volume;
+            source.Play();
         }
     }
 
     void Enqueue(in AudioUnitRuntime unit, Vector3 worldPosition)
     {
-        _queue.Enqueue(new AudioPlayRequest
+        Queue<AudioPlayRequest> queue = GetOrCreateQueue(unit.clipIndex);
+
+        if(queue.Count >= maxQueueLengthPerClip)
+            return;
+
+        int cap = Mathf.Max(1, maxQueueLengthPerClip);
+        while (queue.Count >= cap)
+            queue.Dequeue();
+
+        queue.Enqueue(new AudioPlayRequest
         {
             unit = unit,
             worldPosition = worldPosition
         });
+    }
+
+    Queue<AudioPlayRequest> GetOrCreateQueue(int clipIndex)
+    {
+        if (_queueByClipIndex.TryGetValue(clipIndex, out Queue<AudioPlayRequest> existing))
+            return existing;
+
+        int cap = Mathf.Max(1, maxQueueLengthPerClip);
+        var queue = new Queue<AudioPlayRequest>(cap);
+        _queueByClipIndex.Add(clipIndex, queue);
+        return queue;
     }
 
     AudioSource GetOrCreateVoice(int clipIndex)

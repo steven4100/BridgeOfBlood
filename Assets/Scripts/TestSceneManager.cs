@@ -27,19 +27,12 @@ public struct ItemEvalResult
 [DefaultExecutionOrder(-40)]
 public class TestSceneManager : MonoBehaviour
 {
-    [Header("Simulation")]
-    public float spawnRate = 2f;
     public RectTransform simulationZone;
     Rect rect => simulationZone != null ? simulationZone.rect : default;
-    public EnemySpawnTable spawnTable;
-    public float gizmoRadius = 5f;
 
     [Header("Rendering")]
     public Camera renderCamera;
-    public Material spriteMaterial;
-    public Material attackDebugMaterial;
-    public Material damageNumberMaterial;
-    public SpriteRenderDatabase spriteRenderDatabase;
+    [Tooltip("Scene-bound combat audio component. Asset references (materials, sprite atlas DB) live on GameConfig.presentationResources.")]
     [SerializeField] GameAudioManager gameAudioManager;
 
     [Header("Player")]
@@ -59,11 +52,7 @@ public class TestSceneManager : MonoBehaviour
     private Player _player;
     private GameSimulation _simulation;
     private LoopedSpellCaster _loopedSpellCaster;
-    private SpriteInstancedRenderer _spriteRenderer;
-    private SpriteInstanceBuilder _spriteInstanceBuilder;
-    private AttackEntityDebugRenderer _attackDebugRenderer;
-    private DamageNumberController _damageNumberController;
-    private EffectSpriteController _effectSpriteController;
+    private CombatPresentationLayer _presentation;
     private TelemetryAggregator _telemetryAggregator;
     private SessionFlowController _sessionFlow;
     private RoundController _roundController;
@@ -86,10 +75,6 @@ public class TestSceneManager : MonoBehaviour
 
     void Start()
     {
-        _spriteRenderer = new SpriteInstancedRenderer(spriteMaterial);
-        _spriteInstanceBuilder = new SpriteInstanceBuilder(spriteRenderDatabase);
-        _damageNumberController = new DamageNumberController(damageNumberMaterial);
-        _effectSpriteController = new EffectSpriteController();
         if (gameAudioManager == null)
         {
             var audioRoot = new GameObject("GameAudioManager");
@@ -102,16 +87,10 @@ public class TestSceneManager : MonoBehaviour
             new float2(r.xMax - 10f, r.center.y),
             playerMoveSpeed);
 
-        if (playerRenderer != null)
-            playerRenderer.Player = _player;
-
-        var simConfig = new SimulationConfig
-        {
-            SimulationZone = simulationZone,
-            SpawnRate = spawnRate,
-            GizmoRadius = gizmoRadius,
-            SpawnTable = spawnTable
-        };
+        SimulationConfig simConfig = _runtimeGameConfig.simulationConfig;
+        simConfig.SimulationZone = simulationZone;
+        if (simConfig.spawner is EnemySpawner rateSpawner)
+            rateSpawner.spawnLineHeight = rect.height;
         _simulation = new GameSimulation(simConfig);
 
         _emissionTargetProvider = new EnemyEmissionTargetProvider(_simulation.EnemyManager);
@@ -120,7 +99,12 @@ public class TestSceneManager : MonoBehaviour
         PlayerInventory inv = _runtimeGameConfig.playerInventory;
         _loopedSpellCaster = new LoopedSpellCaster(inv.SpellCollection, emissionHandler);
 
-        _attackDebugRenderer = new AttackEntityDebugRenderer(_simulation.AttackEntityManager, attackDebugMaterial);
+        _presentation = new CombatPresentationLayer(
+            _runtimeGameConfig.presentationResources,
+            gameAudioManager,
+            _simulation.AttackEntityManager);
+        _presentation.BindPlayer(playerRenderer, _player);
+
         int initialSpellCount = Mathf.Max(8, inv.SpellCollection.Count);
         _telemetryAggregator = new TelemetryAggregator(initialSpellCount);
 
@@ -140,18 +124,12 @@ public class TestSceneManager : MonoBehaviour
 
         _sessionFlow = new SessionFlowController(sessionContext);
 
-        
-
         _roundController = new RoundController(
             _player, _simulation, _loopedSpellCaster,
             _telemetryAggregator,
-            _damageNumberController, _effectSpriteController,
-            gameAudioManager,
-            _spriteInstanceBuilder, _spriteRenderer,
-            _attackDebugRenderer,
+            _presentation,
             roundCfg,
             null,
-            renderCamera != null ? renderCamera : Camera.main,
             _sessionFlow);
 
         if (debugController != null)
@@ -215,9 +193,7 @@ public class TestSceneManager : MonoBehaviour
         _runtimeGameConfig = null;
         _simulation?.Dispose();
         _emissionTargetProvider?.Dispose();
-        _spriteRenderer?.Dispose();
-        _damageNumberController?.Dispose();
-        _effectSpriteController?.Dispose();
+        _presentation?.Dispose();
     }
 
     void OnDrawGizmos()
@@ -226,6 +202,6 @@ public class TestSceneManager : MonoBehaviour
         var drawables = _simulation.GetDebugDrawables();
         for (int i = 0; i < drawables.Count; i++)
             drawables[i].DrawGizmos(simulationZone);
-        _attackDebugRenderer?.DrawGizmos(simulationZone);
+        _presentation?.DrawGizmos(simulationZone);
     }
 }

@@ -41,6 +41,9 @@ namespace BridgeOfBlood.Data.Shared
 	[CreateAssetMenu(fileName = "GameConfig", menuName = "Bridge of Blood/Game Config")]
 	public class GameConfig : ScriptableObject
 	{
+		public SimulationConfig simulationConfig = new SimulationConfig();
+
+
 		[Header("Round")]
 		public BloodQuotaScaling bloodQuotaScaling = new BloodQuotaScaling
 		{
@@ -62,6 +65,10 @@ namespace BridgeOfBlood.Data.Shared
 		[Header("Shop")]
 		[Tooltip("Weighted shop type/item rules. Shared authoring asset — not cloned with the runtime GameConfig.")]
 		public ShopConfig shopConfig;
+
+		[Header("Presentation")]
+		[Tooltip("Materials and sprite atlas database used to build the combat presentation layer. Scene-bound collaborators (audio manager, attack entity manager) are wired separately at runtime.")]
+		public CombatPresentationResources presentationResources = new CombatPresentationResources();
 
 		/// <summary>
 		/// Builds a session-owned <see cref="GameConfig"/> clone: duplicates this asset, then unique wallet/inventory instances

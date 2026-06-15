@@ -22,6 +22,7 @@ namespace BridgeOfBlood.Data.Spells
 
 		public List<RuntimeSpellItem> spellItems = new List<RuntimeSpellItem>();
 
+
 		public RuntimeSpell(SpellAuthoringData definition)
 		{
 			Definition = definition;

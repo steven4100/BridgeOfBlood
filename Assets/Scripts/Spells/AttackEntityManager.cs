@@ -38,6 +38,19 @@ public struct AttackEntity
     public int spellInvocationId;
 }
 
+
+public class AttackEntityFactory
+{
+    public Dictionary<int, List<AttackEntityModifier>> modifiers;
+
+    public AttackEntityFactory() { }
+
+    public void AddAttackEntityModifier(AttackEntityModifier attackEntityModifier)
+    {
+        
+    }
+}
+
 /// <summary>
 /// Manages live attack entities. Spawns from AttackEntitySpawnPayload (built from authoring);
 /// removal is driven by removal events from PierceSystem, ExpirationSystem, etc., resolved via ApplyRemovals at end of frame.

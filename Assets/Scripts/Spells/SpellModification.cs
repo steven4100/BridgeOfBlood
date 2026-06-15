@@ -91,6 +91,7 @@ namespace BridgeOfBlood.Data.Spells
         public Dictionary<SpellModificationProperty, List<ParameterModifier>> modifiers = new Dictionary<SpellModificationProperty, List<ParameterModifier>>();
         public List<DamageConversion> conversions;
         public List<ExtraDamageAs> extraDamageAs;
+        public List<AttackEntityModifier> attackEntityModifiers;
 
         public void Add(ParameterModifier modifier)
         {
@@ -102,44 +103,14 @@ namespace BridgeOfBlood.Data.Spells
             list.Add(modifier);
         }
 
-        public static SpellModifications Combine(List<SpellModifications> mods)
+        public void Add(AttackEntityModifier modifier)
         {
-            if (mods == null || mods.Count == 0)
-                return new SpellModifications();
-
-            SpellModifications combined = new SpellModifications();
-            foreach (var mod in mods)
-                combined.Merge(mod);
-            return combined;
+            attackEntityModifiers.Add(modifier);
         }
+        
 
-        public void Merge(SpellModifications other)
-        {
-            if (other == null)
-                return;
+       
 
-            foreach (var kvp in other.modifiers)
-            {
-                if (!modifiers.TryGetValue(kvp.Key, out var list))
-                {
-                    list = new List<ParameterModifier>();
-                    modifiers[kvp.Key] = list;
-                }
-                foreach (var m in kvp.Value)
-                    list.Add(m.Clone());
-            }
-
-            MergeList(other.conversions, ref conversions);
-            MergeList(other.extraDamageAs, ref extraDamageAs);
-        }
-
-        private static void MergeList<T>(List<T> source, ref List<T> target)
-        {
-            if (source == null)
-                return;
-
-            target ??= new List<T>();
-            target.AddRange(source);
-        }
+      
     }
 }

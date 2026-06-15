@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace BridgeOfBlood.Data.Spells
 {
+	[System.Serializable]
 	public struct ResolvedModifier
 	{
 		public float flat;

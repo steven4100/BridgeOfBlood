@@ -1,7 +1,9 @@
 using BridgeOfBlood.Data.Enemies;
+using BridgeOfBlood.Data.Shared;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
+using EntityId = BridgeOfBlood.Data.Shared.EntityId;
 
 /// <summary>
 /// Right-click in the game view to select the nearest enemy.
@@ -12,7 +14,7 @@ public class EnemySelector : MonoBehaviour
 	public RectTransform simulationZone;
 	public Camera renderCamera;
 
-	public int SelectedEnemyId { get; private set; } = -1;
+	public EntityId SelectedEnemyId { get; private set; } = EntityId.Invalid;
 
 	void Update()
 	{
@@ -28,19 +30,22 @@ public class EnemySelector : MonoBehaviour
 		if (sceneManager == null || sceneManager.Simulation == null) return;
 
 		var enemies = sceneManager.Simulation.State.EnemyBuffers;
-		if (!enemies.Motion.IsCreated || enemies.Length == 0) return;
+		if (!enemies.Motion.IsCreated || enemies.AliveCount == 0) return;
 
 		float bestDist = float.MaxValue;
-		int bestId = -1;
+		EntityId bestId = EntityId.Invalid;
 		var click = new float2(localPoint.x, localPoint.y);
 
 		for (int i = 0; i < enemies.Length; i++)
 		{
+			if (!enemies.IsLive(i))
+				continue;
+
 			float dist = math.distancesq(click, enemies.Motion[i].position);
 			if (dist < bestDist)
 			{
 				bestDist = dist;
-				bestId = enemies.EntityIds[i];
+				bestId = enemies.GetEntityId(i);
 			}
 		}
 

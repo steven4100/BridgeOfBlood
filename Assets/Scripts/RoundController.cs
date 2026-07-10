@@ -33,6 +33,8 @@ public class RoundControllerConfig
 	public GameConfig gameConfig;
 	public SpellModificationsTestData castModifications;
 	public SimulationDebugController debugController;
+	/// <summary>Per-frame spell modifications are injected here before casting; spawn-time application lives in the manager.</summary>
+	public ISpellEmissionHandler emissionHandler;
 }
 
 /// <summary>
@@ -145,11 +147,20 @@ public sealed class RoundController : SessionPhaseBase
 			: new SpellModifications();
 
 		EvaluateItems(mods);
+		_config.emissionHandler?.SetFrameModifications(mods);
 
 		var sim = _simulation.State;
 		SpellCastResult castResult = _loopedSpellCaster.AttemptToCastNextSpell(
-			sim.SimulationTime, _player.Position, castRequested, mods);
-		_presentation.PlayCastAudio(castResult, _loopedSpellCaster.Spells, _player.Position);
+			sim.SimulationTime, _player.Position, castRequested);
+		if (castResult.didCast)
+		{
+			SharedGameEventBus.Bus.Raise(new SpellCastEvent
+			{
+				castResult = castResult,
+				spells = _loopedSpellCaster.Spells,
+				origin = _player.Position
+			});
+		}
 		_loopedSpellCaster.Update(sim.SimulationTime, new float2(-1f, 0f));
 
 		bool advanceTime = !hasController || debugCtrl.ShouldAdvanceTime;
@@ -166,8 +177,7 @@ public sealed class RoundController : SessionPhaseBase
 			_config.gameConfig.playerInventory,
 			mods,
 			_loopedSpellCaster.Spells,
-			Allocator.TempJob,
-			out NativeArray<CombatSpawnContract> combatContracts);
+			out List<CombatSpawnContract> combatContracts);
 		try
 		{
 			_simulation.SetFrameCombatReactionContracts(combatContracts);
@@ -191,16 +201,20 @@ public sealed class RoundController : SessionPhaseBase
 		finally
 		{
 			_simulation.ClearFrameCombatReactionContracts();
-			if (combatContracts.IsCreated)
-				combatContracts.Dispose();
 		}
 
 		float frameDt = hasController ? debugCtrl.DeltaTime : deltaTime;
-		_telemetryAggregator.ProcessFrame(sim, frameDt, castResult);
+		SharedGameEventBus.Bus.Raise(new SimulationCompleteEvent
+		{
+			simulationState = sim,
+			deltaTime = frameDt,
+			simulationTime = sim.SimulationTime,
+			simulationAdvanced = advanceTime,
+			spellCastResult = castResult
+		});
 
 		BloodExtractedThisRound = _telemetryAggregator.CurrentRound.aggregate.bloodExtracted;
 
-		_presentation.ConsumeFrame(sim);
 		_simulation.ClearFrameCombatEvents();
 
 		if (advanceTime)

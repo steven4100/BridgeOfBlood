@@ -19,11 +19,14 @@ public class EnemyManagerGizmoDrawer : IDebugDrawable
     {
         if (_manager == null || transform == null) return;
         EnemyBuffers enemies = _manager.GetBuffers();
-        if (enemies.Length == 0) return;
+        if (enemies.AliveCount == 0) return;
 
         Gizmos.color = Color.red;
         for (int i = 0; i < enemies.Length; i++)
         {
+            if (!enemies.IsLive(i))
+                continue;
+
             var m = enemies.Motion[i];
             Vector3 localPos = new Vector3(m.position.x, m.position.y, 0f);
             Vector3 worldPos = transform.TransformPoint(localPos);

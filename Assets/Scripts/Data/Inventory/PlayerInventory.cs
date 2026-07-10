@@ -153,19 +153,10 @@ namespace BridgeOfBlood.Data.Inventory
 			return true;
 		}
 
-		public IEnumerable<T> GetAllFromInventory<T>() where T : class, IInventoryItem
-		{
-			for (int i = 0; i < inventoryItems.Count; i++)
-			{
-				if (inventoryItems[i].Payload is T match)
-					yield return match;
-			}
-		}
-
 		/// <summary>
 		/// True if a row already uses this asset as its payload (reference equality).
 		/// </summary>
-		public bool OwnsPayload(IInventoryItem asset)
+		public bool OwnsPayload(ScriptableObject asset)
 		{
 			for (int i = 0; i < inventoryItems.Count; i++)
 			{

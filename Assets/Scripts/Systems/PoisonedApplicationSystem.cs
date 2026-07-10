@@ -10,7 +10,6 @@ public struct PoisonedTrackAndApplyJob : IJob
 {
     [ReadOnly] public NativeArray<DamageEvent> HitEvents;
     [ReadOnly] public NativeArray<PoisonedApplierRuntime> Appliers;
-    public NativeArray<int> EntityIds;
     public NativeArray<StatusAilmentFlag> Status;
     public NativeList<EnemyPoisonStatus> Tracker;
     public NativeList<StatusAilmentAppliedEvent> AilmentEvents;
@@ -38,7 +37,7 @@ public struct PoisonedTrackAndApplyJob : IJob
                 continue;
 
             int ei = hit.enemyIndex;
-            int entityId = EntityIds[ei];
+            EntityId entityId = hit.enemyEntityId;
             StatusAilmentFlag flags = Status[ei];
             bool alreadyHad = (flags & StatusAilmentFlag.Poisoned) != 0;
 
@@ -47,7 +46,7 @@ public struct PoisonedTrackAndApplyJob : IJob
             float damagePerTick = hit.damageDealt * dotFrac;
             Tracker.Add(new EnemyPoisonStatus
             {
-                entityID = entityId,
+                enemyId = entityId,
                 spellId = hit.spellId,
                 spellInvocationId = hit.spellInvocationId,
                 timeApplied = TimeApplied,
@@ -83,7 +82,6 @@ public class PoisonedApplicationSystem
     public JobHandle ScheduleTrack(
         NativeArray<DamageEvent> damageEvents,
         NativeArray<PoisonedApplierRuntime> appliers,
-        NativeArray<int> entityIds,
         NativeArray<StatusAilmentFlag> status,
         NativeList<EnemyPoisonStatus> tracker,
         NativeList<StatusAilmentAppliedEvent> ailmentEvents,
@@ -95,7 +93,6 @@ public class PoisonedApplicationSystem
         {
             HitEvents = damageEvents,
             Appliers = appliers,
-            EntityIds = entityIds,
             Status = status,
             Tracker = tracker,
             AilmentEvents = ailmentEvents,

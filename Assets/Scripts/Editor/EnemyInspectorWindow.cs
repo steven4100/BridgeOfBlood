@@ -4,6 +4,7 @@ using BridgeOfBlood.Data.Shared;
 using Unity.Collections;
 using UnityEditor;
 using UnityEngine;
+using EntityId = BridgeOfBlood.Data.Shared.EntityId;
 
 namespace BridgeOfBlood.Editor
 {
@@ -60,8 +61,8 @@ namespace BridgeOfBlood.Editor
 				return;
 			}
 
-			int selectedId = _selector.SelectedEnemyId;
-			if (selectedId < 0)
+			EntityId selectedId = _selector.SelectedEnemyId;
+			if (!selectedId.IsValid)
 			{
 				EditorGUILayout.HelpBox("Right-click an enemy in the game view to select it.", MessageType.Info);
 				return;
@@ -77,7 +78,7 @@ namespace BridgeOfBlood.Editor
 			int idx = -1;
 			for (int i = 0; i < enemies.Length; i++)
 			{
-				if (enemies.EntityIds[i] == selectedId)
+				if (enemies.IsLive(i) && enemies.GetEntityId(i) == selectedId)
 				{
 					idx = i;
 					break;
@@ -90,7 +91,7 @@ namespace BridgeOfBlood.Editor
 				return;
 			}
 
-			int entityId = enemies.EntityIds[idx];
+			EntityId entityId = enemies.GetEntityId(idx);
 			EnemyVitality vit = enemies.Vitality[idx];
 			EnemyMotion motion = enemies.Motion[idx];
 			EnemyCombatTraits traits = enemies.CombatTraits[idx];

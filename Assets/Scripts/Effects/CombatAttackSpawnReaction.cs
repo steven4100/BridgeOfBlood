@@ -7,7 +7,7 @@ namespace BridgeOfBlood.Effects
 {
 	/// <summary>
 	/// Authoring entry: trigger, filters, spell / attack template references, damage mode.
-	/// Runtime bake is <see cref="CombatAttackSpawnReactionRuntime"/>; spawn uses <see cref="AttackEntityBuilder"/> + spell mods.
+	/// Runtime bake is <see cref="CombatAttackSpawnReactionRuntime"/>; spawn rolls + applies spell mods via <see cref="AttackEntityManager.Spawn"/>.
 	/// </summary>
 	[System.Serializable]
 	public class CombatAttackSpawnReaction
@@ -27,7 +27,7 @@ namespace BridgeOfBlood.Effects
 		public StatusAilmentFlag ailmentMaskFilter;
 
 		[Header("Spawn")]
-		[Tooltip("Projectile/effect template; CloneAndApply + Build runs each spawn.")]
+		[Tooltip("Projectile/effect template; rolled + modified at spawn time by AttackEntityManager.")]
 		public AttackEntityData attackEntity;
 
 		[Header("Damage")]
@@ -67,31 +67,10 @@ namespace BridgeOfBlood.Effects
 			return true;
 		}
 
-		/// <summary>
-		/// Rolls template damage via <see cref="AttackEntityBuilder.Build"/> with placeholder spell ids; does not apply event scaling (handled in <see cref="CombatReactionProcessor"/>).
-		/// </summary>
-		public AttackEntitySpawnPayload BakeTemplatePayload(in CombatAttackSpawnReactionRuntime snap, SpellModifications mods)
+		/// <summary>Computes the target total damage for <see cref="CombatReactionSpawnDamageMode.ScaleByTriggeringHitDamage"/>.</summary>
+		internal static float ResolveEventScaledDamage(float eventDamage, float coefficient, float minScaled)
 		{
-			AttackEntityData modified = SpellModificationsApplicator.CloneAndApply(attackEntity, snap.modificationMask, mods);
-			const int placeholderSpellId = 0;
-			const int placeholderInvocationId = 0;
-			var ctx = new AttackEntityBuildContext(placeholderSpellId, placeholderInvocationId, 0, modified.GetInstanceID());
-			AttackEntitySpawnPayload payload = AttackEntityBuilder.Build(modified, ctx);
-			if (!ReferenceEquals(modified, attackEntity))
-				Object.Destroy(modified);
-			return payload;
-		}
-
-		internal static void ApplyEventScaledDamage(ref AttackEntitySpawnPayload payload, float eventDamage, float coefficient, float minScaled)
-		{
-			float scaled = Mathf.Max(minScaled, eventDamage * coefficient);
-			float sum = payload.physicalDamage + payload.coldDamage + payload.fireDamage + payload.lightningDamage;
-			
-			float factor = scaled / sum;
-			payload.physicalDamage *= factor;
-			payload.coldDamage *= factor;
-			payload.fireDamage *= factor;
-			payload.lightningDamage *= factor;
+			return Mathf.Max(minScaled, eventDamage * coefficient);
 		}
 	}
 

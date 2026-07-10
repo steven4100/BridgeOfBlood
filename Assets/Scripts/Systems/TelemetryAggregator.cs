@@ -76,6 +76,20 @@ public class TelemetryAggregator
         _gameInvocations = new Dictionary<int, int>(spellCount);
 
         _perSpellBuffer = new SpellCombatMetrics[spellCount > 0 ? spellCount : 4];
+        SharedGameEventBus.Bus.SubscribeTo<SimulationCompleteEvent>(OnSimulationComplete);
+    }
+
+    public void Dispose()
+    {
+        SharedGameEventBus.Bus.UnsubscribeFrom<SimulationCompleteEvent>(OnSimulationComplete);
+    }
+
+    void OnSimulationComplete(ref SimulationCompleteEvent @event)
+    {
+        ProcessFrame(
+            @event.simulationState,
+            @event.deltaTime,
+            @event.spellCastResult);
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 using BridgeOfBlood.Data.Enemies;
+using BridgeOfBlood.Data.Shared;
 using Unity.Collections;
 using Unity.Mathematics;
 
@@ -10,7 +11,7 @@ public struct CollisionEvent
 {
     public int attackEntityId;
     public int attackEntityIndex;
-    public int enemyEntityId;
+    public EntityId enemyEntityId;
     public int enemyIndex;
     public float2 enemyPosition;
     public float2 attackEntityPosition;
@@ -51,6 +52,8 @@ public class CollisionSystem
             for (int c = 0; c < _candidateIndices.Length; c++)
             {
                 int ei = _candidateIndices[c];
+                if (!enemies.IsLive(ei))
+                    continue;
 
                 float2 enemyPos = enemies.Motion[ei].position;
 
@@ -61,7 +64,7 @@ public class CollisionSystem
                 {
                     attackEntityId = atk.entityId,
                     attackEntityIndex = ai,
-                    enemyEntityId = enemies.EntityIds[ei],
+                    enemyEntityId = enemies.GetEntityId(ei),
                     enemyIndex = ei,
                     enemyPosition = enemyPos,
                     attackEntityPosition = atk.position

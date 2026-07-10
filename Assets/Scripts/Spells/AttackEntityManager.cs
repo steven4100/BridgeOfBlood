@@ -1,4 +1,5 @@
 using BridgeOfBlood.Data.Enemies;
+using BridgeOfBlood.Data.Spells;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
@@ -7,7 +8,7 @@ using System;
 
 /// <summary>
 /// Runtime state of a live attack entity (projectile, AoE, etc.).
-/// Spawned from AttackEntitySpawnPayload when a spell keyframe fires.
+/// Spawned from an AttackEntityBuildContext when a spell keyframe fires.
 /// </summary>
 public struct AttackEntity
 {
@@ -39,20 +40,8 @@ public struct AttackEntity
 }
 
 
-public class AttackEntityFactory
-{
-    public Dictionary<int, List<AttackEntityModifier>> modifiers;
-
-    public AttackEntityFactory() { }
-
-    public void AddAttackEntityModifier(AttackEntityModifier attackEntityModifier)
-    {
-        
-    }
-}
-
 /// <summary>
-/// Manages live attack entities. Spawns from AttackEntitySpawnPayload (built from authoring);
+/// Manages live attack entities. Spawns from an <see cref="AttackEntityBuildContext"/> (authoring data + mods);
 /// removal is driven by removal events from PierceSystem, ExpirationSystem, etc., resolved via ApplyRemovals at end of frame.
 /// NativeList-backed, no per-entity MonoBehaviours.
 /// Call ValidateParallelLists / ValidateHitEvents (code owner) before passing data to systems; systems assume valid input.
@@ -72,6 +61,13 @@ public class AttackEntityManager
     private NativeList<BleedApplierRuntime> _bleedAppliers;
     private int _nextEntityId;
 
+    /// <summary>
+    /// Hit-conditional modifier sets, keyed by entity id. Snapshotted from <see cref="SpellModifications.attackEntityModifiers"/>
+    /// at spawn so live entities carry the conditionals that were active when they were created. Read by
+    /// <see cref="DamageSystem"/> via <see cref="HitModifierSets"/> at hit time. Keyed by id (stable across swap-back removal).
+    /// </summary>
+    private readonly Dictionary<int, List<AttackEntityModifier>> _hitModifierSets = new Dictionary<int, List<AttackEntityModifier>>();
+
     public AttackEntityManager()
     {
         _entities = new NativeList<AttackEntity>(Allocator.Persistent);
@@ -89,47 +85,51 @@ public class AttackEntityManager
     }
 
     /// <summary>
-    /// Spawns a new attack entity from the given payload at the specified position.
+    /// Read-only view of hit-conditional modifier sets keyed by entity id. Consumed by <see cref="DamageSystem"/> at hit time.
     /// </summary>
-    public int Spawn(AttackEntitySpawnPayload payload, float2 spawnPosition)
+    public IReadOnlyDictionary<int, List<AttackEntityModifier>> HitModifierSets => _hitModifierSets;
+
+    /// <summary>
+    /// Spawns a new attack entity from <paramref name="ctx"/>. Rolls stats + applies spell modifications via
+    /// <see cref="AttackEntityModificationApplicator"/>, appends default policies, then lets each authoring
+    /// behavior write its contribution into the parallel lists by index. No intermediate payload struct.
+    /// </summary>
+    public int Spawn(in AttackEntityBuildContext ctx)
     {
         int id = _nextEntityId++;
-        _entities.Add(new AttackEntity
+        int idx = _entities.Length;
+
+        AttackEntity entity = AttackEntityModificationApplicator.BuildRolledEntity(in ctx, id);
+        if (ctx.eventScaledDamage > 0f)
+            AttackEntityModificationApplicator.ApplyEventScaledDamage(ref entity, ctx.eventScaledDamage);
+
+        _entities.Add(entity);
+        _chainPolicies.Add(ChainPolicyRuntime.Default());
+        _piercePolicies.Add(PiercePolicyRuntime.Default());
+        _expirationPolicies.Add(ExpirationPolicyRuntime.Default());
+
+        var rehit = RehitPolicyRuntime.Default();
+        rehit.rehitCooldownSeconds = ctx.data.rehitCooldownSeconds;
+        _rehitPolicies.Add(rehit);
+
+        _frozenAppliers.Add(FrozenApplierRuntime.Default());
+        _ignitedAppliers.Add(IgnitedApplierRuntime.Default());
+        _shockedAppliers.Add(ShockedApplierRuntime.Default());
+        _poisonedAppliers.Add(PoisonedApplierRuntime.Default());
+        _stunnedAppliers.Add(StunnedApplierRuntime.Default());
+        _bleedAppliers.Add(BleedApplierRuntime.Default());
+
+        var behaviors = ctx.data.behaviors;
+        if (behaviors != null)
         {
-            entityId = id,
-            position = spawnPosition,
-            velocity = payload.velocity,
-            timeAlive = 0f,
-            framesAlive = 0,
-            distanceTravelled = 0f,
-            enemiesHit = 0,
-            rehitCooldownSeconds = payload.rehit.rehitCooldownSeconds,
-            physicalDamage = payload.physicalDamage,
-            coldDamage = payload.coldDamage,
-            fireDamage = payload.fireDamage,
-            lightningDamage = payload.lightningDamage,
-            critChance = payload.critChance,
-            critDamageMultiplier = payload.critDamageMultiplier > 0f ? payload.critDamageMultiplier : 1f,
-            knockbackStrength = payload.knockbackStrength,
-            hitBox = payload.hitBoxData,
-            currentHitBoxScale = 1f,
-            visual = payload.visual,
-            onDamageSound = payload.onDamageSound,
-            onHitEffect = payload.onHitEffect,
-            onKillEffect = payload.onKillEffect,
-            spellId = payload.spellId,
-            spellInvocationId = payload.spellInvocationId
-        });
-        _chainPolicies.Add(payload.chain);
-        _piercePolicies.Add(payload.pierce);
-        _expirationPolicies.Add(payload.expiration);
-        _rehitPolicies.Add(payload.rehit);
-        _frozenAppliers.Add(payload.frozenApplier);
-        _ignitedAppliers.Add(payload.ignitedApplier);
-        _shockedAppliers.Add(payload.shockedApplier);
-        _poisonedAppliers.Add(payload.poisonedApplier);
-        _stunnedAppliers.Add(payload.stunnedApplier);
-        _bleedAppliers.Add(payload.bleedApplier);
+            for (int i = 0; i < behaviors.Count; i++)
+                behaviors[i]?.ApplyTo(this, idx, ctx.modifications, ctx.attributeMask);
+        }
+
+        var hitModifiers = ctx.modifications?.attackEntityModifiers;
+        if (hitModifiers != null && hitModifiers.Count > 0)
+            _hitModifierSets[id] = hitModifiers;
+
         return id;
     }
 
@@ -217,17 +217,16 @@ public class AttackEntityManager
     /// </summary>
     public void RecordRehitHits(
         NativeArray<HitEvent>.ReadOnly hitEvents,
-        NativeArray<AttackEntity>.ReadOnly attackEntities,
-        NativeArray<int>.ReadOnly entityIds)
+        NativeArray<AttackEntity>.ReadOnly attackEntities)
     {
-        RehitRecordSystem.RecordRehitHits(hitEvents, attackEntities, entityIds, _rehitPolicies.AsArray());
+        RehitRecordSystem.RecordRehitHits(hitEvents, attackEntities, _rehitPolicies.AsArray());
     }
 
     /// <summary>
     /// Validates that all hit events reference valid attack-entity and enemy indices. Call before passing hitEvents to ChainSystem/DamageSystem.
     /// Throws if any index is out of range (indicates upstream bug).
     /// </summary>
-    public void ValidateHitEvents(NativeArray<HitEvent>.ReadOnly hitEvents, int enemyCount)
+    public void ValidateHitEvents(NativeArray<HitEvent>.ReadOnly hitEvents, int enemySlotCount)
     {
         int entityCount = _entities.Length;
         int chainCount = _chainPolicies.Length;
@@ -238,8 +237,8 @@ public class AttackEntityManager
                 throw new ArgumentOutOfRangeException(nameof(hitEvents), $"HitEvent[{i}].attackEntityIndex={hit.attackEntityIndex} is out of range [0, {entityCount}).");
             if (hit.attackEntityIndex >= chainCount)
                 throw new ArgumentOutOfRangeException(nameof(hitEvents), $"HitEvent[{i}].attackEntityIndex={hit.attackEntityIndex} is out of range for chainPolicies.Length={chainCount}.");
-            if (hit.enemyIndex < 0 || hit.enemyIndex >= enemyCount)
-                throw new ArgumentOutOfRangeException(nameof(hitEvents), $"HitEvent[{i}].enemyIndex={hit.enemyIndex} is out of range [0, {enemyCount}).");
+            if (hit.enemyIndex < 0 || hit.enemyIndex >= enemySlotCount)
+                throw new ArgumentOutOfRangeException(nameof(hitEvents), $"HitEvent[{i}].enemyIndex={hit.enemyIndex} is out of range [0, {enemySlotCount}).");
         }
     }
 
@@ -263,6 +262,7 @@ public class AttackEntityManager
         {
             if (_entities[i].entityId == entityId)
             {
+                _hitModifierSets.Remove(entityId);
                 _entities.RemoveAtSwapBack(i);
                 _chainPolicies.RemoveAtSwapBack(i);
                 _piercePolicies.RemoveAtSwapBack(i);
@@ -284,6 +284,7 @@ public class AttackEntityManager
     /// </summary>
     public void Clear()
     {
+        _hitModifierSets.Clear();
         _entities.Clear();
         _chainPolicies.Clear();
         _piercePolicies.Clear();

@@ -10,7 +10,6 @@ public struct FrozenTrackAndApplyJob : IJob
 {
     [ReadOnly] public NativeArray<DamageEvent> HitEvents;
     [ReadOnly] public NativeArray<FrozenApplierRuntime> Appliers;
-    public NativeArray<int> EntityIds;
     public NativeArray<StatusAilmentFlag> Status;
     public NativeList<EnemyFrozenStatus> Tracker;
     public NativeList<StatusAilmentAppliedEvent> AilmentEvents;
@@ -38,13 +37,13 @@ public struct FrozenTrackAndApplyJob : IJob
                 continue;
 
             int ei = hit.enemyIndex;
-            int entityId = EntityIds[ei];
+            EntityId entityId = hit.enemyEntityId;
             StatusAilmentFlag flags = Status[ei];
             bool alreadyHad = (flags & StatusAilmentFlag.Frozen) != 0;
 
             Tracker.Add(new EnemyFrozenStatus
             {
-                entityID = entityId,
+                enemyId = entityId,
                 spellId = hit.spellId,
                 spellInvocationId = hit.spellInvocationId,
                 timeApplied = TimeApplied,
@@ -78,7 +77,6 @@ public class FrozenApplicationSystem
     public JobHandle ScheduleTrack(
         NativeArray<DamageEvent> damageEvents,
         NativeArray<FrozenApplierRuntime> appliers,
-        NativeArray<int> entityIds,
         NativeArray<StatusAilmentFlag> status,
         NativeList<EnemyFrozenStatus> tracker,
         NativeList<StatusAilmentAppliedEvent> ailmentEvents,
@@ -90,7 +88,6 @@ public class FrozenApplicationSystem
         {
             HitEvents = damageEvents,
             Appliers = appliers,
-            EntityIds = entityIds,
             Status = status,
             Tracker = tracker,
             AilmentEvents = ailmentEvents,

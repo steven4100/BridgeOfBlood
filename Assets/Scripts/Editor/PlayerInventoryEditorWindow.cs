@@ -12,7 +12,7 @@ namespace BridgeOfBlood.Editor
 {
 	/// <summary>
 	/// Live debug window for mutating the runtime <see cref="PlayerInventory"/>.
-	/// Lists every <see cref="IInventoryItem"/> ScriptableObject in the project on the left
+	/// Lists every inventory payload asset (<see cref="Item"/> / <see cref="SpellAuthoringData"/>) on the left
 	/// and the rows currently held by the registered <see cref="IInventoryService"/> on the right.
 	/// Add and Remove buttons mutate the live inventory through public APIs (so listeners refresh).
 	/// </summary>
@@ -68,7 +68,7 @@ namespace BridgeOfBlood.Editor
 			{
 				EditorGUILayout.HelpBox(
 					"Enter Play mode to add or remove items from the live PlayerInventory.\n" +
-					"The list below shows every IInventoryItem asset discovered in the project.",
+					"The list below shows every Item and SpellAuthoringData asset discovered in the project.",
 					MessageType.Info);
 				DrawAvailable(null);
 				return;
@@ -164,11 +164,10 @@ namespace BridgeOfBlood.Editor
 
 				EditorGUILayout.BeginHorizontal();
 				GUILayout.Label(LabelForRow(row, i), GUILayout.Width(28));
-				UnityEngine.Object payloadObj = row.Payload as UnityEngine.Object;
-				if (payloadObj != null)
-					EditorGUILayout.ObjectField(payloadObj, payloadObj.GetType(), false);
+				if (row.Payload != null)
+					EditorGUILayout.ObjectField(row.Payload, row.Payload.GetType(), false);
 				else
-					EditorGUILayout.LabelField(row.Payload != null ? row.Payload.ToString() : "<null>");
+					EditorGUILayout.LabelField("<null>");
 
 				if (GUILayout.Button("Remove", GUILayout.Width(64)))
 					toRemove = row;
@@ -209,11 +208,8 @@ namespace BridgeOfBlood.Editor
 				case Item item:
 					inv.AddItem(item);
 					break;
-				case IInventoryItem generic:
-					inv.AddInventoryItem(new InventoryItem(generic));
-					break;
 				default:
-					Debug.LogWarning($"Asset '{asset.name}' does not implement IInventoryItem.");
+					Debug.LogWarning($"Asset '{asset.name}' is not an Item or SpellAuthoringData.");
 					break;
 			}
 		}
@@ -227,14 +223,8 @@ namespace BridgeOfBlood.Editor
 		void RefreshAvailableAssets()
 		{
 			_availableAssets.Clear();
-			string[] guids = AssetDatabase.FindAssets("t:ScriptableObject");
-			for (int i = 0; i < guids.Length; i++)
-			{
-				string path = AssetDatabase.GUIDToAssetPath(guids[i]);
-				ScriptableObject so = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
-				if (so is IInventoryItem)
-					_availableAssets.Add(so);
-			}
+			AddAssetsOfType<Item>();
+			AddAssetsOfType<SpellAuthoringData>();
 			_availableAssets.Sort((a, b) =>
 			{
 				int t = TypeRank(a).CompareTo(TypeRank(b));
@@ -243,11 +233,22 @@ namespace BridgeOfBlood.Editor
 			});
 		}
 
+		void AddAssetsOfType<T>() where T : ScriptableObject
+		{
+			string[] guids = AssetDatabase.FindAssets($"t:{typeof(T).Name}");
+			for (int i = 0; i < guids.Length; i++)
+			{
+				string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+				T asset = AssetDatabase.LoadAssetAtPath<T>(path);
+				if (asset != null)
+					_availableAssets.Add(asset);
+			}
+		}
+
 		static int TypeRank(UnityEngine.Object asset)
 		{
 			if (asset is SpellAuthoringData) return 0;
-			if (asset is Item) return 1;
-			return 2;
+			return 1;
 		}
 	}
 }

@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: EarthquakeAttackEntity
   m_EditorClassIdentifier: 
   physicalDamageRange:
-    min: 75
-    max: 125
+    min: 25
+    max: 40
   coldDamageRange:
     min: 0
     max: 0
@@ -36,7 +36,7 @@ MonoBehaviour:
     isSphere: 1
     isRect: 0
     rectDimension: {x: 0, y: 0}
-    sphereRadius: 200
+    sphereRadius: 191.5
     scaleGrowthRate: 0
   rehitCooldownSeconds: 100
   behaviors:
@@ -44,7 +44,7 @@ MonoBehaviour:
   - rid: 4884261957644320837
   - rid: 4884261957644320838
   - rid: 4044632107998511173
-  - rid: 4044632107998511174
+  - rid: 8391160039522435133
   visual: {fileID: 0}
   onDamageSound: {fileID: 11400000, guid: c8c9c7244ecabe24888b59279c10d0c9, type: 2}
   references:
@@ -52,11 +52,6 @@ MonoBehaviour:
     RefIds:
     - rid: 4044632107998511173
       type: {class: ApplyFrozenBehavior, ns: , asm: Assembly-CSharp}
-      data:
-        isActive: 1
-        applyChance: 1
-    - rid: 4044632107998511174
-      type: {class: ApplyIgnitedBehavior, ns: , asm: Assembly-CSharp}
       data:
         isActive: 1
         applyChance: 1
@@ -75,3 +70,8 @@ MonoBehaviour:
         maxTimeAlive: 0.2
         maxDistanceTravelled: 0
         maxFrames: 1
+    - rid: 8391160039522435133
+      type: {class: ApplyIgnitedBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        isActive: 1
+        applyChance: 1

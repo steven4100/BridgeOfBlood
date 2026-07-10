@@ -31,9 +31,6 @@ public partial class GameSimulation
         /// <summary>Live attack entities.</summary>
         public NativeArray<AttackEntity> AttackEntities => _owner._attackEntityManager.GetEntities();
 
-        /// <summary>Entity id → index into enemy columns; rebuilt at the start of each AilmentTime step.</summary>
-        public NativeHashMap<int, int> EnemyEntityIdToIndex => _owner._enemyEntityIdToIndex;
-
         /// <summary>Damage events produced by the last StepDamage.</summary>
         public NativeArray<DamageEvent> DamageEvents => _owner._damageEvents.AsArray();
 

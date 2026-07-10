@@ -10,7 +10,6 @@ public struct IgnitedTrackAndApplyJob : IJob
 {
     [ReadOnly] public NativeArray<DamageEvent> HitEvents;
     [ReadOnly] public NativeArray<IgnitedApplierRuntime> Appliers;
-    public NativeArray<int> EntityIds;
     public NativeArray<StatusAilmentFlag> Status;
     public NativeList<EnemyIgniteStatus> Tracker;
     public NativeList<StatusAilmentAppliedEvent> AilmentEvents;
@@ -38,7 +37,7 @@ public struct IgnitedTrackAndApplyJob : IJob
                 continue;
 
             int ei = hit.enemyIndex;
-            int entityId = EntityIds[ei];
+            EntityId entityId = hit.enemyEntityId;
             StatusAilmentFlag flags = Status[ei];
             bool alreadyHad = (flags & StatusAilmentFlag.Ignited) != 0;
 
@@ -47,7 +46,7 @@ public struct IgnitedTrackAndApplyJob : IJob
             float damagePerTick = hit.damageDealt * dotFrac;
             Tracker.Add(new EnemyIgniteStatus
             {
-                entityID = entityId,
+                enemyId = entityId,
                 spellId = hit.spellId,
                 spellInvocationId = hit.spellInvocationId,
                 timeApplied = TimeApplied,
@@ -83,7 +82,6 @@ public class IgnitedApplicationSystem
     public JobHandle ScheduleTrack(
         NativeArray<DamageEvent> damageEvents,
         NativeArray<IgnitedApplierRuntime> appliers,
-        NativeArray<int> entityIds,
         NativeArray<StatusAilmentFlag> status,
         NativeList<EnemyIgniteStatus> tracker,
         NativeList<StatusAilmentAppliedEvent> ailmentEvents,
@@ -95,7 +93,6 @@ public class IgnitedApplicationSystem
         {
             HitEvents = damageEvents,
             Appliers = appliers,
-            EntityIds = entityIds,
             Status = status,
             Tracker = tracker,
             AilmentEvents = ailmentEvents,

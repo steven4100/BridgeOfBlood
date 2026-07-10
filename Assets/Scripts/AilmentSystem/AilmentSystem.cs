@@ -22,9 +22,7 @@ public class AilmentSystem
     private NativeList<EnemyPoisonStatus> _enemyPoisonStatus;
     private NativeList<EnemyShockedStatus> _enemyShockedStatus;
 
-    private NativeHashMap<int, StatusAilmentFlag> _entityStatusAilmentFlagsScratch;
-
-    private readonly HashSet<int> _removedEntityScratch = new HashSet<int>();
+    private readonly HashSet<EntityId> _removedEntityScratch = new HashSet<EntityId>();
 
     public AilmentSystem()
     {
@@ -41,7 +39,6 @@ public class AilmentSystem
         _enemyStunnedStatus = new NativeList<EnemyStunnedStatus>(Allocator.Persistent);
         _enemyPoisonStatus = new NativeList<EnemyPoisonStatus>(Allocator.Persistent);
         _enemyShockedStatus = new NativeList<EnemyShockedStatus>(Allocator.Persistent);
-        _entityStatusAilmentFlagsScratch = new NativeHashMap<int, StatusAilmentFlag>(256, Allocator.Persistent);
     }
 
     public void Dispose()
@@ -52,7 +49,17 @@ public class AilmentSystem
         if (_enemyStunnedStatus.IsCreated) _enemyStunnedStatus.Dispose();
         if (_enemyPoisonStatus.IsCreated) _enemyPoisonStatus.Dispose();
         if (_enemyShockedStatus.IsCreated) _enemyShockedStatus.Dispose();
-        if (_entityStatusAilmentFlagsScratch.IsCreated) _entityStatusAilmentFlagsScratch.Dispose();
+    }
+
+    public void Clear()
+    {
+        _enemyBleedStatus.Clear();
+        _enemyFrozenStatus.Clear();
+        _enemyIgniteStatus.Clear();
+        _enemyStunnedStatus.Clear();
+        _enemyPoisonStatus.Clear();
+        _enemyShockedStatus.Clear();
+        _removedEntityScratch.Clear();
     }
 
     /// <summary>
@@ -70,18 +77,19 @@ public class AilmentSystem
             EnemyShockedStatus row = _enemyShockedStatus[i];
             if (row.lifetime <= 0f)
                 continue;
-            int id = row.entityID;
-            if (outMap.TryGetValue(id, out float existing))
-                outMap[id] = math.max(existing, row.damagerMultiplier);
+            int index = row.enemyId.Index;
+            if (outMap.TryGetValue(index, out float existing))
+                outMap[index] = math.max(existing, row.damagerMultiplier);
             else
-                outMap[id] = row.damagerMultiplier;
+                outMap[index] = row.damagerMultiplier;
         }
     }
 
     public void TickStatusAilmentDurations(EnemyBuffers enemies, float deltaTime)
     {
         AilmentTimeScheduler.Tick(
-            enemies.EntityIds,
+            enemies.Generations,
+            enemies.Alive,
             enemies.Status,
             deltaTime,
             _enemyBleedStatus,
@@ -89,8 +97,7 @@ public class AilmentSystem
             _enemyIgniteStatus,
             _enemyStunnedStatus,
             _enemyPoisonStatus,
-            _enemyShockedStatus,
-            _entityStatusAilmentFlagsScratch);
+            _enemyShockedStatus);
     }
 
     public void ProcessAilmentApplication(
@@ -109,7 +116,6 @@ public class AilmentSystem
         JobHandle h1 = _ignitedSystem.ScheduleTrack(
             damageEvents,
             ailmentAppliers.GetIgnitedAppliers(),
-            enemies.EntityIds,
             enemies.Status,
             _enemyIgniteStatus,
             statusAilmentAppliedEvents,
@@ -119,7 +125,6 @@ public class AilmentSystem
         JobHandle h2 = _shockedSystem.ScheduleTrack(
             damageEvents,
             ailmentAppliers.GetShockedAppliers(),
-            enemies.EntityIds,
             enemies.Status,
             _enemyShockedStatus,
             statusAilmentAppliedEvents,
@@ -129,7 +134,6 @@ public class AilmentSystem
         JobHandle h3 = _poisonedSystem.ScheduleTrack(
             damageEvents,
             ailmentAppliers.GetPoisonedAppliers(),
-            enemies.EntityIds,
             enemies.Status,
             _enemyPoisonStatus,
             statusAilmentAppliedEvents,
@@ -139,7 +143,6 @@ public class AilmentSystem
         JobHandle h4 = _stunnedSystem.ScheduleTrack(
             damageEvents,
             ailmentAppliers.GetStunnedAppliers(),
-            enemies.EntityIds,
             enemies.Status,
             _enemyStunnedStatus,
             statusAilmentAppliedEvents,
@@ -149,7 +152,6 @@ public class AilmentSystem
         JobHandle h5 = _frozenSystem.ScheduleTrack(
             damageEvents,
             ailmentAppliers.GetFrozenAppliers(),
-            enemies.EntityIds,
             enemies.Status,
             _enemyFrozenStatus,
             statusAilmentAppliedEvents,
@@ -159,7 +161,6 @@ public class AilmentSystem
         JobHandle h6 = _bleedSystem.ScheduleTrack(
             damageEvents,
             ailmentAppliers.GetBleedAppliers(),
-            enemies.EntityIds,
             enemies.Status,
             _enemyBleedStatus,
             statusAilmentAppliedEvents,
@@ -172,7 +173,7 @@ public class AilmentSystem
     /// <summary>
     /// Drops ailment tracker rows for the given removed enemy entity ids.
     /// </summary>
-    public void ProcessEnemyRemovals(NativeList<int> removedEntityIds)
+    public void ProcessEnemyRemovals(NativeList<EntityId> removedEntityIds)
     {
         if (removedEntityIds.Length == 0)
             return;
@@ -181,15 +182,15 @@ public class AilmentSystem
         for (int i = 0; i < removedEntityIds.Length; i++)
             _removedEntityScratch.Add(removedEntityIds[i]);
 
-        CompactTracker(_enemyBleedStatus, _removedEntityScratch, static r => r.entityID);
-        CompactTracker(_enemyFrozenStatus, _removedEntityScratch, static r => r.entityID);
-        CompactTracker(_enemyIgniteStatus, _removedEntityScratch, static r => r.entityID);
-        CompactTracker(_enemyStunnedStatus, _removedEntityScratch, static r => r.entityID);
-        CompactTracker(_enemyPoisonStatus, _removedEntityScratch, static r => r.entityID);
-        CompactTracker(_enemyShockedStatus, _removedEntityScratch, static r => r.entityID);
+        CompactTracker(_enemyBleedStatus, _removedEntityScratch, static r => r.enemyId);
+        CompactTracker(_enemyFrozenStatus, _removedEntityScratch, static r => r.enemyId);
+        CompactTracker(_enemyIgniteStatus, _removedEntityScratch, static r => r.enemyId);
+        CompactTracker(_enemyStunnedStatus, _removedEntityScratch, static r => r.enemyId);
+        CompactTracker(_enemyPoisonStatus, _removedEntityScratch, static r => r.enemyId);
+        CompactTracker(_enemyShockedStatus, _removedEntityScratch, static r => r.enemyId);
     }
 
-    private static void CompactTracker<T>(NativeList<T> list, HashSet<int> removed, Func<T, int> getEntityId) where T : unmanaged
+    private static void CompactTracker<T>(NativeList<T> list, HashSet<EntityId> removed, Func<T, EntityId> getEntityId) where T : unmanaged
     {
         int write = 0;
         for (int read = 0; read < list.Length; read++)

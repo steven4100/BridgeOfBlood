@@ -63,7 +63,7 @@ namespace BridgeOfBlood.Data.Shared
 	{
 		public int spellId;
 		public int spellInvocationId;
-		public int enemyEntityId;
+		public EntityId enemyEntityId;
 		public float damageDealt;
 		public DamageType damageType;
 		public StatusAilmentFlag statusAilmentsApplied;
@@ -78,7 +78,7 @@ namespace BridgeOfBlood.Data.Shared
 	{
 		public int spellId;
 		public int spellInvocationId;
-		public int enemyEntityId;
+		public EntityId enemyEntityId;
 		public float damageDealt;
 		public float overkillDamage;
 		public EnemyCorruptionFlag enemyCorruption;

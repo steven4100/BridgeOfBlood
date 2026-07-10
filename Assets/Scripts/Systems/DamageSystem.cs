@@ -1,8 +1,11 @@
+using System.Collections.Generic;
 using BridgeOfBlood.Data.Enemies;
 using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Data.Spells;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
+using EntityId = BridgeOfBlood.Data.Shared.EntityId;
 
 /// <summary>
 /// Consumes HitEvents (from HitResolver + ChainSystem), applies damage to enemies, increments enemiesHit,
@@ -23,43 +26,64 @@ public class DamageSystem
         NativeList<EnemyHitEvent> outHitEvents,
         NativeList<EnemyKilledEvent> outKillEvents,
         NativeList<DamageEvent> outDamageEvents = default,
-        NativeHashMap<int, float> shockDamageTakenMultiplierByEntityId = default)
+        NativeHashMap<int, float> shockDamageTakenMultiplierByEntityId = default,
+        IReadOnlyDictionary<int, List<AttackEntityModifier>> hitModifierSets = null)
     {
         bool emitDamageEvents = outDamageEvents.IsCreated;
         bool useShock = shockDamageTakenMultiplierByEntityId.IsCreated;
+        bool useHitModifiers = hitModifierSets != null && hitModifierSets.Count > 0;
 
         for (int i = 0; i < hitEvents.Length; i++)
         {
             HitEvent hit = hitEvents[i];
 
             int ei = hit.enemyIndex;
+            if (!enemies.IsValid(hit.enemyEntityId))
+                continue;
+
             EnemyVitality vit = enemies.Vitality[ei];
             if (vit.health <= 0f)
                 continue;
 
             AttackEntity atk = attackEntities[hit.attackEntityIndex];
-            int entityId = enemies.EntityIds[ei];
+            EntityId entityId = hit.enemyEntityId;
             EnemyCombatTraits traits = enemies.CombatTraits[ei];
             StatusAilmentFlag status = enemies.Status[ei];
             EnemyMotion motion = enemies.Motion[ei];
             EnemyPresentation presentation = enemies.Presentation[ei];
 
-            float physical = ApplyDamageType(atk.physicalDamage, DamageType.Physical, entityId, traits.elementalWeakness, outHitEvents);
-            float cold = ApplyDamageType(atk.coldDamage, DamageType.Cold, entityId, traits.elementalWeakness, outHitEvents);
-            float fire = ApplyDamageType(atk.fireDamage, DamageType.Fire, entityId, traits.elementalWeakness, outHitEvents);
-            float lightning = ApplyDamageType(atk.lightningDamage, DamageType.Lightning, entityId, traits.elementalWeakness, outHitEvents);
+            // Hit-conditional modifiers operate on scratch values only; atk is written back below (enemiesHit++)
+            // and must keep its rolled damage so re-hits and other targets are unaffected.
+            float physBase = atk.physicalDamage;
+            float coldBase = atk.coldDamage;
+            float fireBase = atk.fireDamage;
+            float lightningBase = atk.lightningDamage;
+            float critChance = atk.critChance;
+            float critMult = atk.critDamageMultiplier;
 
-            bool isCrit = atk.critChance > 0f && atk.critDamageMultiplier >= 1f && UnityEngine.Random.value < atk.critChance;
+            if (useHitModifiers && hitModifierSets.TryGetValue(atk.entityId, out List<AttackEntityModifier> hitMods))
+            {
+                HitConditionalEvaluationSystem.ApplyMatching(
+                    ei, enemies, hitMods,
+                    ref physBase, ref coldBase, ref fireBase, ref lightningBase, ref critChance, ref critMult);
+            }
+
+            float physical = ApplyDamageType(physBase, DamageType.Physical, entityId, traits.elementalWeakness, outHitEvents);
+            float cold = ApplyDamageType(coldBase, DamageType.Cold, entityId, traits.elementalWeakness, outHitEvents);
+            float fire = ApplyDamageType(fireBase, DamageType.Fire, entityId, traits.elementalWeakness, outHitEvents);
+            float lightning = ApplyDamageType(lightningBase, DamageType.Lightning, entityId, traits.elementalWeakness, outHitEvents);
+
+            bool isCrit = critChance > 0f && critMult >= 1f && UnityEngine.Random.value < critChance;
             if (isCrit)
             {
-                float m = atk.critDamageMultiplier;
+                float m = critMult;
                 physical *= m;
                 cold *= m;
                 fire *= m;
                 lightning *= m;
             }
 
-            if (useShock && shockDamageTakenMultiplierByEntityId.TryGetValue(entityId, out float shockMult))
+            if (useShock && shockDamageTakenMultiplierByEntityId.TryGetValue(entityId.Index, out float shockMult))
             {
                 physical *= shockMult;
                 cold *= shockMult;
@@ -95,6 +119,7 @@ public class DamageSystem
                     position = hit.hitPosition,
                     damageDealt = totalDamage,
                     enemyIndex = hit.enemyIndex,
+                    enemyEntityId = entityId,
                     attackEntityIndex = hit.attackEntityIndex,
                     isCrit = isCrit,
                     physicalDamage = physical,
@@ -137,7 +162,7 @@ public class DamageSystem
     static float ApplyDamageType(
         float baseDamage,
         DamageType type,
-        int enemyEntityId,
+        EntityId enemyEntityId,
         DamageType elementalWeakness,
         NativeList<EnemyHitEvent> hitEvents)
     {

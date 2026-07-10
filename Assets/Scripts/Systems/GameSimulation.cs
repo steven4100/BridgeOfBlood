@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using Debug = UnityEngine.Debug;
 using BridgeOfBlood.Data.Enemies;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Effects;
@@ -9,6 +7,7 @@ using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
+using EntityId = BridgeOfBlood.Data.Shared.EntityId;
 
 [Serializable]
 public class SimulationConfig
@@ -58,18 +57,14 @@ public partial class GameSimulation
     private NativeList<StatusAilmentAppliedEvent> _statusAilmentAppliedEvents;
     private NativeList<TickDamageEvent> _tickDamageEvents;
     private NativeHashMap<int, float> _shockDamageMultiplierScratch;
-    /// <summary>entityId → index into current enemy array; rebuilt each frame at the start of the AilmentTime step.</summary>
-    private NativeHashMap<int, int> _enemyEntityIdToIndex;
 
     private SimulationStepCommand[] _steps;
     private float _simulationTime;
     private float _frameDeltaTime;
     private readonly List<IDebugDrawable> _debugDrawables = new List<IDebugDrawable>();
 
-    /// <summary>Per-frame baked combat reaction contracts; owned by the coordinator (disposed after steps). Cleared at end of <see cref="StepCombatReactions"/>.</summary>
-    private NativeArray<CombatSpawnContract> _frameCombatContracts;
-
-    private NativeList<CombatReactionSpawnRequest> _combatReactionSpawnRequests;
+    /// <summary>Per-frame combat reaction contracts (managed; caller owns the list). Cleared at end of <see cref="StepCombatReactions"/>.</summary>
+    private IReadOnlyList<CombatSpawnContract> _frameCombatContracts;
 
     private readonly SimulationState _state;
 
@@ -113,9 +108,7 @@ public partial class GameSimulation
         _statusAilmentAppliedEvents = new NativeList<StatusAilmentAppliedEvent>(32, Allocator.Persistent);
         _tickDamageEvents = new NativeList<TickDamageEvent>(64, Allocator.Persistent);
         _shockDamageMultiplierScratch = new NativeHashMap<int, float>(256, Allocator.Persistent);
-        _enemyEntityIdToIndex = new NativeHashMap<int, int>(256, Allocator.Persistent);
         _enemyRemovals = new EnemyRemovalBatch(Allocator.Persistent);
-        _combatReactionSpawnRequests = new NativeList<CombatReactionSpawnRequest>(32, Allocator.Persistent);
 
         _debugDrawables.Add(_enemyManager.Grid);
         _debugDrawables.Add(new EnemyManagerGizmoDrawer(_enemyManager, _gizmoRadius));
@@ -175,16 +168,16 @@ public partial class GameSimulation
     /// <summary>Active enemy spawn strategy (rate line, brush stroke, etc.).</summary>
     public IEnemySpawner Spawner => _spawner;
 
-    /// <summary>Combat reaction contracts for the current frame; does not take ownership of backing allocations.</summary>
-    public void SetFrameCombatReactionContracts(NativeArray<CombatSpawnContract> contracts)
+    /// <summary>Combat reaction contracts for the current frame; does not take ownership of the list.</summary>
+    public void SetFrameCombatReactionContracts(IReadOnlyList<CombatSpawnContract> contracts)
     {
         _frameCombatContracts = contracts;
     }
 
-    /// <summary>Clears references to frame combat reaction buffers without disposing them (caller owns allocations).</summary>
+    /// <summary>Clears the reference to frame combat reaction contracts (caller owns the list).</summary>
     public void ClearFrameCombatReactionContracts()
     {
-        _frameCombatContracts = default;
+        _frameCombatContracts = null;
     }
 
     /// <summary>Clears transient combat event lists after consumers have read them this frame.</summary>
@@ -204,6 +197,7 @@ public partial class GameSimulation
     {
         _enemyManager.Clear();
         _attackEntityManager.Clear();
+        _ailmentSystem.Clear();
         _spawner.Reset();
         _simulationTime = 0f;
         _frameDeltaTime = 0f;
@@ -216,10 +210,8 @@ public partial class GameSimulation
         _damageEvents.Clear();
         _statusAilmentAppliedEvents.Clear();
         _tickDamageEvents.Clear();
-        _enemyEntityIdToIndex.Clear();
         _enemyRemovals.Clear();
         ClearFrameCombatReactionContracts();
-        _combatReactionSpawnRequests.Clear();
     }
 
     public IReadOnlyList<IDebugDrawable> GetDebugDrawables() => _debugDrawables;
@@ -239,8 +231,6 @@ public partial class GameSimulation
         if (_statusAilmentAppliedEvents.IsCreated) _statusAilmentAppliedEvents.Dispose();
         if (_tickDamageEvents.IsCreated) _tickDamageEvents.Dispose();
         if (_shockDamageMultiplierScratch.IsCreated) _shockDamageMultiplierScratch.Dispose();
-        if (_enemyEntityIdToIndex.IsCreated) _enemyEntityIdToIndex.Dispose();
-        if (_combatReactionSpawnRequests.IsCreated) _combatReactionSpawnRequests.Dispose();
         _enemyRemovals.Dispose();
         _ailmentSystem.Dispose();
     }
@@ -261,7 +251,7 @@ public partial class GameSimulation
     private void StepMoveEnemies()
     {
         EnemyBuffers enemies = _enemyManager.GetBuffers();
-        if (enemies.Length > 0)
+        if (enemies.AliveCount > 0)
             _movementSystem.MoveEnemies(enemies, _frameDeltaTime);
     }
 
@@ -270,34 +260,20 @@ public partial class GameSimulation
         EnemyVisualTimeSystem.Tick(_enemyManager.GetBuffers(), _frameDeltaTime);
     }
 
-    private void RebuildEnemyEntityIdToIndexMap(EnemyBuffers enemies)
-    {
-        _enemyEntityIdToIndex.Clear();
-        for (int i = 0; i < enemies.Length; i++)
-            _enemyEntityIdToIndex[enemies.EntityIds[i]] = i;
-    }
-
     private void StepAilmentTime()
     {
         EnemyBuffers enemies = _enemyManager.GetBuffers();
-        if (enemies.Length == 0 || _frameDeltaTime <= 0f)
+        if (enemies.AliveCount == 0 || _frameDeltaTime <= 0f)
         {
-            _enemyEntityIdToIndex.Clear();
             _ailmentSystem.TickStatusAilmentDurations(enemies, _frameDeltaTime);
             return;
         }
-
-        Stopwatch rebuildMapSw = Stopwatch.StartNew();
-        RebuildEnemyEntityIdToIndexMap(enemies);
-        rebuildMapSw.Stop();
-        //Debug.Log($"[Timing] RebuildEnemyEntityIdToIndexMap: {rebuildMapSw.Elapsed.TotalMilliseconds:F3} ms");
 
         TickDamagePipeline.ProcessTimeBasedDotTicks(
             _ailmentSystem.IgniteStatus,
             _ailmentSystem.PoisonStatus,
             _ailmentSystem.BleedStatus,
             enemies,
-            _enemyEntityIdToIndex,
             _frameDeltaTime,
             _simulationTime,
             _tickDamageEvents,
@@ -318,7 +294,6 @@ public partial class GameSimulation
         JobHandle h = _cullingSystem.ScheduleCollectEnemiesPastRightEdge(
             enemies,
             PlayfieldRect.xMax,
-            _enemyRemovals.CulledPastBoundsIndices,
             _enemyRemovals.CulledPastBoundsEntityIds);
         h.Complete();
     }
@@ -386,7 +361,7 @@ public partial class GameSimulation
                 _resolvedHits);
 
             NativeArray<HitEvent>.ReadOnly resolvedHitsRO = _resolvedHits.AsArray().AsReadOnly();
-            _attackEntityManager.ValidateHitEvents(resolvedHitsRO, _enemyManager.EnemyCount);
+            _attackEntityManager.ValidateHitEvents(resolvedHitsRO, _enemyManager.SlotCount);
 
             _chainSystem.ResolveChains(resolvedHitsRO, attackEntities, chainPolicies, _enemyManager.Grid, enemies.Motion.AsReadOnly());
 
@@ -398,7 +373,8 @@ public partial class GameSimulation
                 _hitEvents,
                 _killEvents,
                 _damageEvents,
-                _shockDamageMultiplierScratch);
+                _shockDamageMultiplierScratch,
+                _attackEntityManager.HitModifierSets);
 
             var appliers = new AttackEntityManagerAilmentAppliers { Manager = _attackEntityManager };
             _ailmentSystem.ProcessAilmentApplication(
@@ -408,42 +384,36 @@ public partial class GameSimulation
                 _statusAilmentAppliedEvents,
                 _simulationTime);
 
-            _attackEntityManager.RecordRehitHits(resolvedHitsRO, attackEntities.AsReadOnly(), enemies.EntityIds.AsReadOnly());
+            _attackEntityManager.RecordRehitHits(resolvedHitsRO, attackEntities.AsReadOnly());
         }
     }
 
     private void ProcessDeadFromHealthDepleted()
     {
-        _enemyRemovals.HealthDepletedIndices.Clear();
         _enemyRemovals.HealthDepletedEntityIds.Clear();
         _deadEnemyRemovalSystem.CollectDeadEnemies(
             _enemyManager.GetBuffers(),
-            _enemyRemovals.HealthDepletedIndices,
             _enemyRemovals.HealthDepletedEntityIds);
         ApplyDeadEnemyRemovals();
     }
 
     private void ApplyCulledEnemyRemovals()
     {
-        NativeList<int> indices = _enemyRemovals.CulledPastBoundsIndices;
-        NativeList<int> entityIds = _enemyRemovals.CulledPastBoundsEntityIds;
-        if (indices.Length == 0)
+        NativeList<EntityId> entityIds = _enemyRemovals.CulledPastBoundsEntityIds;
+        if (entityIds.Length == 0)
             return;
-        _enemyManager.ApplyAscendingRemovalTrack(indices, entityIds);
+        _enemyManager.ApplyRemovals(entityIds);
         _ailmentSystem.ProcessEnemyRemovals(entityIds);
-        indices.Clear();
         entityIds.Clear();
     }
 
     private void ApplyDeadEnemyRemovals()
     {
-        NativeList<int> indices = _enemyRemovals.HealthDepletedIndices;
-        NativeList<int> entityIds = _enemyRemovals.HealthDepletedEntityIds;
-        if (indices.Length == 0)
+        NativeList<EntityId> entityIds = _enemyRemovals.HealthDepletedEntityIds;
+        if (entityIds.Length == 0)
             return;
-        _enemyManager.ApplyAscendingRemovalTrack(indices, entityIds);
+        _enemyManager.ApplyRemovals(entityIds);
         _ailmentSystem.ProcessEnemyRemovals(entityIds);
-        indices.Clear();
         entityIds.Clear();
     }
 
@@ -463,25 +433,16 @@ public partial class GameSimulation
 
     private void StepCombatReactions()
     {
-        if (!_frameCombatContracts.IsCreated)
+        if (_frameCombatContracts == null || _frameCombatContracts.Count == 0)
             return;
 
-        _combatReactionSpawnRequests.Clear();
-
-        NativeArray<CombatSpawnContract> contracts = _frameCombatContracts;
         CombatReactionProcessor.ProcessFrameCombatReactions(
             _killEvents.AsArray(),
             _statusAilmentAppliedEvents.AsArray(),
-            contracts,
-            _combatReactionSpawnRequests);
+            _frameCombatContracts,
+            _attackEntityManager);
 
-        for (int i = 0; i < _combatReactionSpawnRequests.Length; i++)
-        {
-            CombatReactionSpawnRequest req = _combatReactionSpawnRequests[i];
-            _attackEntityManager.Spawn(req.payload, req.origin);
-        }
-
-        _frameCombatContracts = default;
+        _frameCombatContracts = null;
     }
 
     private struct AttackEntityManagerAilmentAppliers : AilmentSystem.AilmentApplierProvider

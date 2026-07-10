@@ -1,4 +1,6 @@
 using System;
+using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 [Serializable]
@@ -14,7 +16,12 @@ public class ApplyFrozenBehavior : AttackEntityBehavior
     public FrozenApplierRuntime ToRuntime() => new FrozenApplierRuntime { isActive = isActive, applyChance = applyChance };
 
     public override AttackEntityBehavior Clone() => new ApplyFrozenBehavior { isActive = isActive, applyChance = applyChance };
-    public override void ApplyTo(ref AttackEntitySpawnPayload payload) => payload.frozenApplier = ToRuntime();
+
+    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask)
+    {
+        var arr = manager.GetFrozenAppliers();
+        arr[index] = ToRuntime();
+    }
 }
 
 [Serializable]

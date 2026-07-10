@@ -35,7 +35,7 @@ public class SpriteInstanceBuilder
         if (_database == null || _database.frames == null || _database.frames.Length == 0)
             return;
 
-        int maxNeeded = enemies.Length + attacks.Length + (effectSprites.IsCreated ? effectSprites.Length : 0);
+        int maxNeeded = enemies.AliveCount + attacks.Length + (effectSprites.IsCreated ? effectSprites.Length : 0);
         EnsureCapacity(maxNeeded);
 
         SpriteFrame[] frames = _database.frames;
@@ -43,6 +43,9 @@ public class SpriteInstanceBuilder
 
         for (int i = 0; i < enemies.Length; i++)
         {
+            if (!enemies.IsLive(i))
+                continue;
+
             EnemyMotion m = enemies.Motion[i];
             EnemyPresentation pr = enemies.Presentation[i];
             StatusAilmentFlag st = enemies.Status[i];

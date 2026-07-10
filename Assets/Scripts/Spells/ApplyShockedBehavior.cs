@@ -1,4 +1,6 @@
 using System;
+using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 [Serializable]
@@ -22,7 +24,12 @@ public class ApplyShockedBehavior : AttackEntityBehavior
     };
 
     public override AttackEntityBehavior Clone() => new ApplyShockedBehavior { isActive = isActive, applyChance = applyChance, incomingDamageTakenMultiplier = incomingDamageTakenMultiplier };
-    public override void ApplyTo(ref AttackEntitySpawnPayload payload) => payload.shockedApplier = ToRuntime();
+
+    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask)
+    {
+        var arr = manager.GetShockedAppliers();
+        arr[index] = ToRuntime();
+    }
 }
 
 [Serializable]

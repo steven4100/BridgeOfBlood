@@ -91,7 +91,7 @@ namespace BridgeOfBlood.Data.Spells
         public Dictionary<SpellModificationProperty, List<ParameterModifier>> modifiers = new Dictionary<SpellModificationProperty, List<ParameterModifier>>();
         public List<DamageConversion> conversions;
         public List<ExtraDamageAs> extraDamageAs;
-        public List<AttackEntityModifier> attackEntityModifiers;
+        public List<AttackEntityModifier> attackEntityModifiers = new List<AttackEntityModifier>();
 
         public void Add(ParameterModifier modifier)
         {

@@ -225,98 +225,57 @@ public struct CompactExpiredAilmentRowsJob : IJob
 }
 
 /// <summary>
-/// Aggregates active status ailments per entity id from all tracker lists (after compact).
+/// Rebuilds tracked status bits from active tracker rows using direct stable-slot handles.
 /// </summary>
 [BurstCompile]
-public struct BuildEntityStatusAilmentFlagsMapJob : IJob
+public struct SyncEntityStatusAilmentFlagsJob : IJob
 {
+    [ReadOnly] public NativeArray<uint> Generations;
+    [ReadOnly] public NativeArray<byte> Alive;
+    public NativeArray<StatusAilmentFlag> Status;
     [ReadOnly] public NativeList<EnemyFrozenStatus> Frozen;
     [ReadOnly] public NativeList<EnemyIgniteStatus> Ignite;
     [ReadOnly] public NativeList<EnemyStunnedStatus> Stunned;
     [ReadOnly] public NativeList<EnemyPoisonStatus> Poison;
     [ReadOnly] public NativeList<EnemyShockedStatus> Shocked;
     [ReadOnly] public NativeList<EnemyBleedStatus> Bleed;
-
-    public NativeHashMap<int, StatusAilmentFlag> OutMap;
+    public StatusAilmentFlag TrackedAilmentMask;
 
     public void Execute()
     {
-        OutMap.Clear();
+        for (int i = 0; i < Status.Length; i++)
+        {
+            StatusAilmentFlag s = Alive[i] != 0 ? Status[i] : StatusAilmentFlag.None;
+            Status[i] = s & ~TrackedAilmentMask;
+        }
 
         for (int i = 0; i < Frozen.Length; i++)
-        {
-            EnemyFrozenStatus row = Frozen[i];
-            if (row.lifetime > 0f)
-                OrFlag(row.entityID, StatusAilmentFlag.Frozen);
-        }
-
+            OrFlag(Frozen[i].enemyId, Frozen[i].lifetime, StatusAilmentFlag.Frozen);
         for (int i = 0; i < Stunned.Length; i++)
-        {
-            EnemyStunnedStatus row = Stunned[i];
-            if (row.lifetime > 0f)
-                OrFlag(row.entityID, StatusAilmentFlag.Stunned);
-        }
-
+            OrFlag(Stunned[i].enemyId, Stunned[i].lifetime, StatusAilmentFlag.Stunned);
         for (int i = 0; i < Poison.Length; i++)
-        {
-            EnemyPoisonStatus row = Poison[i];
-            if (row.lifetime > 0f)
-                OrFlag(row.entityID, StatusAilmentFlag.Poisoned);
-        }
-
+            OrFlag(Poison[i].enemyId, Poison[i].lifetime, StatusAilmentFlag.Poisoned);
         for (int i = 0; i < Ignite.Length; i++)
-        {
-            EnemyIgniteStatus row = Ignite[i];
-            if (row.lifetime > 0f)
-                OrFlag(row.entityID, StatusAilmentFlag.Ignited);
-        }
-
+            OrFlag(Ignite[i].enemyId, Ignite[i].lifetime, StatusAilmentFlag.Ignited);
         for (int i = 0; i < Shocked.Length; i++)
-        {
-            EnemyShockedStatus row = Shocked[i];
-            if (row.lifetime > 0f)
-                OrFlag(row.entityID, StatusAilmentFlag.Shocked);
-        }
-
+            OrFlag(Shocked[i].enemyId, Shocked[i].lifetime, StatusAilmentFlag.Shocked);
         for (int i = 0; i < Bleed.Length; i++)
-        {
-            EnemyBleedStatus row = Bleed[i];
-            if (row.lifetime > 0f)
-                OrFlag(row.entityID, StatusAilmentFlag.Bleeding);
-        }
+            OrFlag(Bleed[i].enemyId, Bleed[i].lifetime, StatusAilmentFlag.Bleeding);
     }
 
-    private void OrFlag(int entityId, StatusAilmentFlag bit)
+    private void OrFlag(EntityId enemyId, float lifetime, StatusAilmentFlag bit)
     {
-        StatusAilmentFlag acc = StatusAilmentFlag.None;
-        OutMap.TryGetValue(entityId, out acc);
-        acc |= bit;
-        OutMap[entityId] = acc;
-    }
-}
+        if (lifetime <= 0f || !IsLive(enemyId))
+            return;
 
-/// <summary>
-/// Writes status ailment bits on enemies from <see cref="BuildEntityStatusAilmentFlagsMapJob"/> output;
-/// clears tracked bits when no active tracker row remains.
-/// </summary>
-[BurstCompile]
-public struct ApplyEntityStatusAilmentFlagsJob : IJobParallelFor
-{
-    public NativeArray<int> EntityIds;
-    public NativeArray<StatusAilmentFlag> Status;
-    [ReadOnly] public NativeHashMap<int, StatusAilmentFlag> EntityFlags;
-    public StatusAilmentFlag TrackedAilmentMask;
-
-    public void Execute(int index)
-    {
-        int id = EntityIds[index];
-        StatusAilmentFlag s = Status[index];
-        StatusAilmentFlag fromTrackers = StatusAilmentFlag.None;
-        if (EntityFlags.TryGetValue(id, out StatusAilmentFlag f))
-            fromTrackers = f;
-        s = (s & ~TrackedAilmentMask) | (fromTrackers & TrackedAilmentMask);
-        Status[index] = s;
+        Status[enemyId.Index] |= bit;
     }
+
+    private bool IsLive(EntityId enemyId) =>
+        enemyId.Index >= 0
+        && enemyId.Index < Generations.Length
+        && Alive[enemyId.Index] != 0
+        && Generations[enemyId.Index] == enemyId.Generation;
 }
 
 /// <summary>
@@ -333,7 +292,8 @@ public static class AilmentTimeScheduler
         | StatusAilmentFlag.Bleeding;
 
     public static void Tick(
-        NativeArray<int> entityIds,
+        NativeArray<uint> generations,
+        NativeArray<byte> alive,
         NativeArray<StatusAilmentFlag> status,
         float deltaTime,
         NativeList<EnemyBleedStatus> bleed,
@@ -341,8 +301,7 @@ public static class AilmentTimeScheduler
         NativeList<EnemyIgniteStatus> ignite,
         NativeList<EnemyStunnedStatus> stunned,
         NativeList<EnemyPoisonStatus> poison,
-        NativeList<EnemyShockedStatus> shocked,
-        NativeHashMap<int, StatusAilmentFlag> entityFlagsScratch)
+        NativeList<EnemyShockedStatus> shocked)
     {
         if (deltaTime <= 0f)
             return;
@@ -387,27 +346,21 @@ public static class AilmentTimeScheduler
             }.Schedule(h);
         }
 
-        if (entityIds.IsCreated && entityIds.Length > 0)
+        if (generations.IsCreated && generations.Length > 0)
         {
-            h = new BuildEntityStatusAilmentFlagsMapJob
+            h = new SyncEntityStatusAilmentFlagsJob
             {
+                Generations = generations,
+                Alive = alive,
+                Status = status,
                 Frozen = frozen,
                 Ignite = ignite,
                 Stunned = stunned,
                 Poison = poison,
                 Shocked = shocked,
                 Bleed = bleed,
-                OutMap = entityFlagsScratch
-            }.Schedule(h);
-
-            int batch = math.max(1, entityIds.Length / 32);
-            h = new ApplyEntityStatusAilmentFlagsJob
-            {
-                EntityIds = entityIds,
-                Status = status,
-                EntityFlags = entityFlagsScratch,
                 TrackedAilmentMask = TrackedStatusAilmentMask
-            }.Schedule(entityIds.Length, batch, h);
+            }.Schedule(h);
         }
 
         h.Complete();

@@ -1,142 +1,62 @@
-using System;
-using System.Collections.Generic;
 using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Data.Spells;
 using Unity.Mathematics;
-using UnityEngine;
 
 /// <summary>
-/// Everything needed to spawn one attack entity. Produced by AttackEntityBuilder from authoring data.
-/// Serializable for baked copies on item combat-reaction entries.
-/// </summary>
-[Serializable]
-public struct AttackEntitySpawnPayload
-{
-    public float physicalDamage;
-    public float coldDamage;
-    public float fireDamage;
-    public float lightningDamage;
-    public float critChance;
-    public float critDamageMultiplier;
-    public float knockbackStrength;
-    public float2 velocity;
-    public HitBoxData hitBoxData;
-    public PiercePolicyRuntime pierce;
-    public ExpirationPolicyRuntime expiration;
-    public ChainPolicyRuntime chain;
-    public RehitPolicyRuntime rehit;
-    public FrozenApplierRuntime frozenApplier;
-    public IgnitedApplierRuntime ignitedApplier;
-    public ShockedApplierRuntime shockedApplier;
-    public PoisonedApplierRuntime poisonedApplier;
-    public StunnedApplierRuntime stunnedApplier;
-    public BleedApplierRuntime bleedApplier;
-    public EntityVisual visual;
-    public AudioUnitRuntime onDamageSound;
-    public EffectSpriteConfigRuntime onHitEffect;
-    public EffectSpriteConfigRuntime onKillEffect;
-    public int spellId;
-    public int spellInvocationId;
-
-    /// <summary>
-    /// Copy with spell provenance from the triggering event (e.g. item combat reaction baked template).
-    /// Baked templates from <see cref="AttackEntityBuilder.Build"/> already have clean chain/rehit runtime fields.
-    /// </summary>
-    public AttackEntitySpawnPayload WithSpellProvenanceForNewEntity(int spellId, int spellInvocationId)
-    {
-        var p = this;
-        p.spellId = spellId;
-        p.spellInvocationId = spellInvocationId;
-        return p;
-    }
-}
-
-/// <summary>
-/// Per-keyframe inputs for rolling <see cref="AttackEntityData"/> ranges deterministically once per build.
+/// The single input required to spawn one attack entity. Produced by <see cref="SpellEmissionHandler"/>
+/// (per keyframe) or by combat reactions, and consumed by <see cref="AttackEntityManager.Spawn"/>.
+/// <para>
+/// Holds authoring data + spell provenance + the modifications/mask to apply at spawn time, plus the
+/// transform (position/velocity). There is no intermediate rolled-stats struct: the manager rolls and
+/// applies mods directly into its parallel lists when it spawns.
+/// </para>
 /// </summary>
 public readonly struct AttackEntityBuildContext
 {
+    public readonly AttackEntityData data;
     public readonly int spellId;
     public readonly int spellInvocationId;
     public readonly int keyframeIndex;
-    public readonly int attackDataInstanceId;
 
-    public AttackEntityBuildContext(int spellId, int spellInvocationId, int keyframeIndex, int attackDataInstanceId)
+    /// <summary>Frame modifications applied at spawn. May be null (no mods).</summary>
+    public readonly SpellModifications modifications;
+
+    /// <summary>Attribute mask of the originating spell, used to filter modifiers.</summary>
+    public readonly SpellAttributeMask attributeMask;
+
+    public readonly float2 position;
+    public readonly float2 velocity;
+
+    /// <summary>&lt;= 0 = unused; &gt; 0 = scale total rolled damage to this value (combat reactions ScaleByTriggeringHitDamage).</summary>
+    public readonly float eventScaledDamage;
+
+    public AttackEntityBuildContext(
+        AttackEntityData data,
+        int spellId,
+        int spellInvocationId,
+        int keyframeIndex,
+        SpellModifications modifications,
+        SpellAttributeMask attributeMask,
+        float2 position,
+        float2 velocity,
+        float eventScaledDamage = 0f)
     {
+        this.data = data;
         this.spellId = spellId;
         this.spellInvocationId = spellInvocationId;
         this.keyframeIndex = keyframeIndex;
-        this.attackDataInstanceId = attackDataInstanceId;
+        this.modifications = modifications;
+        this.attributeMask = attributeMask;
+        this.position = position;
+        this.velocity = velocity;
+        this.eventScaledDamage = eventScaledDamage;
     }
-}
 
-/// <summary>
-/// Builds AttackEntitySpawnPayload from AttackEntityData (class with optional behaviors list).
-/// Missing behaviors get default runtime policies (unlimited pierce, no expiration, chain disabled).
-/// </summary>
-public static class AttackEntityBuilder
-{
-    /// <summary>
-    /// Builds a spawn payload from authoring data. Iterates behaviors and applies first of each type.
-    /// Damage and crit stats are rolled once from ranges using <paramref name="context"/>.
-    /// </summary>
-    public static AttackEntitySpawnPayload Build(AttackEntityData data, in AttackEntityBuildContext context, uint visualSeed = 0)
+    /// <summary>Returns a copy with the spawn transform (position/velocity) filled in at flush time.</summary>
+    public AttackEntityBuildContext WithTransform(float2 position, float2 velocity)
     {
-        uint seed = AttackEntityBuildRngSeed.Mix(context.spellId, context.spellInvocationId, context.keyframeIndex, context.attackDataInstanceId);
-        var rng = Unity.Mathematics.Random.CreateFromIndex(seed);
-
-        float physicalDamage = data.physicalDamageRange.ResolveUniform(ref rng);
-        float coldDamage = data.coldDamageRange.ResolveUniform(ref rng);
-        float fireDamage = data.fireDamageRange.ResolveUniform(ref rng);
-        float lightningDamage = data.lightningDamageRange.ResolveUniform(ref rng);
-        float critChance = Mathf.Clamp01(data.critChanceRange.ResolveUniform(ref rng));
-        float critDamageMultiplier = Mathf.Max(1f, data.critDamageMultiplierRange.ResolveUniform(ref rng));
-
-        if (visualSeed == 0u)
-            visualSeed = seed ^ 0x9E3779B9u;
-        uint audioSeed = seed ^ 0x7F4A7C15u;
-
-        var payload = new AttackEntitySpawnPayload
-        {
-            physicalDamage = physicalDamage,
-            coldDamage = coldDamage,
-            fireDamage = fireDamage,
-            lightningDamage = lightningDamage,
-            critChance = critChance,
-            critDamageMultiplier = critDamageMultiplier,
-            knockbackStrength = Mathf.Max(0f, data.knockbackStrength),
-            velocity = new float2(data.entityVelocity.x, data.entityVelocity.y),
-            hitBoxData = data.hitBoxData,
-            pierce = PiercePolicyRuntime.Default(),
-            expiration = ExpirationPolicyRuntime.Default(),
-            chain = ChainPolicyRuntime.Default(),
-            rehit = RehitPolicyRuntime.Default(),
-            frozenApplier = FrozenApplierRuntime.Default(),
-            ignitedApplier = IgnitedApplierRuntime.Default(),
-            shockedApplier = ShockedApplierRuntime.Default(),
-            poisonedApplier = PoisonedApplierRuntime.Default(),
-            stunnedApplier = StunnedApplierRuntime.Default(),
-            bleedApplier = BleedApplierRuntime.Default(),
-            visual = data.visual != null
-                ? data.visual.Resolve(visualSeed)
-                : EntityVisual.None,
-            onDamageSound = data.onDamageSound != null
-                ? data.onDamageSound.ToRuntime(audioSeed)
-                : AudioUnitRuntime.None,
-            onHitEffect = EffectSpriteConfigRuntime.Default(),
-            onKillEffect = EffectSpriteConfigRuntime.Default()
-        };
-
-        if (data.behaviors == null) return payload;
-
-        for (int i = 0; i < data.behaviors.Count; i++)
-        {
-            var b = data.behaviors[i];
-            if (b == null) continue;
-            b.ApplyTo(ref payload);
-        }
-
-        payload.rehit.rehitCooldownSeconds = data.rehitCooldownSeconds;
-
-        return payload;
+        return new AttackEntityBuildContext(
+            data, spellId, spellInvocationId, keyframeIndex,
+            modifications, attributeMask, position, velocity, eventScaledDamage);
     }
 }

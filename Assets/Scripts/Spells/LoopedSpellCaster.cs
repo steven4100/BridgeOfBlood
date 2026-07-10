@@ -82,9 +82,10 @@ public class LoopedSpellCaster
     }
 
     /// <summary>
-    /// When <paramref name="modifications"/> is non-null, applies them via <see cref="SpellAuthoringData.Modify"/> for this cast's keyframe timeline.
+    /// Casts the next spell in the loop if timing allows. Spell modifications are applied at spawn time by
+    /// <see cref="AttackEntityManager"/> (fed via <see cref="SpellEmissionHandler"/>), not here.
     /// </summary>
-    public SpellCastResult AttemptToCastNextSpell(double roundTime, float2 origin, bool castRequestedThisFrame, SpellModifications modifications = null)
+    public SpellCastResult AttemptToCastNextSpell(double roundTime, float2 origin, bool castRequestedThisFrame)
     {
         if (!castRequestedThisFrame)
             return SpellCastResult.None;
@@ -123,10 +124,7 @@ public class LoopedSpellCaster
         _indexOfLastCast = nextIndex;
         _timeOfLastCast = roundTime;
 
-        SpellAuthoringData keyframeSource = modifications != null
-            ? next.Definition.Modify(modifications)
-            : next.Definition;
-        _spellInvoker.StartCast(next, keyframeSource, origin, (float)roundTime, next.spellId, next.invocationCount);
+        _spellInvoker.StartCast(next, origin, (float)roundTime, next.spellId, next.invocationCount);
 
         return new SpellCastResult
         {

@@ -101,7 +101,6 @@ public class TestSceneManager : MonoBehaviour
 
         _presentation = new CombatPresentationLayer(
             _runtimeGameConfig.presentationResources,
-            gameAudioManager,
             _simulation.AttackEntityManager);
         _presentation.BindPlayer(playerRenderer, _player);
 
@@ -114,7 +113,8 @@ public class TestSceneManager : MonoBehaviour
             debugLogTiming = debugLogTiming,
             gameConfig = _runtimeGameConfig,
             castModifications = castModifications,
-            debugController = debugController
+            debugController = debugController,
+            emissionHandler = emissionHandler
         };
         var sessionContext = new SessionFlowContext(
            _runtimeGameConfig,
@@ -191,6 +191,7 @@ public class TestSceneManager : MonoBehaviour
         _sessionFlow?.Shutdown();
         GameConfig.DestroyRuntimeCopy(_runtimeGameConfig);
         _runtimeGameConfig = null;
+        _telemetryAggregator?.Dispose();
         _simulation?.Dispose();
         _emissionTargetProvider?.Dispose();
         _presentation?.Dispose();

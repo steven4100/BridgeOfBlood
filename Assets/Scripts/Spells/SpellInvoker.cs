@@ -9,6 +9,13 @@ public interface ISpellEmissionHandler
 {
     void OnKeyframeFired(SpellKeyFrame keyFrame, float2 origin, float2 forward, RuntimeSpell runtime, float keyframeFireTime, int spellId, int spellInvocationId, int keyframeIndex);
 
+    /// <summary>
+    /// Sets the spell modifications applied to attack entities spawned this frame. Injected by the round/lab
+    /// each frame after item evaluation; must be treated as immutable for the rest of the frame (delayed and
+    /// sub-emitter spawns keep this reference as their snapshot).
+    /// </summary>
+    void SetFrameModifications(SpellModifications modifications);
+
     void Update(float simulationTime);
 
     bool HasPendingSpawns { get; }
@@ -25,9 +32,9 @@ public class SpellInvoker
     private readonly ISpellEmissionHandler _emissionHandler;
 
     /// <summary>
-    /// <see cref="RuntimeSpell"/> is the loop slot (identity + base <see cref="RuntimeSpell.Definition"/>).
-    /// <see cref="keyframeSource"/> is the timeline we actually play: same as Definition when there are no mods,
-    /// or the one-off clone from <see cref="SpellAuthoringData.Modify"/> when cast-time modifications apply (different keyframes than Definition).
+    /// <see cref="RuntimeSpell"/> is the loop slot (identity + <see cref="RuntimeSpell.Definition"/>), and its
+    /// <see cref="RuntimeSpell.Definition"/> is the timeline we play directly. Spell modifications are applied
+    /// at spawn time by <see cref="AttackEntityManager"/>, so the invoker never clones or modifies the spell.
     /// </summary>
     private struct ActiveCast
     {
@@ -35,7 +42,6 @@ public class SpellInvoker
         public float startTime;
         public int nextKeyframeIndex;
         public RuntimeSpell runtime;
-        public SpellAuthoringData keyframeSource;
         public int spellId;
         public int spellInvocationId;
     }
@@ -50,11 +56,11 @@ public class SpellInvoker
     }
 
     /// <summary>
-    /// Start a new cast. <paramref name="keyframeSource"/> is the timeline to play (base definition or <see cref="SpellAuthoringData.Modify"/> clone).
+    /// Start a new cast. The timeline played is <paramref name="runtime"/>'s <see cref="RuntimeSpell.Definition"/>.
     /// </summary>
-    public void StartCast(RuntimeSpell runtime, SpellAuthoringData keyframeSource, float2 origin, float startTime, int spellId, int spellInvocationId)
+    public void StartCast(RuntimeSpell runtime, float2 origin, float startTime, int spellId, int spellInvocationId)
     {
-        if (runtime == null || keyframeSource == null || keyframeSource.SpellAnimation?.keyFrames == null || keyframeSource.SpellAnimation.keyFrames.Count == 0)
+        if (runtime?.Definition == null || runtime.Definition.SpellAnimation?.keyFrames == null || runtime.Definition.SpellAnimation.keyFrames.Count == 0)
             return;
 
         _activeCasts.Add(new ActiveCast
@@ -63,7 +69,6 @@ public class SpellInvoker
             startTime = startTime,
             nextKeyframeIndex = 0,
             runtime = runtime,
-            keyframeSource = keyframeSource,
             spellId = spellId,
             spellInvocationId = spellInvocationId
         });
@@ -74,13 +79,13 @@ public class SpellInvoker
         for (int c = _activeCasts.Count - 1; c >= 0; c--)
         {
             ActiveCast cast = _activeCasts[c];
-            if (cast.keyframeSource?.SpellAnimation?.keyFrames == null)
+            if (cast.runtime?.Definition?.SpellAnimation?.keyFrames == null)
             {
                 _activeCasts.RemoveAt(c);
                 continue;
             }
 
-            var keyFrames = cast.keyframeSource.SpellAnimation.keyFrames;
+            var keyFrames = cast.runtime.Definition.SpellAnimation.keyFrames;
             float elapsed = simulationTime - cast.startTime;
 
             while (cast.nextKeyframeIndex < keyFrames.Count

@@ -1,24 +1,28 @@
+using System.Collections.Generic;
 using BridgeOfBlood.Data.Enemies;
 using BridgeOfBlood.Data.Shared;
-using BridgeOfBlood.Data.Spells;
 using Unity.Collections;
-using Unity.Mathematics;
 
 namespace BridgeOfBlood.Effects
 {
 	/// <summary>
-	/// Resolves baked <see cref="CombatSpawnContract"/> entries into <see cref="CombatReactionSpawnRequest"/>s (no I/O); consumer spawns.
+	/// Resolves managed <see cref="CombatSpawnContract"/> entries against this frame's kill/ailment events and
+	/// spawns the matching attack entities directly via <see cref="AttackEntityManager.Spawn"/>.
 	/// Run (via <see cref="GameSimulation"/>) before <see cref="GameSimulation.ClearFrameCombatEvents"/> so event lists are still populated.
+	/// Main-thread only (contracts carry managed refs).
 	/// </summary>
 	public static class CombatReactionProcessor
 	{
 		public static void ProcessFrameCombatReactions(
 			NativeArray<EnemyKilledEvent> killEvents,
 			NativeArray<StatusAilmentAppliedEvent> ailmentEvents,
-			NativeArray<CombatSpawnContract> contracts,
-			NativeList<CombatReactionSpawnRequest> spawnRequestsOut)
+			IReadOnlyList<CombatSpawnContract> contracts,
+			AttackEntityManager manager)
 		{
-			for (int c = 0; c < contracts.Length; c++)
+			if (contracts == null)
+				return;
+
+			for (int c = 0; c < contracts.Count; c++)
 			{
 				CombatSpawnContract contract = contracts[c];
 				CombatAttackSpawnReactionRuntime snap = contract.filters;
@@ -28,22 +32,16 @@ namespace BridgeOfBlood.Effects
 					for (int k = 0; k < killEvents.Length; k++)
 					{
 						EnemyKilledEvent ke = killEvents[k];
-						if (!MatchesSpellId(ke.spellId, in contract))
+						if (!MatchesSpellId(ke.spellId, contract))
 							continue;
 
-						AttackEntitySpawnPayload payload = contract.templatePayload.WithSpellProvenanceForNewEntity(
-							ke.spellId,
-							ke.spellInvocationId);
-						if (snap.damageMode == CombatReactionSpawnDamageMode.ScaleByTriggeringHitDamage)
-						{
-							CombatAttackSpawnReaction.ApplyEventScaledDamage(
-								ref payload,
-								ke.killingBlowDamage,
-								snap.eventDamageCoefficient,
-								snap.minScaledDamage);
-						}
+						float scaled = snap.damageMode == CombatReactionSpawnDamageMode.ScaleByTriggeringHitDamage
+							? CombatAttackSpawnReaction.ResolveEventScaledDamage(ke.killingBlowDamage, snap.eventDamageCoefficient, snap.minScaledDamage)
+							: 0f;
 
-						spawnRequestsOut.Add(new CombatReactionSpawnRequest { payload = payload, origin = ke.position + snap.spawnOffsetWorld });
+						AttackEntityBuildContext ctx = contract.BuildContext(
+							ke.spellId, ke.spellInvocationId, ke.position + snap.spawnOffsetWorld, scaled);
+						manager.Spawn(in ctx);
 					}
 				}
 				else if (snap.trigger == CombatReactionTrigger.StatusAilmentApplied)
@@ -51,30 +49,24 @@ namespace BridgeOfBlood.Effects
 					for (int a = 0; a < ailmentEvents.Length; a++)
 					{
 						StatusAilmentAppliedEvent ae = ailmentEvents[a];
-						if (!MatchesSpellId(ae.spellId, in contract))
+						if (!MatchesSpellId(ae.spellId, contract))
 							continue;
 						if (!MatchesAilmentFlag(snap.ailmentMaskFilter, ae.ailmentFlag))
 							continue;
 
-						AttackEntitySpawnPayload payload = contract.templatePayload.WithSpellProvenanceForNewEntity(
-							ae.spellId,
-							ae.spellInvocationId);
-						if (snap.damageMode == CombatReactionSpawnDamageMode.ScaleByTriggeringHitDamage)
-						{
-							CombatAttackSpawnReaction.ApplyEventScaledDamage(
-								ref payload,
-								ae.triggeringHitDamage,
-								snap.eventDamageCoefficient,
-								snap.minScaledDamage);
-						}
+						float scaled = snap.damageMode == CombatReactionSpawnDamageMode.ScaleByTriggeringHitDamage
+							? CombatAttackSpawnReaction.ResolveEventScaledDamage(ae.triggeringHitDamage, snap.eventDamageCoefficient, snap.minScaledDamage)
+							: 0f;
 
-						spawnRequestsOut.Add(new CombatReactionSpawnRequest { payload = payload, origin = ae.position + snap.spawnOffsetWorld });
+						AttackEntityBuildContext ctx = contract.BuildContext(
+							ae.spellId, ae.spellInvocationId, ae.position + snap.spawnOffsetWorld, scaled);
+						manager.Spawn(in ctx);
 					}
 				}
 			}
 		}
 
-		static bool MatchesSpellId(int eventSpellId, in CombatSpawnContract contract)
+		static bool MatchesSpellId(int eventSpellId, CombatSpawnContract contract)
 		{
 			if (contract.filters.spellDefinitionInstanceIdFilter != 0)
 				return contract.definitionSpellResolved && eventSpellId == contract.definitionFilterSpellId;

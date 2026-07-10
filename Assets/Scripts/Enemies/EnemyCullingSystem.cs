@@ -1,4 +1,5 @@
 using BridgeOfBlood.Data.Enemies;
+using BridgeOfBlood.Data.Shared;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
@@ -7,19 +8,21 @@ using Unity.Jobs;
 public struct EnemyPastEdgeCullJob : IJob
 {
     [ReadOnly] public NativeArray<EnemyMotion> Motion;
-    [ReadOnly] public NativeArray<int> EntityIds;
+    [ReadOnly] public NativeArray<uint> Generations;
+    [ReadOnly] public NativeArray<byte> Alive;
     public float RightEdgeX;
-    public NativeList<int> OutIndices;
-    public NativeList<int> OutEntityIds;
+    public NativeList<EntityId> OutEntityIds;
 
     public void Execute()
     {
         for (int i = 0; i < Motion.Length; i++)
         {
+            if (Alive[i] == 0)
+                continue;
+
             if (Motion[i].position.x > RightEdgeX)
             {
-                OutIndices.Add(i);
-                OutEntityIds.Add(EntityIds[i]);
+                OutEntityIds.Add(new EntityId { Index = i, Generation = Generations[i] });
             }
         }
     }
@@ -33,21 +36,19 @@ public class EnemyCullingSystem
     public JobHandle ScheduleCollectEnemiesPastRightEdge(
         EnemyBuffers enemies,
         float rightEdgeX,
-        NativeList<int> outIndices,
-        NativeList<int> outEntityIds,
+        NativeList<EntityId> outEntityIds,
         JobHandle dependsOn = default)
     {
-        outIndices.Clear();
         outEntityIds.Clear();
-        if (enemies.Length == 0)
+        if (enemies.AliveCount == 0)
             return dependsOn;
 
         return new EnemyPastEdgeCullJob
         {
             Motion = enemies.Motion,
-            EntityIds = enemies.EntityIds,
+            Generations = enemies.Generations,
+            Alive = enemies.Alive,
             RightEdgeX = rightEdgeX,
-            OutIndices = outIndices,
             OutEntityIds = outEntityIds
         }.Schedule(dependsOn);
     }

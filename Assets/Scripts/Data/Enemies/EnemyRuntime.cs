@@ -41,33 +41,55 @@ namespace BridgeOfBlood.Data.Enemies
 	{
 		public NativeArray<EnemyMotion> Motion;
 		public NativeArray<EnemyVitality> Vitality;
-		public NativeArray<int> EntityIds;
+		public NativeArray<uint> Generations;
+		public NativeArray<byte> Alive;
 		public NativeArray<EnemyCombatTraits> CombatTraits;
 		public NativeArray<StatusAilmentFlag> Status;
 		public NativeArray<EnemyPresentation> Presentation;
+		public int AliveCount;
 
 		public EnemyBuffers(
 			NativeArray<EnemyMotion> motion,
 			NativeArray<EnemyVitality> vitality,
-			NativeArray<int> entityIds,
+			NativeArray<uint> generations,
+			NativeArray<byte> alive,
 			NativeArray<EnemyCombatTraits> combatTraits,
 			NativeArray<StatusAilmentFlag> status,
-			NativeArray<EnemyPresentation> presentation)
+			NativeArray<EnemyPresentation> presentation,
+			int aliveCount)
 		{
 			Motion = motion;
 			Vitality = vitality;
-			EntityIds = entityIds;
+			Generations = generations;
+			Alive = alive;
 			CombatTraits = combatTraits;
 			Status = status;
 			Presentation = presentation;
+			AliveCount = aliveCount;
 		}
 
-		public int Length => Motion.Length;
+		public int SlotCount => Motion.Length;
+		public int Length => SlotCount;
+
+		public bool IsLive(int index) =>
+			index >= 0 && index < Alive.Length && Alive[index] != 0;
+
+		public bool IsValid(EntityId id) =>
+			id.Index >= 0
+			&& id.Index < Generations.Length
+			&& Alive[id.Index] != 0
+			&& Generations[id.Index] == id.Generation;
+
+		public EntityId GetEntityId(int index) => new EntityId
+		{
+			Index = index,
+			Generation = Generations[index]
+		};
 	}
 
 	public struct EnemyBleedStatus
 	{
-		public int entityID;
+		public EntityId enemyId;
 		public int spellId;
 		public int spellInvocationId;
 		public float timeApplied;
@@ -78,7 +100,7 @@ namespace BridgeOfBlood.Data.Enemies
 
 	public struct EnemyPoisonStatus
 	{
-		public int entityID;
+		public EntityId enemyId;
 		public int spellId;
 		public int spellInvocationId;
 		public float timeApplied;
@@ -89,7 +111,7 @@ namespace BridgeOfBlood.Data.Enemies
 
 	public struct EnemyIgniteStatus
 	{
-		public int entityID;
+		public EntityId enemyId;
 		public int spellId;
 		public int spellInvocationId;
 		public float timeApplied;
@@ -100,7 +122,7 @@ namespace BridgeOfBlood.Data.Enemies
 
 	public struct EnemyFrozenStatus
 	{
-		public int entityID;
+		public EntityId enemyId;
 		public int spellId;
 		public int spellInvocationId;
 		public float timeApplied;
@@ -109,7 +131,7 @@ namespace BridgeOfBlood.Data.Enemies
 
 	public struct EnemyStunnedStatus
 	{
-		public int entityID;
+		public EntityId enemyId;
 		public int spellId;
 		public int spellInvocationId;
 		public float timeApplied;
@@ -118,7 +140,7 @@ namespace BridgeOfBlood.Data.Enemies
 
 	public struct EnemyShockedStatus
 	{
-		public int entityID;
+		public EntityId enemyId;
 		public int spellId;
 		public int spellInvocationId;
 		public float timeApplied;
@@ -128,7 +150,7 @@ namespace BridgeOfBlood.Data.Enemies
 
 	public struct EnemyHitEvent
 	{
-		public int enemyEntityId;
+		public EntityId enemyEntityId;
 		public int spellId;
 		public int spellInvocationId;
 		public StatusAilmentFlag statusAilmentsApplied;
@@ -146,7 +168,7 @@ namespace BridgeOfBlood.Data.Enemies
 
 	public struct EnemyKilledEvent
 	{
-		public int enemyEntityId;
+		public EntityId enemyEntityId;
 		public int spellId;
 		public int spellInvocationId;
 		public float2 position;

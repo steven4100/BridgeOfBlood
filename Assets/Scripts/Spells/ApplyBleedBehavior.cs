@@ -1,4 +1,6 @@
 using System;
+using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 [Serializable]
@@ -14,7 +16,12 @@ public class ApplyBleedBehavior : AttackEntityBehavior
     public BleedApplierRuntime ToRuntime() => new BleedApplierRuntime { isActive = isActive, applyChance = applyChance };
 
     public override AttackEntityBehavior Clone() => new ApplyBleedBehavior { isActive = isActive, applyChance = applyChance };
-    public override void ApplyTo(ref AttackEntitySpawnPayload payload) => payload.bleedApplier = ToRuntime();
+
+    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask)
+    {
+        var arr = manager.GetBleedAppliers();
+        arr[index] = ToRuntime();
+    }
 }
 
 [Serializable]

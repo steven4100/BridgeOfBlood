@@ -2,6 +2,7 @@ using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shop;
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 /// <summary>
 /// Adapts ShopRepository to IShopService, splitting all purchasables into items and spell gems.
@@ -41,7 +42,7 @@ public class RepositoryShopService : IShopService
 
     private bool OwnsInventoryPayload(IPurchasable purchasable)
     {
-        return purchasable is IInventoryItem inventoryItem && _inventory.OwnsPayload(inventoryItem);
+        return purchasable is ScriptableObject asset && _inventory.OwnsPayload(asset);
     }
 
     private void RemoveFromShelf(IPurchasable purchasable)

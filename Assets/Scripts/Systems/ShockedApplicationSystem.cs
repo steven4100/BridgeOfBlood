@@ -10,7 +10,6 @@ public struct ShockedTrackAndApplyJob : IJob
 {
     [ReadOnly] public NativeArray<DamageEvent> HitEvents;
     [ReadOnly] public NativeArray<ShockedApplierRuntime> Appliers;
-    public NativeArray<int> EntityIds;
     public NativeArray<StatusAilmentFlag> Status;
     public NativeList<EnemyShockedStatus> Tracker;
     public NativeList<StatusAilmentAppliedEvent> AilmentEvents;
@@ -38,13 +37,13 @@ public struct ShockedTrackAndApplyJob : IJob
                 continue;
 
             int ei = hit.enemyIndex;
-            int entityId = EntityIds[ei];
+            EntityId entityId = hit.enemyEntityId;
             StatusAilmentFlag flags = Status[ei];
             bool alreadyHad = (flags & StatusAilmentFlag.Shocked) != 0;
 
             Tracker.Add(new EnemyShockedStatus
             {
-                entityID = entityId,
+                enemyId = entityId,
                 spellId = hit.spellId,
                 spellInvocationId = hit.spellInvocationId,
                 timeApplied = TimeApplied,
@@ -79,7 +78,6 @@ public class ShockedApplicationSystem
     public JobHandle ScheduleTrack(
         NativeArray<DamageEvent> damageEvents,
         NativeArray<ShockedApplierRuntime> appliers,
-        NativeArray<int> entityIds,
         NativeArray<StatusAilmentFlag> status,
         NativeList<EnemyShockedStatus> tracker,
         NativeList<StatusAilmentAppliedEvent> ailmentEvents,
@@ -91,7 +89,6 @@ public class ShockedApplicationSystem
         {
             HitEvents = damageEvents,
             Appliers = appliers,
-            EntityIds = entityIds,
             Status = status,
             Tracker = tracker,
             AilmentEvents = ailmentEvents,

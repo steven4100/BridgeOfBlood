@@ -1,12 +1,9 @@
-using System.Collections.Generic;
 using BridgeOfBlood.Data.Shared;
-using BridgeOfBlood.Data.Spells;
-using Unity.Mathematics;
 using UnityEngine;
 
 /// <summary>
-/// Single facade for all combat-scene presentation: damage numbers, hit/kill effect sprites,
-/// combat audio, atlas-instanced sprite draw, attack hitbox debug overlay, and player transform sync.
+/// Single facade for combat-scene presentation: damage numbers, hit/kill effect sprites,
+/// atlas-instanced sprite draw, attack hitbox debug overlay, and player transform sync.
 /// <para>
 /// Owns the lifetime of every visual subsystem so <see cref="RoundController"/> and the scene
 /// bootstrap only depend on this one object. The simulation boundary is preserved: presentation
@@ -22,14 +19,12 @@ public sealed class CombatPresentationLayer
 	readonly SpriteInstanceBuilder _spriteBuilder;
 	readonly SpriteInstancedRenderer _spriteRenderer;
 	readonly AttackEntityDebugRenderer _attackDebugRenderer;
-	readonly GameAudioManager _audio;
 
 	PlayerRenderer _playerRenderer;
 	Player _player;
 
 	public CombatPresentationLayer(
 		CombatPresentationResources resources,
-		GameAudioManager audio,
 		AttackEntityManager attackEntityManager)
 	{
 		_spriteRenderer = new SpriteInstancedRenderer(resources.spriteMaterial);
@@ -37,7 +32,7 @@ public sealed class CombatPresentationLayer
 		_damageNumbers = new DamageNumberController(resources.damageNumberMaterial);
 		_effectSprites = new EffectSpriteController();
 		_attackDebugRenderer = new AttackEntityDebugRenderer(attackEntityManager, resources.attackDebugMaterial);
-		_audio = audio;
+		SharedGameEventBus.Bus.SubscribeTo<SimulationCompleteEvent>(OnSimulationComplete);
 	}
 
 	/// <summary>
@@ -53,16 +48,14 @@ public sealed class CombatPresentationLayer
 	}
 
 	/// <summary>
-	/// Spawns damage numbers + effect sprites and enqueues combat audio for this frame's events,
-	/// then drains the audio queue so combat sounds play in the same frame as their visuals.
+	/// Spawns damage numbers and effect sprites for this frame's events.
 	/// </summary>
-	public void ConsumeFrame(GameSimulation.SimulationState sim)
+	void OnSimulationComplete(ref SimulationCompleteEvent @event)
 	{
+		GameSimulation.SimulationState sim = @event.simulationState;
 		_damageNumbers.SpawnFromDamageEvents(sim.DamageEvents, sim.EnemyBuffers);
 		_damageNumbers.SpawnFromTickDamageEvents(sim.TickDamageEvents, sim.EnemyBuffers);
 		_effectSprites.SpawnFromDamageEvents(sim.DamageEvents);
-		_audio.EnqueueFromCombatEvents(sim.DamageEvents, sim.KillEvents);
-		_audio.UpdateDrain();
 	}
 
 	/// <summary>Advances damage number motion and effect sprite lifetimes. Skip when sim time is paused.</summary>
@@ -82,35 +75,6 @@ public sealed class CombatPresentationLayer
 		_damageNumbers.Render(simulationZone, camera);
 	}
 
-	/// <summary>
-	/// Plays the cast audio bound to the spell that just emitted, using a deterministic seed so
-	/// repeat casts of the same invocation produce the same pitch/volume roll.
-	/// </summary>
-	public void PlayCastAudio(in SpellCastResult castResult, IReadOnlyList<RuntimeSpell> spells, float2 origin)
-	{
-		if (!castResult.didCast)
-			return;
-
-		for (int i = 0; i < spells.Count; i++)
-		{
-			RuntimeSpell spell = spells[i];
-			if (spell.spellId != castResult.spellId)
-				continue;
-
-			AudioUnit unit = spell.Definition.castAudio;
-			if (unit != null)
-			{
-				uint seed = AttackEntityBuildRngSeed.Mix(
-					castResult.spellId,
-					castResult.invocationCount,
-					0,
-					0x41A3F5C);
-				_audio.RequestOneShot(unit.ToRuntime(seed), origin);
-			}
-			return;
-		}
-	}
-
 	/// <summary>Forwards Scene-view gizmo drawing for attack hitboxes; called from <c>OnDrawGizmos</c>.</summary>
 	public void DrawGizmos(Transform simulationZone)
 	{
@@ -119,6 +83,7 @@ public sealed class CombatPresentationLayer
 
 	public void Dispose()
 	{
+		SharedGameEventBus.Bus.UnsubscribeFrom<SimulationCompleteEvent>(OnSimulationComplete);
 		_spriteRenderer?.Dispose();
 		_damageNumbers?.Dispose();
 		_effectSprites?.Dispose();

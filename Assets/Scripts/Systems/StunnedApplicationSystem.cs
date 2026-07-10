@@ -10,7 +10,6 @@ public struct StunnedTrackAndApplyJob : IJob
 {
     [ReadOnly] public NativeArray<DamageEvent> HitEvents;
     [ReadOnly] public NativeArray<StunnedApplierRuntime> Appliers;
-    public NativeArray<int> EntityIds;
     public NativeArray<StatusAilmentFlag> Status;
     public NativeList<EnemyStunnedStatus> Tracker;
     public NativeList<StatusAilmentAppliedEvent> AilmentEvents;
@@ -38,13 +37,13 @@ public struct StunnedTrackAndApplyJob : IJob
                 continue;
 
             int ei = hit.enemyIndex;
-            int entityId = EntityIds[ei];
+            EntityId entityId = hit.enemyEntityId;
             StatusAilmentFlag flags = Status[ei];
             bool alreadyHad = (flags & StatusAilmentFlag.Stunned) != 0;
 
             Tracker.Add(new EnemyStunnedStatus
             {
-                entityID = entityId,
+                enemyId = entityId,
                 spellId = hit.spellId,
                 spellInvocationId = hit.spellInvocationId,
                 timeApplied = TimeApplied,
@@ -78,7 +77,6 @@ public class StunnedApplicationSystem
     public JobHandle ScheduleTrack(
         NativeArray<DamageEvent> damageEvents,
         NativeArray<StunnedApplierRuntime> appliers,
-        NativeArray<int> entityIds,
         NativeArray<StatusAilmentFlag> status,
         NativeList<EnemyStunnedStatus> tracker,
         NativeList<StatusAilmentAppliedEvent> ailmentEvents,
@@ -90,7 +88,6 @@ public class StunnedApplicationSystem
         {
             HitEvents = damageEvents,
             Appliers = appliers,
-            EntityIds = entityIds,
             Status = status,
             Tracker = tracker,
             AilmentEvents = ailmentEvents,

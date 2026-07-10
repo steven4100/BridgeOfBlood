@@ -9,6 +9,7 @@ public struct HitEvent
 {
     public int attackEntityIndex;
     public int enemyIndex;
+    public EntityId enemyEntityId;
     public float2 hitPosition;
 }
 
@@ -55,6 +56,7 @@ public struct DamageEvent
     public float damageDealt;
     /// <summary>Index into the enemies array at emit time (so consumers can look up target for presentation, e.g. velocity).</summary>
     public int enemyIndex;
+    public EntityId enemyEntityId;
     /// <summary>Index into the attack entities array at emit time (so consumers can look up source for VFX config).</summary>
     public int attackEntityIndex;
     public bool isCrit;
@@ -87,7 +89,7 @@ public struct StatusAilmentAppliedEvent
     public int spellId;
     public int spellInvocationId;
     public int enemyIndex;
-    public int enemyEntityId;
+    public EntityId enemyEntityId;
     public float2 position;
     public StatusAilmentFlag ailmentFlag;
     /// <summary>Hit damage when the ailment was applied from a hit; 0 for tick-only or unknown.</summary>
@@ -112,6 +114,7 @@ public struct TickDamageEvent
     public float2 position;
     public float damageDealt;
     public int enemyIndex;
+    public EntityId enemyEntityId;
     public int spellId;
     public int spellInvocationId;
     public bool wasKill;

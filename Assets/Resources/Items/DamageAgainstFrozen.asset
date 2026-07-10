@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c85a995e0cf59fd4183f0ccfc5b81b66, type: 3}
+  m_Name: DamageAgainstFrozen
+  m_EditorClassIdentifier: Assembly-CSharp::BridgeOfBlood.Effects.Item
+  shopItemDefinition:
+    displayName: 
+    description: 
+    sprite: {fileID: 0}
+    price: 0
+    resellValue: 0
+    isResellable: 0
+    rarity: 0
+    shopItemType: 0
+    weight: 1
+  effects:
+  - rid: 8391159717565300800
+  combatReactions: []
+  references:
+    version: 2
+    RefIds:
+    - rid: 8391159717565300800
+      type: {class: AttackPredicateEffect, ns: , asm: Assembly-CSharp}
+      data:
+        attackPredicateDataBaker:
+          rid: 8391159717565300801
+        property: 8
+        resolvedModifier:
+          flat: 1000
+          percentIncreased: 10000
+          moreCombined: 1
+    - rid: 8391159717565300801
+      type: {class: HasAilmentAttackPredicateBaker, ns: , asm: Assembly-CSharp}
+      data:
+        ailmentFlag: 1

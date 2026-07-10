@@ -8,7 +8,7 @@ using UnityEngine;
 namespace BridgeOfBlood.Effects
 {
 	[CreateAssetMenu(fileName = "NewItem", menuName = "Bridge of Blood/Items/Joker")]
-	public class Item : ScriptableObject, IEffect, IPurchasable, IInventoryItem
+	public class Item : ScriptableObject, IEffect, IPurchasable
 	{
 		[SerializeField] ShopItemDefinition shopItemDefinition;
 

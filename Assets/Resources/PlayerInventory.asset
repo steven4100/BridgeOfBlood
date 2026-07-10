@@ -18,7 +18,5 @@ MonoBehaviour:
   - {fileID: 11400000, guid: be1f8095bd6b208419dcaeae500cd1fa, type: 2}
   startingItems:
   - {fileID: 11400000, guid: c7c2307d0f9612a459297e9bb4db4c2b, type: 2}
+  - {fileID: 11400000, guid: 88efeb027f1775e48a3f1e487f0cb1b5, type: 2}
   inventoryItems: []
-  references:
-    version: 2
-    RefIds: []

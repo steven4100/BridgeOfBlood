@@ -22,10 +22,25 @@ MonoBehaviour:
     rarity: 0
     shopItemType: 0
     weight: 1
-  effects: []
+  effects:
+  - rid: 8391159717565300796
   combatReactions: []
   attributeMask:
     attributeMask: 0
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 8391159717565300796
+      type: {class: AttackPredicateEffect, ns: , asm: Assembly-CSharp}
+      data:
+        attackPredicateDataBaker:
+          rid: 8391159717565300799
+        property: 0
+        resolvedModifier:
+          flat: 0
+          percentIncreased: 0
+          moreCombined: 0
+    - rid: 8391159717565300799
+      type: {class: HasAilmentAttackPredicateBaker, ns: , asm: Assembly-CSharp}
+      data:
+        ailmentFlag: 0

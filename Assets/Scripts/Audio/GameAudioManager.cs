@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using BridgeOfBlood.Data.Enemies;
+using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Data.Spells;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
@@ -30,13 +32,56 @@ public class GameAudioManager : MonoBehaviour
             GetOrCreateVoice(i);
     }
 
+    void OnEnable()
+    {
+        SharedGameEventBus.Bus.SubscribeTo<SimulationCompleteEvent>(OnSimulationComplete);
+        SharedGameEventBus.Bus.SubscribeTo<SpellCastEvent>(OnSpellCast);
+    }
+
+    void OnDisable()
+    {
+        SharedGameEventBus.Bus.UnsubscribeFrom<SimulationCompleteEvent>(OnSimulationComplete);
+        SharedGameEventBus.Bus.UnsubscribeFrom<SpellCastEvent>(OnSpellCast);
+    }
+
+    void OnSimulationComplete(ref SimulationCompleteEvent @event)
+    {
+        EnqueueFromCombatEvents(
+            @event.simulationState.DamageEvents,
+            @event.simulationState.KillEvents);
+        UpdateDrain();
+    }
+
+    void OnSpellCast(ref SpellCastEvent @event)
+    {
+        SpellCastResult castResult = @event.castResult;
+        IReadOnlyList<RuntimeSpell> spells = @event.spells;
+        for (int i = 0; i < spells.Count; i++)
+        {
+            RuntimeSpell spell = spells[i];
+            if (spell.spellId != castResult.spellId)
+                continue;
+
+            AudioUnit unit = spell.Definition.castAudio;
+            if (unit != null)
+            {
+                uint seed = AttackEntityBuildRngSeed.Mix(
+                    castResult.spellId,
+                    castResult.invocationCount,
+                    0,
+                    0x41A3F5C);
+                RequestOneShot(unit.ToRuntime(seed), @event.origin);
+            }
+            return;
+        }
+    }
+
     public void EnqueueFromCombatEvents(NativeArray<DamageEvent> damageEvents, NativeArray<EnemyKilledEvent> killEvents)
     {
-        Debug.Log($"Enqueing {damageEvents.Length} damaage events and {killEvents.Length} kill events audio");
         for (int i = 0; i < damageEvents.Length; i++)
         {
             DamageEvent evt = damageEvents[i];
-             if(!evt.onDamageSound.IsValid)
+            if (!evt.onDamageSound.IsValid)
                 continue;
 
             Enqueue(evt.onDamageSound, new Vector3(evt.position.x, evt.position.y, 0f));
@@ -79,9 +124,8 @@ public class GameAudioManager : MonoBehaviour
         foreach (KeyValuePair<int, Queue<AudioPlayRequest>> entry in _queueByClipIndex)
         {
             Queue<AudioPlayRequest> queue = entry.Value;
-            Debug.Log($"Draining queue for clip index {entry.Key} with {queue.Count} requests");
             for (int i = 0; i < budgetPerQueue && queue.Count > 0; i++)
-               PlayRequest(queue.Dequeue());
+                PlayRequest(queue.Dequeue());
         }
     }
 
@@ -99,7 +143,6 @@ public class GameAudioManager : MonoBehaviour
         {
             source.volume = 1f;
             source.PlayOneShot(clip, request.unit.volume);
-            Debug.Log("playing clip " + request.unit.clipIndex.ToString() + " " + source.isVirtual);
         }
         else
         {
@@ -113,7 +156,7 @@ public class GameAudioManager : MonoBehaviour
     {
         Queue<AudioPlayRequest> queue = GetOrCreateQueue(unit.clipIndex);
 
-        if(queue.Count >= maxQueueLengthPerClip)
+        if (queue.Count >= maxQueueLengthPerClip)
             return;
 
         int cap = Mathf.Max(1, maxQueueLengthPerClip);

@@ -1,4 +1,5 @@
 using BridgeOfBlood.Data.Enemies;
+using BridgeOfBlood.Data.Shared;
 using Unity.Collections;
 using Unity.Mathematics;
 
@@ -71,6 +72,7 @@ public class HitResolver
                 {
                     attackEntityIndex = col.attackEntityIndex,
                     enemyIndex = col.enemyIndex,
+                    enemyEntityId = col.enemyEntityId,
                     hitPosition = col.enemyPosition
                 });
             }
@@ -92,7 +94,7 @@ public class HitResolver
         }
     }
 
-    static bool IsEnemyInRehitCooldown(RehitPolicyRuntime rehit, int enemyEntityId, float timeAlive)
+    static bool IsEnemyInRehitCooldown(RehitPolicyRuntime rehit, EntityId enemyEntityId, float timeAlive)
     {
         float cooldown = rehit.rehitCooldownSeconds;
         for (int i = 0; i < rehit.recentHits.Length; i++)

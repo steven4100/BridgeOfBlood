@@ -56,7 +56,7 @@ MonoBehaviour:
       data:
         coefficient: 1
         scope: 1
-        property: 1
+        property: 0
     - rid: 4884261778024038402
       type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
@@ -91,12 +91,12 @@ MonoBehaviour:
     - rid: 9019951980704956476
       type: {class: CombatMetricValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
-        coefficient: 1
+        coefficient: 0.12
         scope: 1
-        property: 1
+        property: 0
     - rid: 9019951980704956477
       type: {class: CombatMetricValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
-        coefficient: 0.2
+        coefficient: 0.4
         scope: 1
-        property: 1
+        property: 0

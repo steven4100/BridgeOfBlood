@@ -18,12 +18,18 @@ public class PierceBehavior : AttackEntityBehavior
     }
 
     public override AttackEntityBehavior Clone() => new PierceBehavior { isActive = isActive, maxEnemiesHit = maxEnemiesHit };
-    public override void ApplyTo(ref AttackEntitySpawnPayload payload) => payload.pierce = ToRuntime();
 
-    public override void ApplyModifications(SpellModifications mods, SpellAttributeMask spellMask)
+    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask)
     {
-        var resolved = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.Pierce, spellMask);
-        maxEnemiesHit = Mathf.Max(0, (int)(maxEnemiesHit * resolved.Multiplier) + (int)resolved.flat);
+        int maxHit = maxEnemiesHit;
+        if (mods != null)
+        {
+            var resolved = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.Pierce, mask);
+            maxHit = Mathf.Max(0, (int)(maxEnemiesHit * resolved.Multiplier) + (int)resolved.flat);
+        }
+
+        var arr = manager.GetPiercePolicies();
+        arr[index] = new PiercePolicyRuntime { isActive = isActive, maxEnemiesHit = maxHit };
     }
 }
 

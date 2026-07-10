@@ -31,7 +31,7 @@ MonoBehaviour:
         forwardDegrees: -180
         emitDuration: 0
         baseEmitCount: 2
-        speed: 173.6
+        speed: 738.4
         relativeToPlayerSpawnCriteria:
           offsetFromPlayer: {x: 0, y: 0}
         targetRange: 5

@@ -1,4 +1,5 @@
 using System;
+using BridgeOfBlood.Data.Shared;
 using Unity.Collections;
 
 /// <summary>
@@ -7,7 +8,7 @@ using Unity.Collections;
 [Serializable]
 public struct RehitEntry
 {
-    public int enemyId;
+    public EntityId enemyId;
     public float hitTimeAlive;
 }
 

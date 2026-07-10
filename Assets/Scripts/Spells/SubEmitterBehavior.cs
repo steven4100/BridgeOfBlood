@@ -1,4 +1,6 @@
 using System;
+using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 /// <summary>
@@ -28,7 +30,7 @@ public class SubEmitterBehavior : AttackEntityBehavior
     [Min(0f)]
     public float startDelay = 0f;
 
-    public override void ApplyTo(ref AttackEntitySpawnPayload payload) { }
+    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask) { }
 
     public override AttackEntityBehavior Clone() => new SubEmitterBehavior
     {

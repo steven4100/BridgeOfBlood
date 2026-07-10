@@ -1,26 +1,22 @@
 using System.Collections.Generic;
 using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Spells;
-using Unity.Collections;
 
 namespace BridgeOfBlood.Effects
 {
 	/// <summary>
-	/// Bakes passive item <see cref="CombatAttackSpawnReaction"/> entries into struct contracts for <see cref="CombatReactionProcessor"/>.
+	/// Builds passive item <see cref="CombatAttackSpawnReaction"/> entries into managed contracts for <see cref="CombatReactionProcessor"/>.
+	/// Contracts hold authoring data + the frame's modifications; damage is rolled at spawn, not here.
 	/// </summary>
 	public static class CombatReactionContractBuilder
 	{
-		/// <summary>
-		/// Allocates <paramref name="contracts"/> with <paramref name="allocator"/>; caller must <see cref="NativeArray{T}.Dispose"/> when done.
-		/// </summary>
 		public static void Build(
 			PlayerInventory inventory,
 			SpellModifications mods,
 			IReadOnlyList<RuntimeSpell> spells,
-			Allocator allocator,
-			out NativeArray<CombatSpawnContract> contracts)
+			out List<CombatSpawnContract> contracts)
 		{
-			var contractList = new List<CombatSpawnContract>(16);
+			contracts = new List<CombatSpawnContract>(16);
 
 			IReadOnlyList<Item> items = inventory.GetPassiveItems();
 			for (int i = 0; i < items.Count; i++)
@@ -52,21 +48,16 @@ namespace BridgeOfBlood.Effects
 						}
 					}
 
-					AttackEntitySpawnPayload template = reaction.BakeTemplatePayload(in snap, mods);
-
-					contractList.Add(new CombatSpawnContract
+					contracts.Add(new CombatSpawnContract
 					{
 						filters = snap,
-						templatePayload = template,
+						attackData = reaction.attackEntity,
+						modifications = mods,
 						definitionSpellResolved = definitionSpellResolved,
 						definitionFilterSpellId = definitionFilterSpellId,
 					});
 				}
 			}
-
-			contracts = new NativeArray<CombatSpawnContract>(contractList.Count, allocator);
-			for (int i = 0; i < contractList.Count; i++)
-				contracts[i] = contractList[i];
 		}
 	}
 }

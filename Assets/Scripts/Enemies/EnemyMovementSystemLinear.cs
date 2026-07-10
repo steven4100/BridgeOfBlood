@@ -12,11 +12,15 @@ public struct MoveEnemiesJob : IJobParallelFor
     public const float KnockbackDecayPerSecond = 8f;
 
     public NativeArray<EnemyMotion> Motion;
+    [ReadOnly] public NativeArray<byte> Alive;
     [ReadOnly] public NativeArray<StatusAilmentFlag> Status;
     public float DeltaTime;
 
     public void Execute(int index)
     {
+        if (Alive[index] == 0)
+            return;
+
         EnemyMotion m = Motion[index];
 
         m.position += m.knockbackVelocity * DeltaTime;
@@ -36,11 +40,12 @@ public class EnemyMovementSystemLinear : IEnemyMoveSystem
 {
     public void MoveEnemies(EnemyBuffers enemies, float deltaTime)
     {
-        if (enemies.Length == 0) return;
+        if (enemies.AliveCount == 0) return;
 
         var job = new MoveEnemiesJob
         {
             Motion = enemies.Motion,
+            Alive = enemies.Alive,
             Status = enemies.Status,
             DeltaTime = deltaTime
         };

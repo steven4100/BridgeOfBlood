@@ -35,12 +35,22 @@ public class ChainBehavior : AttackEntityBehavior
         isActive = isActive, mode = mode, chainCount = chainCount,
         chainRange = chainRange, targetSelect = targetSelect, excludePreviouslyHit = excludePreviouslyHit
     };
-    public override void ApplyTo(ref AttackEntitySpawnPayload payload) => payload.chain = ToRuntime();
 
-    public override void ApplyModifications(SpellModifications mods, SpellAttributeMask spellMask)
+    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask)
     {
-        var resolved = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.Chains, spellMask);
-        chainCount = Mathf.Max(0, (int)(chainCount * resolved.Multiplier) + (int)resolved.flat);
+        int count = chainCount;
+        if (mods != null)
+        {
+            var resolved = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.Chains, mask);
+            count = Mathf.Max(0, (int)(chainCount * resolved.Multiplier) + (int)resolved.flat);
+        }
+
+        var policy = ToRuntime();
+        policy.chainCount = count;
+        policy.enabled = mode == ChainMode.Enabled && count > 0 && chainRange > 0f;
+
+        var arr = manager.GetChainPolicies();
+        arr[index] = policy;
     }
 }
 

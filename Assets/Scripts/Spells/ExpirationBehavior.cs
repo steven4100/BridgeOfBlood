@@ -1,4 +1,6 @@
 using System;
+using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 [Serializable]
@@ -28,7 +30,12 @@ public class ExpirationBehavior : AttackEntityBehavior
     }
 
     public override AttackEntityBehavior Clone() => new ExpirationBehavior { isActive = isActive, maxTimeAlive = maxTimeAlive, maxDistanceTravelled = maxDistanceTravelled, maxFrames = maxFrames };
-    public override void ApplyTo(ref AttackEntitySpawnPayload payload) => payload.expiration = ToRuntime();
+
+    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask)
+    {
+        var arr = manager.GetExpirationPolicies();
+        arr[index] = ToRuntime();
+    }
 }
 
 /// <summary>

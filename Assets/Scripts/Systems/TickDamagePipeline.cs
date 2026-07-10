@@ -16,14 +16,12 @@ public static class TickDamagePipeline
     public const float BleedTickIntervalSeconds = 0.2f;
     public const float DotFlashDurationSeconds = 0.16f;
 
-    /// <param name="entityIdToEnemyIndex">Entity id → index into <paramref name="enemies"/>; caller builds once per frame.</param>
     /// <param name="outKillEvents">When created, receives <see cref="EnemyKilledEvent"/> for deaths from DoT (unified with hit kills).</param>
     public static void ProcessTimeBasedDotTicks(
         NativeList<EnemyIgniteStatus> ignite,
         NativeList<EnemyPoisonStatus> poison,
         NativeList<EnemyBleedStatus> bleed,
         EnemyBuffers enemies,
-        NativeHashMap<int, int> entityIdToEnemyIndex,
         float deltaTime,
         float simulationTime,
         NativeList<TickDamageEvent> outEvents,
@@ -39,11 +37,11 @@ public static class TickDamagePipeline
                 continue;
             if (simulationTime - row.lastTimeTicked < IgniteTickIntervalSeconds)
                 continue;
-            if (!entityIdToEnemyIndex.TryGetValue(row.entityID, out int enemyIndex))
+            if (!TryResolveEnemyIndex(enemies, row.enemyId, out int enemyIndex))
                 continue;
 
             float fire = row.damagerPerTick;
-            if (enemyIndex < enemies.Length && enemies.CombatTraits[enemyIndex].elementalWeakness == DamageType.Fire)
+            if (enemies.CombatTraits[enemyIndex].elementalWeakness == DamageType.Fire)
                 fire *= DamageSystem.WeaknessMultiplier;
 
             if (fire <= 0f)
@@ -72,11 +70,11 @@ public static class TickDamagePipeline
                 continue;
             if (simulationTime - row.lastTimeTicked < PoisonTickIntervalSeconds)
                 continue;
-            if (!entityIdToEnemyIndex.TryGetValue(row.entityID, out int enemyIndex))
+            if (!TryResolveEnemyIndex(enemies, row.enemyId, out int enemyIndex))
                 continue;
 
             float phys = row.damagerPerTick;
-            if (enemyIndex < enemies.Length && enemies.CombatTraits[enemyIndex].elementalWeakness == DamageType.Physical)
+            if (enemies.CombatTraits[enemyIndex].elementalWeakness == DamageType.Physical)
                 phys *= DamageSystem.WeaknessMultiplier;
 
             if (phys <= 0f)
@@ -105,11 +103,11 @@ public static class TickDamagePipeline
                 continue;
             if (simulationTime - row.lastTimeTicked < BleedTickIntervalSeconds)
                 continue;
-            if (!entityIdToEnemyIndex.TryGetValue(row.entityID, out int enemyIndex))
+            if (!TryResolveEnemyIndex(enemies, row.enemyId, out int enemyIndex))
                 continue;
 
             float dmg = row.damagerPerTick;
-            if (enemyIndex < enemies.Length && enemies.CombatTraits[enemyIndex].elementalWeakness == DamageType.Physical)
+            if (enemies.CombatTraits[enemyIndex].elementalWeakness == DamageType.Physical)
                 dmg *= DamageSystem.WeaknessMultiplier;
 
             if (dmg <= 0f)
@@ -145,6 +143,7 @@ public static class TickDamagePipeline
     {
         if (enemyIndex < 0 || enemyIndex >= enemies.Length)
             return;
+        EntityId enemyId = enemies.GetEntityId(enemyIndex);
 
         EnemyVitality vit = enemies.Vitality[enemyIndex];
         float healthBefore = vit.health;
@@ -163,6 +162,7 @@ public static class TickDamagePipeline
             position = position,
             damageDealt = d,
             enemyIndex = enemyIndex,
+            enemyEntityId = enemyId,
             spellId = spellId,
             spellInvocationId = spellInvocationId,
             wasKill = killed,
@@ -177,12 +177,11 @@ public static class TickDamagePipeline
 
         if (killed && outKillEvents.IsCreated)
         {
-            int entityId = enemies.EntityIds[enemyIndex];
             EnemyPresentation pres = enemies.Presentation[enemyIndex];
             StatusAilmentFlag status = enemies.Status[enemyIndex];
             outKillEvents.Add(new EnemyKilledEvent
             {
-                enemyEntityId = entityId,
+                enemyEntityId = enemyId,
                 spellId = spellId,
                 spellInvocationId = spellInvocationId,
                 position = enemies.Motion[enemyIndex].position,
@@ -199,5 +198,11 @@ public static class TickDamagePipeline
         enemies.Presentation[enemyIndex] = p;
 
         enemies.Vitality[enemyIndex] = vit;
+    }
+
+    private static bool TryResolveEnemyIndex(EnemyBuffers enemies, EntityId enemyId, out int enemyIndex)
+    {
+        enemyIndex = enemyId.Index;
+        return enemies.IsValid(enemyId);
     }
 }

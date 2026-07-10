@@ -45,6 +45,7 @@ public class LabbingScene : MonoBehaviour
     GameSimulation _simulation;
     CombatPresentationLayer _presentation;
     LoopedSpellCaster _loopedSpellCaster;
+    SpellEmissionHandler _emissionHandler;
     TelemetryAggregator _telemetryAggregator;
     EnemyEmissionTargetProvider _emissionTargetProvider;
     Player _player;
@@ -96,12 +97,11 @@ public class LabbingScene : MonoBehaviour
             playerMoveSpeed);
 
         _emissionTargetProvider = new EnemyEmissionTargetProvider(_simulation.EnemyManager);
-        var emissionHandler = new SpellEmissionHandler(_simulation.AttackEntityManager, _emissionTargetProvider);
-        _loopedSpellCaster = new LoopedSpellCaster(inventory.SpellCollection, emissionHandler);
+        _emissionHandler = new SpellEmissionHandler(_simulation.AttackEntityManager, _emissionTargetProvider);
+        _loopedSpellCaster = new LoopedSpellCaster(inventory.SpellCollection, _emissionHandler);
 
         _presentation = new CombatPresentationLayer(
             _runtimeConfig.presentationResources,
-            gameAudioManager,
             _simulation.AttackEntityManager);
         _presentation.BindPlayer(playerRenderer, _player);
 
@@ -131,12 +131,21 @@ public class LabbingScene : MonoBehaviour
             ? castModifications.GetModifications()
             : new SpellModifications();
         EvaluateItems(mods);
+        _emissionHandler.SetFrameModifications(mods);
 
         var sim = _simulation.State;
         bool castRequested = Input.GetKeyDown(castInputKey);
         SpellCastResult castResult = _loopedSpellCaster.AttemptToCastNextSpell(
-            sim.SimulationTime, _player.Position, castRequested, mods);
-        _presentation.PlayCastAudio(castResult, _loopedSpellCaster.Spells, _player.Position);
+            sim.SimulationTime, _player.Position, castRequested);
+        if (castResult.didCast)
+        {
+            SharedGameEventBus.Bus.Raise(new SpellCastEvent
+            {
+                castResult = castResult,
+                spells = _loopedSpellCaster.Spells,
+                origin = _player.Position
+            });
+        }
         _loopedSpellCaster.Update(sim.SimulationTime, CastForward);
 
         bool advanceTime = !hasController || debugCtrl.ShouldAdvanceTime;
@@ -152,8 +161,7 @@ public class LabbingScene : MonoBehaviour
             _runtimeConfig.playerInventory,
             mods,
             _loopedSpellCaster.Spells,
-            Allocator.TempJob,
-            out NativeArray<CombatSpawnContract> combatContracts);
+            out List<CombatSpawnContract> combatContracts);
         try
         {
             _simulation.SetFrameCombatReactionContracts(combatContracts);
@@ -176,14 +184,18 @@ public class LabbingScene : MonoBehaviour
         finally
         {
             _simulation.ClearFrameCombatReactionContracts();
-            if (combatContracts.IsCreated)
-                combatContracts.Dispose();
         }
 
         float frameDt = hasController ? debugCtrl.DeltaTime : deltaTime;
-        _telemetryAggregator.ProcessFrame(sim, frameDt, castResult);
+        SharedGameEventBus.Bus.Raise(new SimulationCompleteEvent
+        {
+            simulationState = sim,
+            deltaTime = frameDt,
+            simulationTime = sim.SimulationTime,
+            simulationAdvanced = advanceTime,
+            spellCastResult = castResult
+        });
 
-        _presentation.ConsumeFrame(sim);
         _simulation.ClearFrameCombatEvents();
 
         if (advanceTime)
@@ -246,6 +258,7 @@ public class LabbingScene : MonoBehaviour
     void OnDestroy()
     {
         _presentation?.Dispose();
+        _telemetryAggregator?.Dispose();
         _emissionTargetProvider?.Dispose();
         _simulation?.Dispose();
         _runtimeConfig = null;

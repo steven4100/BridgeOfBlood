@@ -73,16 +73,17 @@ public class GridSpatialPartition : IDebugDrawable
     /// <summary>
     /// Rebuilds cell buckets from motion positions. Does not reorder enemy column storage.
     /// </summary>
-    public void BuildFromPositions(NativeArray<EnemyMotion> motion)
+    public void BuildFromPositions(NativeArray<EnemyMotion> motion, NativeArray<byte> alive, int aliveCount)
     {
-        int N = math.min(motion.Length, _maxEnemyCount);
-        _lastBuildEnemyCount = N;
-        if (N == 0) return;
+        int slotCount = math.min(motion.Length, _maxEnemyCount);
+        int liveCount = math.min(aliveCount, _maxEnemyCount);
+        _lastBuildEnemyCount = liveCount;
 
         new GridSpatialPartitionSerialBuildJob
         {
             Motion = motion,
-            EnemyCount = N,
+            Alive = alive,
+            SlotCount = slotCount,
             BoundsMin = _boundsMin,
             BoundsMaxX = _boundsMaxX,
             BoundsMaxY = _boundsMaxY,

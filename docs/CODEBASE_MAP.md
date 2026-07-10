@@ -35,19 +35,19 @@ Three-layer system: Authoring > Editor Bake > Runtime.
 - **Runtime**: `Enemy` and `AttackEntity` structs carry `EntityVisual` (frameIndex + scale), populated from authoring data at spawn. `SpriteInstanceBuilder.Build(enemies, attacks)` builds a combined `SpriteInstanceData[]` by looking up `SpriteRenderDatabase.frames[frameIndex]`, then `SpriteInstancedRenderer.Render` issues a single `Graphics.RenderMeshIndirect` draw call. Shader `InstancedSprite.shader` remaps quad UVs via `lerp(uvRect.xy, uvRect.zw, meshUV)`.
 - **Debug**: `AttackEntityDebugRenderer` still renders hitbox shapes (circles/rects) on top of sprite visuals.
 
-Visual data flow: `SpriteEntityVisual.bakedFrameIndex` > `EnemyAuthoringData.CreateRuntimeEnemy` / `AttackEntityBuilder.Build` > `EntityVisual` on entity struct > `SpriteInstanceBuilder` > `SpriteInstancedRenderer`.
+Visual data flow: `SpriteEntityVisual.bakedFrameIndex` > `EnemyAuthoringData.CreateRuntimeEnemy` / `AttackEntityModificationApplicator.BuildRolledEntity` > `EntityVisual` on entity struct > `SpriteInstanceBuilder` > `SpriteInstancedRenderer`.
 
 ---
 
 ## Spell cast flow
 
-1. **Entry**: `TestSceneManager` > `LoopedSpellCaster.AttemptToCastNextSpell(..., mods)` returns `SpellCastResult` (didCast, spellId, invocationCount, loopCompleted, loopCount). Optional `SpellModifications` from `castModifications`.
-2. **Resolve**: `spellData.Modify(modifications)` returns a clone of `SpellAuthoringData` with modifications baked in via `SpellModificationsApplicator.CloneAndApply` (damage, crit, chains, pierce, area, flat additive). If no mods, raw spell is used.
-3. **Invoke**: `SpellInvoker.StartCast(spellToCast, origin, time, spellId, spellInvocationId)` stores active cast with spell provenance; each frame `Update(simulationTime, forward)` fires keyframes.
-4. **Emit**: On keyframe, `ISpellEmissionHandler.OnKeyframeFired` (implemented by `SpellEmissionHandler`) builds payload from keyframe's `AttackEntityData` via `AttackEntityBuilder.Build` (`AttackEntityBuildContext`: deterministic roll per keyframe from `FloatRange` damage/crit fields), stamps `spellId`/`spellInvocationId` on payload, queues spawns with delays.
-5. **Spawn**: `AttackEntityManager.Spawn(payload, position)` creates `AttackEntity` (with spell provenance) and policy lists (chain, pierce, expiration, rehit).
+1. **Entry**: `TestSceneManager`/`LabbingScene` > `LoopedSpellCaster.AttemptToCastNextSpell(...)` returns `SpellCastResult` (didCast, spellId, invocationCount, loopCompleted, loopCount). When a cast occurs, the frame runner raises `SpellCastEvent` on `SharedGameEventBus.Bus` for presentation/audio subscribers. The caster is **timing only** and carries no `SpellModifications`.
+2. **Mods injection**: each frame, after item evaluation, `ISpellEmissionHandler.SetFrameModifications(mods)` injects the frame's `SpellModifications` (built fresh by `RoundController`/`LabbingScene`, treated as immutable for the rest of the frame). There is **no** `SpellAuthoringData.Modify` clone — mods are applied at spawn, not on the authoring asset.
+3. **Invoke**: `SpellInvoker.StartCast(runtime, origin, time, spellId, spellInvocationId)` stores an active cast playing `runtime.Definition` directly; each frame `Update(simulationTime, forward)` fires keyframes.
+4. **Emit**: On keyframe, `SpellEmissionHandler.OnKeyframeFired` builds an `AttackEntityBuildContext` (authoring `AttackEntityData` + spell provenance + frame mods snapshot + `attributeMask`), resolves the projectile-count mod for emit count, and queues pending contexts; transform (position/velocity) is filled at flush via `ctx.WithTransform`.
+5. **Spawn**: `AttackEntityManager.Spawn(in AttackEntityBuildContext)` rolls stats + applies parameter mods via `AttackEntityModificationApplicator.BuildRolledEntity`, appends default policies, then each authoring `AttackEntityBehavior.ApplyTo(manager, index, mods, mask)` writes its contribution (chain/pierce/expiration/appliers/effect scalars) directly into the parallel lists by index. Hit-conditional `AttackEntityModifier`s are snapshotted into a registry keyed by entity id.
 
-**Key types**: `SpellAuthoringData`, `SpellModifications`, `SpellModificationsApplicator`, `SpellInvoker`, `SpellEmissionHandler`, `AttackEntityBuilder`, `AttackEntityBuildContext`, `FloatRange` (`BridgeOfBlood.Data.Shared`), `AttackEntitySpawnPayload`, `AttackEntityManager`, `AttackEntity`, `SpellCastResult`.
+**Key types**: `SpellAuthoringData`, `SpellModifications`, `SpellModificationsApplicator` (`Resolve` only), `AttackEntityModificationApplicator`, `SpellInvoker`, `SpellEmissionHandler`, `AttackEntityBuildContext`, `FloatRange`/`AttackEntityBuildRngSeed` (`BridgeOfBlood.Data.Shared`), `AttackEntityManager`, `AttackEntity`, `AttackEntityBehavior`, `SpellCastResult`. There is **no** `AttackEntitySpawnPayload` — attack entities exist only as authoring data and as runtime `AttackEntity` + policy lists.
 
 ---
 
@@ -62,6 +62,8 @@ Order of steps in `GameSimulation._steps` (after Move/BuildGrid/Cull/RemoveCulle
 
 **Event types**: `HitEvent`, `DamageEvent` (enriched: per-type damage, spell provenance, kill/overkill), `EnemyHitEvent`, `EnemyKilledEvent`, `AttackEntityRemovalEvent` (see `CombatEvents.cs`).
 
+After the step loop, `RoundController` and `LabbingScene` raise `SimulationCompleteEvent` on `SharedGameEventBus.Bus` before `GameSimulation.ClearFrameCombatEvents()`. The payload exposes `GameSimulation.SimulationState`, frame delta, simulation time, whether time advanced, and the frame's `SpellCastResult`. `TelemetryAggregator`, `CombatPresentationLayer`, `GameAudioManager`, `EnemyPositionVfxController` subclasses, and future completed-frame consumers subscribe instead of being called directly by the simulation runners.
+
 ---
 
 ## Combat telemetry
@@ -69,7 +71,7 @@ Order of steps in `GameSimulation._steps` (after Move/BuildGrid/Cull/RemoveCulle
 Hierarchical aggregation at five time scales: Frame > Spell Cast > Spell Loop > Round > Game.
 
 - **Source**: `DamageEvent` is the single source of truth — enriched with damage-by-type, `spellId`, `spellInvocationId`, `wasKill`, `overkillDamage`.
-- **Aggregator**: `TelemetryAggregator` (plain class) iterates `DamageEvent` list each frame, builds `FrameSnapshot`, accumulates into `CombatMetrics` at each level.
+- **Aggregator**: `TelemetryAggregator` (plain class) subscribes to `SimulationCompleteEvent`, iterates `DamageEvent` lists each frame, builds `FrameSnapshot`, and accumulates into `CombatMetrics` at each level.
 - **Boundaries**: `SpellCastResult` (from `LoopedSpellCaster`) drives spell cast resets and loop completion resets. Round boundary via `EndRound()` (not yet wired).
 - **Consumers**: UI reads `CurrentFrame`, `CurrentSpellCast`, `CurrentSpellLoop`, `CurrentRound`, `Game` snapshot properties.
 - **Per-spell**: Each level maintains per-spell `CombatMetrics` via `Dictionary<int, CombatMetrics>`, exposed as `SpellCombatMetrics[]` on snapshot structs.
@@ -81,8 +83,17 @@ Hierarchical aggregation at five time scales: Frame > Spell Cast > Spell Loop > 
 ## Damage numbers
 
 - **Source**: `DamageSystem.ProcessHits` fills `outDamageEvents` (`DamageEvent`: position, damageDealt, enemyIndex, isCrit, plus telemetry fields).
-- **Spawn**: `DamageNumberController.SpawnFromDamageEvents` > `DamageNumberManager.Spawn(position, damage, velocityX, isCrit)`. Scale from value and crit exclamation are applied in the manager.
+- **Spawn**: `CombatPresentationLayer` subscribes to `SimulationCompleteEvent`, then calls `DamageNumberController.SpawnFromDamageEvents` > `DamageNumberManager.Spawn(position, damage, velocityX, isCrit)`. Scale from value and crit exclamation are applied in the manager.
 - **Render**: `DamageNumberRenderSystem.Render(numbers, rect, camera)` -- instance buffer with per-number scale and color (yellow for crit); shader `DamageNumberUnlit.shader` uses 11-cell atlas (digits + `!`).
+- **Generic presentation hook**: `GameAudioManager`, `EnemyPositionVfxController` subclasses, and `CombatPresentationLayer` subscribe to `SimulationCompleteEvent` and read completed-frame buffers from the event's `SimulationState`; future presentation systems can use the same event without adding dependencies to `GameSimulation` or frame runners.
+
+---
+
+## Enemy-position VFX
+
+- **Shared GPU bridge**: `EnemyPositionVfxController` owns a structured `GraphicsBuffer` of `Vector3` positions and uploads the active prefix to VFX Graph exposed properties `positions` and `count`.
+- **Kill bursts**: `KillBurstVfxController` replaces the old blood-specific texture uploader. It converts frame `KillEvents` into buffer positions and calls `VisualEffect.Play()` for burst effects.
+- **Ailment tracking**: `IgnitedEnemyVfxController` scans live `EnemyBuffers` slots after each advanced simulation frame, filters `StatusAilmentFlag.Ignited`, and uploads all matching enemy positions for continuous VFX tracking.
 
 ---
 
@@ -90,8 +101,9 @@ Hierarchical aggregation at five time scales: Frame > Spell Cast > Spell Loop > 
 
 - **Data model**: `SpellModifications` (SpellModification.cs): `Dictionary<SpellModificationProperty, List<ParameterModifier>>` keyed by property. `ParameterModifier` (SpellModificationModifier.cs) carries `property`, `SpellAttributeMask filter`, and three `IValue<float>` fields (`flatAdditive`, `percentIncreased`, `moreMultiplier`). Structural lists for `FlatDamage`, `DamageConversion`, `ExtraDamageAs` remain separate. `SpellModificationProperty` enum covers core stats (CritChance..Projectiles), generic `DamageScaling`, per-type scaling (Physical/Cold/Fire/LightningDamageScaling), and per-type penetration.
 - **Effect → pool**: `SpellModificationEffect` serializes a `ParameterModifier` with `IValue<float>` fields. On `Apply`, it eagerly resolves (bakes) each `IValue` into a `ConstantValue` wrapper, then adds the baked modifier to `SpellModifications.Add(...)`.
-- **Resolution**: `SpellModificationsApplicator.Resolve(mods, property, mask)` returns a `ResolvedModifier` (flat, percentIncreased, moreCombined). The `Multiplier` property computes `(1 + pct/100) * moreCombined`. Used by `CloneAndApply` and behaviors (chain, pierce).
-- **Application**: `SpellModificationsApplicator.CloneAndApply(AttackEntityData, spellAttributeMask, mods)` -- clones entity data via `Object.Instantiate` and applies all resolved mods (damage scaling, crit, area, behaviors for chain/pierce).
+- **Resolution**: `SpellModificationsApplicator.Resolve(mods, property, mask)` returns a `ResolvedModifier` (flat, percentIncreased, moreCombined). The `Multiplier` property computes `(1 + pct/100) * moreCombined`. Used by `AttackEntityModificationApplicator`, behaviors (chain, pierce), and the emission handler (projectile count).
+- **Application (spawn-time)**: `AttackEntityModificationApplicator.BuildRolledEntity(in ctx, id)` resolves mod-adjusted ranges from the authoring `AttackEntityData` (no `Object.Instantiate`), rolls them deterministically, and fills the `AttackEntity` (damage scaling, crit, area hitbox, knockback). Behaviors apply chain/pierce mods by index during `AttackEntityManager.Spawn`.
+- **Application (hit-time)**: `AttackEntityModifier` (predicate + `SpellModificationProperty property` + `ResolvedModifier`) is evaluated per hit by `HitConditionalEvaluationSystem.ApplyMatching` and applied to **scratch** damage/crit inside `DamageSystem.ProcessHits` via `AttackEntityModificationApplicator.Apply` (never written back to the stored entity). The per-entity modifier set is snapshotted at spawn into `AttackEntityManager.HitModifierSets` (keyed by entity id).
 - **Test data**: `SpellModificationsTestData` (ScriptableObject) holds `List<ParameterModifier>` plus structural lists; `GetModifications()` builds runtime `SpellModifications`.
 
 ### Item conditions and values (Effects/)
@@ -111,6 +123,7 @@ Items use `ICondition` / `IEffect` / `IValue<float>` (all in `BridgeOfBlood.Effe
 ## Enemy spawning
 
 - **Contract**: `IEnemySpawner.CollectSpawnRequests(time, playfield)` returns `EnemySpawnRequest` batches (`enemy` + playfield-local `positions`). `GameSimulation` only calls `EnemyManager.CreateEnemies` per request.
+- **Runtime identity/storage**: `EnemyManager` stores enemies in stable SoA slots. Removing an enemy marks its slot dead, adds the index to a free list, and does not swap later rows. Reusing a slot increments its generation; combat and ailment code carry `EntityId { Index, Generation }` and validate generation + alive state before direct slot lookup. `EnemyCount` is live count; `EnemyBuffers.Length`/`SlotCount` includes tombstones.
 - **Ownership**: Each spawner implementation owns an `EnemySpawnTable` (serialized on `EnemySpawner` or `BrushStrokeEnemySpawner` in `SimulationConfig.spawner`).
 - **EnemySpawner** (rate / left edge): per spawn event, table pick + `SpawnPattern` expansion + `positionScale` (private resolve on the spawner).
 - **BrushStrokeEnemySpawner** (lab): brush circle fill is final placement; one table pick per drained batch; no `SpawnPattern` pass.
@@ -130,11 +143,11 @@ High-level session flow managed by `SessionStateMachine` (plain class); `TestSce
 
 **Key types**: `SessionState` (enum), `SessionStateMachine`, `RoundController`, `RoundControllerConfig`, `RoundTickResult`.
 
-Session phase enter/exit events use the shared generic event bus:
+Session phase enter/exit events and post-simulation frame notifications use the shared generic event bus:
 
-- **Bus**: `SharedGameEventBus` wraps `GenericEventBus<SharedGameEvent>`.
-- **Events**: `RoundEnterEvent`, `RoundExitEvent`, `ShopEnterEvent`, `ShopExitEvent` in `Assets/Scripts/Data/Shared/SessionPhaseEvents.cs`.
-- **Unity bridge**: `SharedGameEventReceiver` lets prefabs select a concrete `SharedGameEvent` type via `[SerializeReference]` and wire a `UnityEvent<SharedGameEvent>`.
+- **Bus**: `SharedGameEventBus` wraps `GenericEventBus<IEvent>`.
+- **Events**: `RoundEnterEvent`, `RoundExitEvent`, `ShopEnterEvent`, `ShopExitEvent` in `Assets/Scripts/Data/Shared/SessionPhaseEvents.cs`; `SimulationCompleteEvent` and `SpellCastEvent` in `Assets/Scripts/Systems/`.
+- **Unity bridge**: `SharedGameEventReceiver` lets prefabs select a concrete `IEvent` listener via `[SerializeReference]` and wire a `UnityEvent<TEvent>`.
 
 ---
 

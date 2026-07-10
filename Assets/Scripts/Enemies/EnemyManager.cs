@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using System.Collections.Generic;
 using System;
+using EntityId = BridgeOfBlood.Data.Shared.EntityId;
 
 public class EnemyManager
 {
@@ -13,22 +14,26 @@ public class EnemyManager
 
     private NativeList<EnemyMotion> _motion;
     private NativeList<EnemyVitality> _vitality;
-    private NativeList<int> _entityIds;
+    private NativeList<uint> _generations;
+    private NativeList<byte> _alive;
+    private NativeList<int> _freeSlots;
     private NativeList<EnemyCombatTraits> _combatTraits;
     private NativeList<StatusAilmentFlag> _status;
     private NativeList<EnemyPresentation> _presentation;
-    private int _nextEntityId;
+    private int _aliveCount;
     private GridSpatialPartition _grid;
 
     public EnemyManager(RectTransform simulationZone)
     {
         _motion = new NativeList<EnemyMotion>(Allocator.Persistent);
         _vitality = new NativeList<EnemyVitality>(Allocator.Persistent);
-        _entityIds = new NativeList<int>(Allocator.Persistent);
+        _generations = new NativeList<uint>(Allocator.Persistent);
+        _alive = new NativeList<byte>(Allocator.Persistent);
+        _freeSlots = new NativeList<int>(Allocator.Persistent);
         _combatTraits = new NativeList<EnemyCombatTraits>(Allocator.Persistent);
         _status = new NativeList<StatusAilmentFlag>(Allocator.Persistent);
         _presentation = new NativeList<EnemyPresentation>(Allocator.Persistent);
-        _nextEntityId = 0;
+        _aliveCount = 0;
         _grid = new GridSpatialPartition(
             new float2(simulationZone.rect.xMin, simulationZone.rect.yMin),
             new float2(simulationZone.rect.xMax, simulationZone.rect.yMax),
@@ -47,13 +52,13 @@ public class EnemyManager
         {
             var p = positions[i];
             var pos = new float2(p.x, p.y);
-            authoringData.AppendRuntimeColumns(
+            EntityId id = AllocateSlot();
+            authoringData.WriteRuntimeColumnsAt(
+                id.Index,
                 pos,
-                _nextEntityId++,
                 (uint)randomSeed + (uint)i,
                 _motion,
                 _vitality,
-                _entityIds,
                 _combatTraits,
                 _status,
                 _presentation);
@@ -61,30 +66,30 @@ public class EnemyManager
     }
 
     /// <summary>
-    /// Applies removals using <paramref name="indices"/> sorted ascending (paired with <paramref name="entityIds"/>).
-    /// Removes from the highest index downward so swap-back stays valid. Skips stale rows when entity id mismatches.
+    /// Applies removals by stable id. Removing a live slot leaves a tombstone and never moves later slots.
     /// </summary>
-    public void ApplyAscendingRemovalTrack(NativeList<int> indices, NativeList<int> entityIds)
+    public void ApplyRemovals(NativeList<EntityId> entityIds)
     {
-        UnityEngine.Assertions.Assert.AreEqual(indices.Length, entityIds.Length);
-        if (indices.Length == 0)
-            return;
-        for (int i = indices.Length - 1; i >= 0; i--)
-        {
-            int idx = indices[i];
-            int expectedId = entityIds[i];
-            if (idx < 0 || idx >= _motion.Length)
-                continue;
-            if (_entityIds[idx] != expectedId)
-                continue;
-            _motion.RemoveAtSwapBack(idx);
-            _vitality.RemoveAtSwapBack(idx);
-            _entityIds.RemoveAtSwapBack(idx);
-            _combatTraits.RemoveAtSwapBack(idx);
-            _status.RemoveAtSwapBack(idx);
-            _presentation.RemoveAtSwapBack(idx);
-        }
+        for (int i = 0; i < entityIds.Length; i++)
+            Remove(entityIds[i]);
     }
+
+    public void Remove(EntityId id)
+    {
+        if (!IsValid(id))
+            return;
+
+        _alive[id.Index] = 0;
+        _status[id.Index] = 0;
+        _freeSlots.Add(id.Index);
+        _aliveCount--;
+    }
+
+    public bool IsValid(EntityId id) =>
+        id.Index >= 0
+        && id.Index < _generations.Length
+        && _alive[id.Index] != 0
+        && _generations[id.Index] == id.Generation;
 
     /// <summary>
     /// Parallel column views. Valid until next list modification.
@@ -94,10 +99,12 @@ public class EnemyManager
         return new EnemyBuffers(
             _motion.AsArray(),
             _vitality.AsArray(),
-            _entityIds.AsArray(),
+            _generations.AsArray(),
+            _alive.AsArray(),
             _combatTraits.AsArray(),
             _status.AsArray(),
-            _presentation.AsArray());
+            _presentation.AsArray(),
+            _aliveCount);
     }
 
     /// <summary>
@@ -107,13 +114,17 @@ public class EnemyManager
     {
         _motion.Clear();
         _vitality.Clear();
-        _entityIds.Clear();
+        _generations.Clear();
+        _alive.Clear();
+        _freeSlots.Clear();
         _combatTraits.Clear();
         _status.Clear();
         _presentation.Clear();
+        _aliveCount = 0;
     }
 
-    public int EnemyCount => _motion.Length;
+    public int EnemyCount => _aliveCount;
+    public int SlotCount => _motion.Length;
 
     public GridSpatialPartition Grid => _grid;
 
@@ -125,7 +136,7 @@ public class EnemyManager
         if (_grid != null && _motion.IsCreated)
         {
             NativeArray<EnemyMotion> motion = _motion.AsArray();
-            _grid.BuildFromPositions(motion);
+            _grid.BuildFromPositions(motion, _alive.AsArray(), _aliveCount);
         }
     }
 
@@ -135,7 +146,7 @@ public class EnemyManager
     public void ValidateGridForCurrentEnemies()
     {
         if (_grid == null) return;
-        int current = _motion.Length;
+        int current = _aliveCount;
         if (current > 0 && _grid.LastBuildEnemyCount != current)
             throw new InvalidOperationException($"EnemyManager: grid was built for {_grid.LastBuildEnemyCount} enemies but current count is {current}. Call BuildGrid() before collision/chain steps.");
     }
@@ -153,10 +164,41 @@ public class EnemyManager
     {
         if (_motion.IsCreated) _motion.Dispose();
         if (_vitality.IsCreated) _vitality.Dispose();
-        if (_entityIds.IsCreated) _entityIds.Dispose();
+        if (_generations.IsCreated) _generations.Dispose();
+        if (_alive.IsCreated) _alive.Dispose();
+        if (_freeSlots.IsCreated) _freeSlots.Dispose();
         if (_combatTraits.IsCreated) _combatTraits.Dispose();
         if (_status.IsCreated) _status.Dispose();
         if (_presentation.IsCreated) _presentation.Dispose();
         _grid?.Dispose();
+    }
+
+    private EntityId AllocateSlot()
+    {
+        int index;
+        if (_freeSlots.Length > 0)
+        {
+            int last = _freeSlots.Length - 1;
+            index = _freeSlots[last];
+            _freeSlots.RemoveAt(last);
+
+            uint generation = _generations[index] + 1u;
+            _generations[index] = generation != 0u ? generation : 1u;
+            _alive[index] = 1;
+        }
+        else
+        {
+            index = _motion.Length;
+            _motion.Add(default);
+            _vitality.Add(default);
+            _generations.Add(1u);
+            _alive.Add(1);
+            _combatTraits.Add(default);
+            _status.Add(default);
+            _presentation.Add(default);
+        }
+
+        _aliveCount++;
+        return new EntityId { Index = index, Generation = _generations[index] };
     }
 }

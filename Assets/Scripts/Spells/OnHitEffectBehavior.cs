@@ -1,4 +1,6 @@
 using System;
+using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 [Serializable]
@@ -9,9 +11,12 @@ public class OnHitEffectBehavior : AttackEntityBehavior
 
     public override AttackEntityBehavior Clone() => new OnHitEffectBehavior { config = config };
 
-    public override void ApplyTo(ref AttackEntitySpawnPayload payload)
+    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask)
     {
-        if (config != null)
-            payload.onHitEffect = config.ToRuntime();
+        if (config == null) return;
+        var entities = manager.GetEntities();
+        var e = entities[index];
+        e.onHitEffect = config.ToRuntime();
+        entities[index] = e;
     }
 }

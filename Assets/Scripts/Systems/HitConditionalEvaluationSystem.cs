@@ -1,22 +1,39 @@
+using System.Collections.Generic;
 using BridgeOfBlood.Data.Enemies;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
 using BridgeOfBlood.Effects;
-using JetBrains.Annotations;
-using Unity.Collections;
 using UnityEngine;
 
 public class HitConditionalEvaluationSystem
 {
-    
-
-
-    public static ResolvedModifier GetResolvedModifierForAttackEntity(int enemyEntityIndex, EnemyBuffers enemies, AttackEntity attackEntity)
+    /// <summary>
+    /// Applies every modifier whose predicate matches enemy <paramref name="enemyEntityIndex"/> to the supplied
+    /// scratch damage/crit values. Numeric application is delegated to <see cref="AttackEntityModificationApplicator"/>.
+    /// </summary>
+    public static void ApplyMatching(
+        int enemyEntityIndex,
+        EnemyBuffers enemies,
+        List<AttackEntityModifier> modifiers,
+        ref float physical,
+        ref float cold,
+        ref float fire,
+        ref float lightning,
+        ref float critChance,
+        ref float critMult)
     {
-        ResolvedModifier modifier = new ResolvedModifier();
+        if (modifiers == null) return;
 
+        for (int i = 0; i < modifiers.Count; i++)
+        {
+            AttackEntityModifier m = modifiers[i];
+            if (m == null) continue;
+            if (!EvaluateEnemyPredicate(m.predicate, enemyEntityIndex, enemies)) continue;
 
-        return modifier;
+            AttackEntityModificationApplicator.Apply(
+                m.property, m.resolvedModifier,
+                ref physical, ref cold, ref fire, ref lightning, ref critChance, ref critMult);
+        }
     }
 
     public static bool EvaluateEnemyPredicate(in AttackPredicate predicate, int enemyEntityIndex, EnemyBuffers enemies)
@@ -96,12 +113,16 @@ public class AttackPredicateEffect : IEffect
     [SerializeReference, SerializeInterface]
     public AttackPredicateDataBaker attackPredicateDataBaker;
 
+    [Tooltip("Which stat the conditional modifier targets when the predicate matches.")]
+    public SpellModificationProperty property;
+
     public ResolvedModifier resolvedModifier;
     public bool Apply(EffectContext context)
     {
         context.spellModifications.Add(new AttackEntityModifier
         {
             predicate = attackPredicateDataBaker.Bake(),
+            property = property,
             resolvedModifier = resolvedModifier
         });
 
@@ -131,5 +152,6 @@ public enum AttackPredicateKind
 public class AttackEntityModifier
 {
     public AttackPredicate predicate;
+    public SpellModificationProperty property;
     public ResolvedModifier resolvedModifier;
 }

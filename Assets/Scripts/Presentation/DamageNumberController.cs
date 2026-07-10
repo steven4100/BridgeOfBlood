@@ -23,7 +23,7 @@ public class DamageNumberController
         {
             DamageEvent evt = damageEvents[i];
             float velocityX = 0f;
-            if (evt.enemyIndex >= 0 && evt.enemyIndex < enemies.Length)
+            if (enemies.IsValid(evt.enemyEntityId))
                 velocityX = enemies.Motion[evt.enemyIndex].moveSpeed;
             _manager.Spawn(evt.position, (int)evt.damageDealt, velocityX: velocityX, isCrit: evt.isCrit);
         }
@@ -35,7 +35,7 @@ public class DamageNumberController
         {
             TickDamageEvent evt = tickEvents[i];
             float velocityX = 0f;
-            if (evt.enemyIndex >= 0 && evt.enemyIndex < enemies.Length)
+            if (enemies.IsValid(evt.enemyEntityId))
                 velocityX = enemies.Motion[evt.enemyIndex].moveSpeed;
             _manager.Spawn(evt.position, (int)evt.damageDealt, velocityX: velocityX, isCrit: false);
         }

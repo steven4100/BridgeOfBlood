@@ -28,6 +28,7 @@ public class ChainSystem
         NativeArray<HitEvent>.ReadOnly hitEvents,
         NativeArray<AttackEntity> attackEntities,
         NativeArray<ChainPolicyRuntime> chainPolicies,
+        NativeArray<MotionPolicyRuntime> motionPolicies,
         GridSpatialPartition grid,
         NativeArray<EnemyMotion>.ReadOnly enemyMotion)
     {
@@ -78,6 +79,13 @@ public class ChainSystem
             atk.position = hit.hitPosition;
 
             policy.chainHitsSoFar++;
+
+            MotionPolicyRuntime motion = motionPolicies[hit.attackEntityIndex];
+            if (motion.isActive)
+            {
+                motion.speed = speed;
+                motionPolicies[hit.attackEntityIndex] = motion;
+            }
 
             attackEntities[hit.attackEntityIndex] = atk;
             chainPolicies[hit.attackEntityIndex] = policy;

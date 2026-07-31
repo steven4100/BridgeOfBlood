@@ -13,9 +13,10 @@ using EntityId = BridgeOfBlood.Data.Shared.EntityId;
 public class SimulationConfig
 {
     [SerializeReference, SerializeInterface]
-    [Tooltip("Spawn timing/origins. Pick Enemy Spawner from the type menu. If unset at runtime, a default EnemySpawner is created from Spawn Rate and the simulation zone height.")]
+    [Tooltip("Spawn timing/origins. Pick Enemy Spawner from the type menu.")]
     public IEnemySpawner spawner;
-    public RectTransform SimulationZone;
+    [Tooltip("Playfield in simulation space: x = 0 (left) .. width (right); y = 0 at vertical center, ±height/2.")]
+    public Rect playfield = new Rect(0f, -300f, 800f, 600f);
     public float SpawnRate = 2f;
     public float GizmoRadius = 5f;
 }
@@ -27,7 +28,7 @@ public class SimulationConfig
 /// </summary>
 public partial class GameSimulation
 {
-    private readonly RectTransform _simulationZone;
+    private readonly Rect _playfield;
     private readonly float _gizmoRadius;
     private EnemyRemovalBatch _enemyRemovals;
 
@@ -73,15 +74,13 @@ public partial class GameSimulation
 
     public GameSimulation(SimulationConfig config)
     {
-        if (config?.SimulationZone == null)
-            throw new ArgumentNullException(nameof(config), "SimulationZone is required.");
+        if (config == null)
+            throw new ArgumentNullException(nameof(config));
 
-        _simulationZone = config.SimulationZone;
+        _playfield = config.playfield;
         _gizmoRadius = config.GizmoRadius;
 
-        Rect r = _simulationZone.rect;
-
-        _enemyManager = new EnemyManager(_simulationZone);
+        _enemyManager = new EnemyManager(_playfield);
         _movementSystem = new EnemyMovementSystemLinear();
         _cullingSystem = new EnemyCullingSystem();
         _spawner = config.spawner;
@@ -133,7 +132,7 @@ public partial class GameSimulation
         _state = new SimulationState(this);
     }
 
-    private Rect PlayfieldRect => _simulationZone != null ? _simulationZone.rect : default;
+    private Rect PlayfieldRect => _playfield;
 
     /// <summary>Number of simulation steps. Use with ExecuteStep and GetStepName.</summary>
     public int StepCount => _steps?.Length ?? 0;
@@ -309,7 +308,10 @@ public partial class GameSimulation
         if (attackEntities.Length > 0)
         {
             _attackTimeSystem.Tick(attackEntities, _frameDeltaTime);
-            _attackMovementSystem.MoveEntities(_attackEntityManager.GetEntities(), _frameDeltaTime);
+            _attackMovementSystem.MoveEntities(
+                _attackEntityManager.GetEntities(),
+                _attackEntityManager.GetMotionPolicies(),
+                _frameDeltaTime);
         }
     }
 
@@ -363,7 +365,13 @@ public partial class GameSimulation
             NativeArray<HitEvent>.ReadOnly resolvedHitsRO = _resolvedHits.AsArray().AsReadOnly();
             _attackEntityManager.ValidateHitEvents(resolvedHitsRO, _enemyManager.SlotCount);
 
-            _chainSystem.ResolveChains(resolvedHitsRO, attackEntities, chainPolicies, _enemyManager.Grid, enemies.Motion.AsReadOnly());
+            _chainSystem.ResolveChains(
+                resolvedHitsRO,
+                attackEntities,
+                chainPolicies,
+                _attackEntityManager.GetMotionPolicies(),
+                _enemyManager.Grid,
+                enemies.Motion.AsReadOnly());
 
             _ailmentSystem.BuildShockDamageMultipliers(_shockDamageMultiplierScratch);
             _damageSystem.ProcessHits(

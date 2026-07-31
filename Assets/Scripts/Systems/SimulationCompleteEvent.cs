@@ -1,4 +1,5 @@
 using BridgeOfBlood.Data.Shared;
+using Unity.Mathematics;
 
 /// <summary>
 /// Raised after all simulation steps have completed for a frame and before transient combat buffers are cleared.
@@ -11,4 +12,6 @@ public struct SimulationCompleteEvent : IEvent
     public float simulationTime;
     public bool simulationAdvanced;
     public SpellCastResult spellCastResult;
+    /// <summary>Player position in simulation-local space for presentation sync.</summary>
+    public float2 playerPosition;
 }

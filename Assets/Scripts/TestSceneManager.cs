@@ -6,8 +6,6 @@ using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shop;
 using BridgeOfBlood.Data.Spells;
-using BridgeOfBlood.Data.Enemies;
-using Unity.Mathematics;
 
 /// <summary>
 /// A named simulation step that can be executed, timed, and stepped through by the debug controller.
@@ -28,16 +26,14 @@ public struct ItemEvalResult
 public class TestSceneManager : MonoBehaviour
 {
     public RectTransform simulationZone;
-    Rect rect => simulationZone != null ? simulationZone.rect : default;
 
-    [Header("Rendering")]
-    public Camera renderCamera;
-    [Tooltip("Scene-bound combat audio component. Asset references (materials, sprite atlas DB) live on GameConfig.presentationResources.")]
+    [Header("Presentation")]
+    [SerializeField] CombatPresentationDriver presentationDriver;
+    [Tooltip("Scene-bound combat audio component. Materials/atlas live on CombatPresentationDriver.")]
     [SerializeField] GameAudioManager gameAudioManager;
 
     [Header("Player")]
     public float playerMoveSpeed = 100f;
-    public PlayerRenderer playerRenderer;
 
     [Header("Spells & Items")]
     [Tooltip("Authoring asset on disk. A runtime clone is created via GameConfig.CreateRuntimeCopy.")]
@@ -49,22 +45,17 @@ public class TestSceneManager : MonoBehaviour
     public bool debugLogTiming;
     public SimulationDebugController debugController;
 
-    private Player _player;
-    private GameSimulation _simulation;
-    private LoopedSpellCaster _loopedSpellCaster;
-    private CombatPresentationLayer _presentation;
-    private TelemetryAggregator _telemetryAggregator;
-    private SessionFlowController _sessionFlow;
-    private RoundController _roundController;
-    private GameState _currentGameState;
-    private EnemyEmissionTargetProvider _emissionTargetProvider;
+    CombatSimulationController _combatSimulation;
+    SessionFlowController _sessionFlow;
+    RoundController _roundController;
+    GameState _currentGameState;
     /// <summary>Session-owned config (wallet, inventory, round tuning); destroyed when rebuilding session.</summary>
     GameConfig _runtimeGameConfig;
 
-    public TelemetryAggregator TelemetryAggregator => _telemetryAggregator;
+    public TelemetryAggregator TelemetryAggregator => _combatSimulation?.TelemetryAggregator;
     public GameState CurrentGameState => _currentGameState;
     public IReadOnlyList<ItemEvalResult> LastItemResults => _roundController?.LastItemResults;
-    public GameSimulation Simulation => _simulation;
+    public GameSimulation Simulation => _combatSimulation?.Simulation;
     public RoundController RoundController => _roundController;
     public SessionFlowController SessionFlow => _sessionFlow;
 
@@ -82,40 +73,19 @@ public class TestSceneManager : MonoBehaviour
             gameAudioManager = audioRoot.AddComponent<GameAudioManager>();
         }
 
-        Rect r = rect;
-        _player = new Player(
-            new float2(r.xMax - 10f, r.center.y),
-            playerMoveSpeed);
-
-        SimulationConfig simConfig = _runtimeGameConfig.simulationConfig;
-        simConfig.SimulationZone = simulationZone;
-        if (simConfig.spawner is EnemySpawner rateSpawner)
-            rateSpawner.spawnLineHeight = rect.height;
-        _simulation = new GameSimulation(simConfig);
-
-        _emissionTargetProvider = new EnemyEmissionTargetProvider(_simulation.EnemyManager);
-        var emissionHandler = new SpellEmissionHandler(_simulation.AttackEntityManager, _emissionTargetProvider);
-
         PlayerInventory inv = _runtimeGameConfig.playerInventory;
-        _loopedSpellCaster = new LoopedSpellCaster(inv.SpellCollection, emissionHandler);
 
-        _presentation = new CombatPresentationLayer(
-            _runtimeGameConfig.presentationResources,
-            _simulation.AttackEntityManager);
-        _presentation.BindPlayer(playerRenderer, _player);
-
-        int initialSpellCount = Mathf.Max(8, inv.SpellCollection.Count);
-        _telemetryAggregator = new TelemetryAggregator(initialSpellCount);
-
-        var roundCfg = new RoundControllerConfig
+        _combatSimulation = new CombatSimulationController(new CombatSimulationControllerConfig
         {
-            castInputKey = castInputKey,
-            debugLogTiming = debugLogTiming,
-            gameConfig = _runtimeGameConfig,
-            castModifications = castModifications,
-            debugController = debugController,
-            emissionHandler = emissionHandler
-        };
+            RuntimeGameConfig = _runtimeGameConfig,
+            PlayerMoveSpeed = playerMoveSpeed,
+            CastModifications = castModifications,
+            DebugLogTiming = debugLogTiming,
+            DebugController = debugController
+        });
+
+        presentationDriver.Bind(_combatSimulation.Simulation.AttackEntityManager);
+
         var sessionContext = new SessionFlowContext(
            _runtimeGameConfig,
            _roundController,
@@ -125,16 +95,13 @@ public class TestSceneManager : MonoBehaviour
         _sessionFlow = new SessionFlowController(sessionContext);
 
         _roundController = new RoundController(
-            _player, _simulation, _loopedSpellCaster,
-            _telemetryAggregator,
-            _presentation,
-            roundCfg,
+            _combatSimulation,
+            new RoundControllerConfig
+            {
+                castInputKey = castInputKey
+            },
             null,
             _sessionFlow);
-
-        if (debugController != null)
-            debugController.Initialize(_simulation.StepCount);
-
 
         _sessionFlow.AddPhase(_roundController, SessionState.Round);
         _sessionFlow.AddPhase(new PregameSessionPhase(_sessionFlow), SessionState.Pregame);
@@ -168,7 +135,8 @@ public class TestSceneManager : MonoBehaviour
 
     GameState BuildGameState()
     {
-        var round = _telemetryAggregator.CurrentRound;
+        var round = _combatSimulation.TelemetryAggregator.CurrentRound;
+        var sim = _combatSimulation.Simulation.State;
         return new GameState
         {
             sessionState = _sessionFlow.CurrentState,
@@ -178,11 +146,11 @@ public class TestSceneManager : MonoBehaviour
             bloodExtracted = _roundController.BloodExtractedThisRound,
             quotaMet = _roundController.QuotaMet,
             spellLoopsPerRound = _roundController.SpellLoopsPerRound,
-            loopsCompleted = _loopedSpellCaster.LoopCount,
+            loopsCompleted = _combatSimulation.LoopedSpellCaster.LoopCount,
             roundMetrics = round.aggregate,
-            simulationTime = _simulation.State.SimulationTime,
-            enemyCount = _simulation.State.EnemyCount,
-            attackEntityCount = _simulation.State.AttackEntityCount
+            simulationTime = sim.SimulationTime,
+            enemyCount = sim.EnemyCount,
+            attackEntityCount = sim.AttackEntityCount
         };
     }
 
@@ -191,18 +159,14 @@ public class TestSceneManager : MonoBehaviour
         _sessionFlow?.Shutdown();
         GameConfig.DestroyRuntimeCopy(_runtimeGameConfig);
         _runtimeGameConfig = null;
-        _telemetryAggregator?.Dispose();
-        _simulation?.Dispose();
-        _emissionTargetProvider?.Dispose();
-        _presentation?.Dispose();
+        _combatSimulation?.Dispose();
+        _combatSimulation = null;
     }
 
     void OnDrawGizmos()
     {
-        if (simulationZone == null || _simulation == null) return;
-        var drawables = _simulation.GetDebugDrawables();
-        for (int i = 0; i < drawables.Count; i++)
-            drawables[i].DrawGizmos(simulationZone);
-        _presentation?.DrawGizmos(simulationZone);
+        if (simulationZone == null)
+            return;
+        _combatSimulation?.DrawGizmos(simulationZone);
     }
 }

@@ -23,7 +23,7 @@ public class EnemyManager
     private int _aliveCount;
     private GridSpatialPartition _grid;
 
-    public EnemyManager(RectTransform simulationZone)
+    public EnemyManager(Rect playfield)
     {
         _motion = new NativeList<EnemyMotion>(Allocator.Persistent);
         _vitality = new NativeList<EnemyVitality>(Allocator.Persistent);
@@ -35,8 +35,8 @@ public class EnemyManager
         _presentation = new NativeList<EnemyPresentation>(Allocator.Persistent);
         _aliveCount = 0;
         _grid = new GridSpatialPartition(
-            new float2(simulationZone.rect.xMin, simulationZone.rect.yMin),
-            new float2(simulationZone.rect.xMax, simulationZone.rect.yMax),
+            new float2(playfield.xMin, playfield.yMin),
+            new float2(playfield.xMax, playfield.yMax),
             unitLengthPerCell,
             DefaultGridMaxEnemies);
     }

@@ -1,34 +1,34 @@
 using System.Collections.Generic;
-using System.Diagnostics;
 using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Shop;
 using BridgeOfBlood.Data.Spells;
-using BridgeOfBlood.Effects;
 using EZServiceLocation;
-using Unity.Collections;
-using Unity.Mathematics;
 using UnityEngine;
-using Debug = UnityEngine.Debug;
 
 /// <summary>
-/// Combat lab: brush painting, looped spell casting, item modifiers, and combat presentation.
-/// Registers session services from <see cref="gameConfig"/> for inventory/shop UI in the lab scene.
+/// Combat lab: session bootstrap and simulation ownership.
+/// Simulation frame coordination (including item evaluation) lives in <see cref="CombatSimulationController"/>.
+/// Combat draw/materials live on <see cref="CombatPresentationDriver"/> (bus-driven).
+/// Uses <see cref="SimulationConfig.spawner"/> as authored; brush input is wired via <see cref="BrushStrokeSpawnerController.Bind"/> when the simulation spawner is a <see cref="BrushStrokeEnemySpawner"/>.
+/// Registers session services from a runtime <see cref="GameConfig"/> copy for inventory/shop UI in the lab scene.
 /// </summary>
 [DefaultExecutionOrder(-90)]
 public class LabbingScene : MonoBehaviour
 {
+    [Tooltip("Authoring asset on disk. A runtime clone is created via GameConfig.CreateRuntimeCopy.")]
     [SerializeField] GameConfig gameConfig;
     [SerializeField] RectTransform simulationZone;
     [SerializeField] BrushStrokeSpawnerController brushController;
+    [SerializeField] CombatPresentationDriver presentationDriver;
 
-    [Header("Rendering")]
+    [Header("Brush / audio")]
+    [Tooltip("Camera for brush picking. Combat draw camera is on CombatPresentationDriver.")]
     [SerializeField] Camera renderCamera;
     [Tooltip("Optional. Created under this object when unset.")]
     [SerializeField] GameAudioManager gameAudioManager;
 
     [Header("Player")]
-    [SerializeField] PlayerRenderer playerRenderer;
     [SerializeField] float playerMoveSpeed = 100f;
 
     [Header("Spells & Items")]
@@ -41,49 +41,15 @@ public class LabbingScene : MonoBehaviour
     [SerializeField] SimulationDebugController debugController;
     [SerializeField] bool debugLogTiming;
 
+    /// <summary>Session-owned config (wallet, inventory); destroyed on teardown.</summary>
     GameConfig _runtimeConfig;
-    GameSimulation _simulation;
-    CombatPresentationLayer _presentation;
-    LoopedSpellCaster _loopedSpellCaster;
-    SpellEmissionHandler _emissionHandler;
-    TelemetryAggregator _telemetryAggregator;
-    EnemyEmissionTargetProvider _emissionTargetProvider;
-    Player _player;
-    BrushStrokeEnemySpawner _brushSpawner;
-    readonly EffectContext _effectContext = new EffectContext();
-    readonly List<ItemEvalResult> _lastItemResults = new List<ItemEvalResult>();
+    CombatSimulationController _combatSimulation;
 
-    static readonly float2 CastForward = new float2(-1f, 0f);
-
-    public GameSimulation Simulation => _simulation;
-    public IReadOnlyList<ItemEvalResult> LastItemResults => _lastItemResults;
+    public GameSimulation Simulation => _combatSimulation?.Simulation;
+    public IReadOnlyList<ItemEvalResult> LastItemResults => _combatSimulation?.LastItemResults;
 
     void Awake()
     {
-        _runtimeConfig = gameConfig;
-        SimulationConfig simConfig = _runtimeConfig.simulationConfig;
-        simConfig.SimulationZone = simulationZone;
-
-        PlayerInventory inventory = _runtimeConfig.playerInventory;
-        inventory.RebuildFromStartingDefinition();
-        inventory.SpellCollection.ClearRuntimeSpellTracking();
-        RegisterSessionServices();
-
-        _brushSpawner = simConfig.spawner as BrushStrokeEnemySpawner;
-        if (_brushSpawner == null)
-        {
-            _brushSpawner = new BrushStrokeEnemySpawner();
-            simConfig.spawner = _brushSpawner;
-        }
-
-        _simulation = new GameSimulation(simConfig);
-
-        if (brushController != null)
-        {
-            brushController.SetBrushSpawner(_brushSpawner);
-            brushController.Bind(simulationZone, renderCamera);
-        }
-
         if (gameAudioManager == null)
         {
             var audioRoot = new GameObject("GameAudioManager");
@@ -91,124 +57,71 @@ public class LabbingScene : MonoBehaviour
             gameAudioManager = audioRoot.AddComponent<GameAudioManager>();
         }
 
-        Rect playfield = simulationZone != null ? simulationZone.rect : default;
-        _player = new Player(
-            new float2(playfield.xMax - 10f, playfield.center.y),
-            playerMoveSpeed);
-
-        _emissionTargetProvider = new EnemyEmissionTargetProvider(_simulation.EnemyManager);
-        _emissionHandler = new SpellEmissionHandler(_simulation.AttackEntityManager, _emissionTargetProvider);
-        _loopedSpellCaster = new LoopedSpellCaster(inventory.SpellCollection, _emissionHandler);
-
-        _presentation = new CombatPresentationLayer(
-            _runtimeConfig.presentationResources,
-            _simulation.AttackEntityManager);
-        _presentation.BindPlayer(playerRenderer, _player);
-
-        int initialSpellCount = Mathf.Max(8, inventory.SpellCollection.Count);
-        _telemetryAggregator = new TelemetryAggregator(initialSpellCount);
-
-        if (debugController != null)
-            debugController.Initialize(_simulation.StepCount);
+        CreateRuntimeSession();
     }
 
     void Update()
     {
-        TickSimulation(Time.deltaTime);
+        _combatSimulation.Tick(Time.deltaTime, Input.GetKeyDown(castInputKey), int.MaxValue);
     }
 
-    void TickSimulation(float deltaTime)
+    void OnGUI()
     {
-        SimulationDebugController debugCtrl = debugController;
-        bool hasController = debugCtrl != null;
-        if (hasController)
-            debugCtrl.ProcessInput();
+        const float pad = 10f;
+        const float width = 140f;
+        const float height = 28f;
+        var rect = new Rect(Screen.width - width - pad, pad, width, height);
+        if (GUI.Button(rect, "Reset Simulation"))
+            ResetSimulation();
+    }
 
-        Rect playfield = simulationZone != null ? simulationZone.rect : default;
-        _player.Update(deltaTime, playfield);
+    /// <summary>
+    /// Recopies the authored <see cref="gameConfig"/>, rebuilds simulation/casters, and repositions the player.
+    /// </summary>
+    public void ResetSimulation()
+    {
+        DisposeRuntimeSession();
+        CreateRuntimeSession();
+    }
 
-        SpellModifications mods = castModifications != null
-            ? castModifications.GetModifications()
-            : new SpellModifications();
-        EvaluateItems(mods);
-        _emissionHandler.SetFrameModifications(mods);
+    void CreateRuntimeSession()
+    {
+        _runtimeConfig = GameConfig.CreateRuntimeCopy(gameConfig);
+        PlayerInventory inventory = _runtimeConfig.playerInventory;
+        inventory.SpellCollection.ClearRuntimeSpellTracking();
+        RegisterSessionServices();
 
-        var sim = _simulation.State;
-        bool castRequested = Input.GetKeyDown(castInputKey);
-        SpellCastResult castResult = _loopedSpellCaster.AttemptToCastNextSpell(
-            sim.SimulationTime, _player.Position, castRequested);
-        if (castResult.didCast)
+        _combatSimulation = new CombatSimulationController(new CombatSimulationControllerConfig
         {
-            SharedGameEventBus.Bus.Raise(new SpellCastEvent
-            {
-                castResult = castResult,
-                spells = _loopedSpellCaster.Spells,
-                origin = _player.Position
-            });
-        }
-        _loopedSpellCaster.Update(sim.SimulationTime, CastForward);
-
-        bool advanceTime = !hasController || debugCtrl.ShouldAdvanceTime;
-        if (advanceTime)
-        {
-            float dt = hasController ? debugCtrl.DeltaTime : deltaTime;
-            _simulation.AdvanceTime(dt);
-        }
-
-        Stopwatch sw = debugLogTiming ? new Stopwatch() : null;
-
-        CombatReactionContractBuilder.Build(
-            _runtimeConfig.playerInventory,
-            mods,
-            _loopedSpellCaster.Spells,
-            out List<CombatSpawnContract> combatContracts);
-        try
-        {
-            _simulation.SetFrameCombatReactionContracts(combatContracts);
-
-            for (int i = 0; i < _simulation.StepCount; i++)
-            {
-                if (!hasController || debugCtrl.ShouldRunPhase(i, _simulation.GetStepName(i)))
-                {
-                    sw?.Restart();
-                    _simulation.ExecuteStep(i);
-                    if (sw != null)
-                    {
-                        long ms = sw.ElapsedMilliseconds;
-                        if (debugLogTiming)
-                            Debug.Log($"[LabbingScene] {_simulation.GetStepName(i)}: {ms}ms");
-                    }
-                }
-            }
-        }
-        finally
-        {
-            _simulation.ClearFrameCombatReactionContracts();
-        }
-
-        float frameDt = hasController ? debugCtrl.DeltaTime : deltaTime;
-        SharedGameEventBus.Bus.Raise(new SimulationCompleteEvent
-        {
-            simulationState = sim,
-            deltaTime = frameDt,
-            simulationTime = sim.SimulationTime,
-            simulationAdvanced = advanceTime,
-            spellCastResult = castResult
+            RuntimeGameConfig = _runtimeConfig,
+            PlayerMoveSpeed = playerMoveSpeed,
+            CastModifications = castModifications,
+            DebugLogTiming = debugLogTiming,
+            DebugLogItemEval = debugLogItemEval,
+            DebugController = debugController
         });
 
-        _simulation.ClearFrameCombatEvents();
+        presentationDriver.Bind(_combatSimulation.Simulation.AttackEntityManager);
 
-        if (advanceTime)
+        if (brushController != null)
+            brushController.Bind(simulationZone, renderCamera, _combatSimulation.Simulation.Spawner);
+
+        SharedGameEventBus.Bus.Raise(new RoundEnterEvent
         {
-            float effectDt = hasController ? debugCtrl.DeltaTime : deltaTime;
-            _presentation.Update(effectDt);
-        }
+            state = SessionState.Round,
+            roundNumber = 0,
+            bloodQuota = 0f,
+            spellLoopsPerRound = 0,
+            playfield = _combatSimulation.Simulation.State.Playfield
+        });
+    }
 
-        Camera cam = renderCamera != null ? renderCamera : Camera.main;
-        _presentation.Render(sim, simulationZone, cam);
-
-        if (hasController)
-            debugCtrl.NotifyFrameComplete();
+    void DisposeRuntimeSession()
+    {
+        _combatSimulation?.Dispose();
+        _combatSimulation = null;
+        GameConfig.DestroyRuntimeCopy(_runtimeConfig);
+        _runtimeConfig = null;
     }
 
     void RegisterSessionServices()
@@ -223,45 +136,9 @@ public class LabbingScene : MonoBehaviour
                 inventory));
     }
 
-    void EvaluateItems(SpellModifications mods)
-    {
-        _effectContext.frameMetrics = _telemetryAggregator.CurrentFrame.aggregate;
-        _effectContext.spellCastMetrics = _telemetryAggregator.CurrentSpellCast.aggregate;
-        _effectContext.spellLoopMetrics = _telemetryAggregator.CurrentSpellLoop.aggregate;
-        _effectContext.roundMetrics = _telemetryAggregator.CurrentRound.aggregate;
-        _effectContext.gameMetrics = _telemetryAggregator.Game.aggregate;
-        _effectContext.spellModifications = mods;
-
-        _effectContext.spellInvocation = new SpellInvocationContext
-        {
-            totalSpellsCasted = _loopedSpellCaster.TotalInvocationCount,
-            spellLoopNumber = _loopedSpellCaster.LoopCount + 1,
-            spellSlotNumber = _loopedSpellCaster.NextCastIndex + 1,
-            spellLoopSlotCount = _loopedSpellCaster.SpellCount,
-            spellLoopsPerRound = int.MaxValue,
-            spells = _loopedSpellCaster.Spells,
-        };
-
-        _lastItemResults.Clear();
-        var items = _runtimeConfig.playerInventory.GetPassiveItems();
-        for (int i = 0; i < items.Count; i++)
-        {
-            Item item = items[i];
-            if (item == null) continue;
-            bool applied = item.Apply(_effectContext);
-            _lastItemResults.Add(new ItemEvalResult { itemName = item.name, applied = applied });
-            if (debugLogItemEval && applied)
-                Debug.Log($"[LabbingScene] Item applied: {item.name}");
-        }
-    }
-
     void OnDestroy()
     {
-        _presentation?.Dispose();
-        _telemetryAggregator?.Dispose();
-        _emissionTargetProvider?.Dispose();
-        _simulation?.Dispose();
-        _runtimeConfig = null;
+        DisposeRuntimeSession();
     }
 
     void OnDrawGizmos()
@@ -271,13 +148,6 @@ public class LabbingScene : MonoBehaviour
 
         Transform zone = simulationZone.transform;
         brushController?.DrawGizmos(zone);
-        _presentation?.DrawGizmos(zone);
-
-        if (_simulation == null)
-            return;
-
-        var drawables = _simulation.GetDebugDrawables();
-        for (int i = 0; i < drawables.Count; i++)
-            drawables[i].DrawGizmos(zone);
+        _combatSimulation?.DrawGizmos(zone);
     }
 }

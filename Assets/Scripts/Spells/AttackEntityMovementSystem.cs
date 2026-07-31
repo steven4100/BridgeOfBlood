@@ -7,11 +7,16 @@ using Unity.Mathematics;
 public struct MoveAttackEntitiesJob : IJobParallelFor
 {
     public NativeArray<AttackEntity> Entities;
+    public NativeArray<MotionPolicyRuntime> MotionPolicies;
     public float DeltaTime;
 
     public void Execute(int index)
     {
         AttackEntity e = Entities[index];
+
+        MotionPolicyRuntime policy = MotionPolicies[index];
+        if (policy.isActive)
+            ApplyTangentialWaves(ref e, in policy);
 
         float2 displacement = e.velocity * DeltaTime;
         e.position += displacement;
@@ -19,17 +24,49 @@ public struct MoveAttackEntitiesJob : IJobParallelFor
 
         Entities[index] = e;
     }
+
+    /// <summary>
+    /// Sums the wave stack into a scalar tangential force, applies it perpendicular to velocity,
+    /// then renormalizes to the policy speed so waves steer direction only.
+    /// </summary>
+    private void ApplyTangentialWaves(ref AttackEntity e, in MotionPolicyRuntime policy)
+    {
+        float speedSq = math.lengthsq(e.velocity);
+        if (speedSq < 1e-8f)
+            return;
+
+        float sampleTime = e.timeAlive;
+        float force = 0f;
+        for (int w = 0; w < policy.waves.Length; w++)
+        {
+            MotionWaveRuntime wave = policy.waves[w];
+            force += MotionWaveSampler.Sample((MotionWaveType)wave.type, sampleTime, wave.frequency, wave.phase, wave.amplitude, wave.pulseWidth, wave.offset);
+        }
+
+        float2 tangent = math.normalize(new float2(-e.velocity.y, e.velocity.x));
+        float2 steered = e.velocity + tangent * (force * DeltaTime);
+
+        float steeredLen = math.length(steered);
+        if (steeredLen < 1e-6f)
+            return;
+
+        e.velocity = steered * (policy.speed / steeredLen);
+    }
 }
 
 public class AttackEntityMovementSystem
 {
-    public void MoveEntities(NativeArray<AttackEntity> entities, float deltaTime)
+    public void MoveEntities(
+        NativeArray<AttackEntity> entities,
+        NativeArray<MotionPolicyRuntime> motionPolicies,
+        float deltaTime)
     {
         if (entities.Length == 0) return;
 
         var job = new MoveAttackEntitiesJob
         {
             Entities = entities,
+            MotionPolicies = motionPolicies,
             DeltaTime = deltaTime
         };
 

@@ -59,6 +59,7 @@ public class AttackEntityManager
     private NativeList<PoisonedApplierRuntime> _poisonedAppliers;
     private NativeList<StunnedApplierRuntime> _stunnedAppliers;
     private NativeList<BleedApplierRuntime> _bleedAppliers;
+    private NativeList<MotionPolicyRuntime> _motionPolicies;
     private int _nextEntityId;
 
     /// <summary>
@@ -81,6 +82,7 @@ public class AttackEntityManager
         _poisonedAppliers = new NativeList<PoisonedApplierRuntime>(Allocator.Persistent);
         _stunnedAppliers = new NativeList<StunnedApplierRuntime>(Allocator.Persistent);
         _bleedAppliers = new NativeList<BleedApplierRuntime>(Allocator.Persistent);
+        _motionPolicies = new NativeList<MotionPolicyRuntime>(Allocator.Persistent);
         _nextEntityId = 0;
     }
 
@@ -118,6 +120,7 @@ public class AttackEntityManager
         _poisonedAppliers.Add(PoisonedApplierRuntime.Default());
         _stunnedAppliers.Add(StunnedApplierRuntime.Default());
         _bleedAppliers.Add(BleedApplierRuntime.Default());
+        _motionPolicies.Add(MotionPolicyRuntime.Default());
 
         var behaviors = ctx.data.behaviors;
         if (behaviors != null)
@@ -180,6 +183,11 @@ public class AttackEntityManager
     public NativeArray<StunnedApplierRuntime> GetStunnedAppliers() => _stunnedAppliers.AsArray();
     public NativeArray<BleedApplierRuntime> GetBleedAppliers() => _bleedAppliers.AsArray();
 
+    /// <summary>
+    /// Returns a read-write view of the motion policy list. Same length and index alignment as GetEntities().
+    /// </summary>
+    public NativeArray<MotionPolicyRuntime> GetMotionPolicies() => _motionPolicies.AsArray();
+
     public int EntityCount => _entities.Length;
 
     /// <summary>
@@ -209,6 +217,8 @@ public class AttackEntityManager
             throw new InvalidOperationException($"AttackEntityManager: stunnedAppliers.Length ({_stunnedAppliers.Length}) != entities.Length ({n}).");
         if (_bleedAppliers.Length != n)
             throw new InvalidOperationException($"AttackEntityManager: bleedAppliers.Length ({_bleedAppliers.Length}) != entities.Length ({n}).");
+        if (_motionPolicies.Length != n)
+            throw new InvalidOperationException($"AttackEntityManager: motionPolicies.Length ({_motionPolicies.Length}) != entities.Length ({n}).");
     }
 
     /// <summary>
@@ -274,6 +284,7 @@ public class AttackEntityManager
                 _poisonedAppliers.RemoveAtSwapBack(i);
                 _stunnedAppliers.RemoveAtSwapBack(i);
                 _bleedAppliers.RemoveAtSwapBack(i);
+                _motionPolicies.RemoveAtSwapBack(i);
                 return;
             }
         }
@@ -296,6 +307,7 @@ public class AttackEntityManager
         _poisonedAppliers.Clear();
         _stunnedAppliers.Clear();
         _bleedAppliers.Clear();
+        _motionPolicies.Clear();
     }
 
     public void Dispose()
@@ -311,5 +323,6 @@ public class AttackEntityManager
         if (_poisonedAppliers.IsCreated) _poisonedAppliers.Dispose();
         if (_stunnedAppliers.IsCreated) _stunnedAppliers.Dispose();
         if (_bleedAppliers.IsCreated) _bleedAppliers.Dispose();
+        if (_motionPolicies.IsCreated) _motionPolicies.Dispose();
     }
 }

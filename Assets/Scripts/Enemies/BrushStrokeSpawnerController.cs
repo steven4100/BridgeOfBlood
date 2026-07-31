@@ -2,14 +2,14 @@ using UnityEngine;
 
 /// <summary>
 /// Drives <see cref="BrushStrokeEnemySpawner"/> from mouse input, adjusts brush size, and draws the brush preview.
-/// Wire <see cref="simulationZone"/> and assign <see cref="brushSpawner"/> from the active <see cref="SimulationConfig"/>.
+/// Call <see cref="Bind"/> with the simulation zone, camera, and the simulation-owned <see cref="IEnemySpawner"/>.
 /// </summary>
 [DefaultExecutionOrder(-100)]
 public class BrushStrokeSpawnerController : MonoBehaviour, IDebugDrawable
 {
     [SerializeField] RectTransform simulationZone;
     [SerializeField] Camera renderCamera;
-    [SerializeField] BrushStrokeEnemySpawner brushSpawner;
+    BrushStrokeEnemySpawner brushSpawner;
 
     [Header("Brush size")]
     [SerializeField] float minBrushRadius = 2f;
@@ -33,12 +33,14 @@ public class BrushStrokeSpawnerController : MonoBehaviour, IDebugDrawable
 
     public BrushStrokeEnemySpawner BrushSpawner => brushSpawner;
 
-    public void SetBrushSpawner(BrushStrokeEnemySpawner spawner) => brushSpawner = spawner;
-
-    public void Bind(RectTransform zone, Camera camera)
+    /// <summary>
+    /// Wires scene deps and activates only when <paramref name="spawner"/> is a <see cref="BrushStrokeEnemySpawner"/>.
+    /// </summary>
+    public void Bind(RectTransform zone, Camera camera, IEnemySpawner spawner)
     {
         simulationZone = zone;
         renderCamera = camera;
+        brushSpawner = spawner as BrushStrokeEnemySpawner;
     }
 
     void Update()

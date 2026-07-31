@@ -5,6 +5,7 @@ using UnityEngine;
 
 /// <summary>
 /// Rate-based edge spawner: emits resolved requests using owned <see cref="EnemySpawnTable"/> and <see cref="SpawnPattern"/> per pick.
+/// Spawn Y spans the playfield rect passed into <see cref="CollectSpawnRequests"/>.
 /// </summary>
 [Serializable]
 public class EnemySpawner : IEnemySpawner
@@ -14,18 +15,14 @@ public class EnemySpawner : IEnemySpawner
     [Tooltip("Spawn events per second of simulation time.")]
     public float spawnRate = 2f;
 
-    [Tooltip("Vertical span for random Y on the spawn line (playfield height when wired from SimulationConfig).")]
-    public float spawnLineHeight = 100f;
-
     int _lastTotalSpawns;
     readonly List<Vector2> _positionsScratch = new List<Vector2>();
 
     public EnemySpawner() { }
 
-    public EnemySpawner(float spawnRate, float spawnLineHeight)
+    public EnemySpawner(float spawnRate)
     {
         this.spawnRate = spawnRate;
-        this.spawnLineHeight = spawnLineHeight;
     }
 
     public void Reset()
@@ -42,13 +39,12 @@ public class EnemySpawner : IEnemySpawner
         if (count == 0 || spawnTable == null)
             return new List<EnemySpawnRequest>();
 
-        float yMax = Mathf.Min(playfield.yMax, playfield.yMin + spawnLineHeight);
         var requests = new List<EnemySpawnRequest>(count);
         uint baseSeed = (uint)(time * 1000f).GetHashCode();
 
         for (int i = 0; i < count; i++)
         {
-            Vector2 origin = new Vector2(playfield.xMin, UnityEngine.Random.Range(playfield.yMin, yMax));
+            Vector2 origin = new Vector2(playfield.xMin, UnityEngine.Random.Range(playfield.yMin, playfield.yMax));
             AddResolvedRequest(origin, baseSeed + (uint)i, requests);
         }
 

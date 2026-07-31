@@ -22,8 +22,10 @@ public partial class GameSimulation
         /// <summary>Simulation clock in seconds.</summary>
         public float SimulationTime => _owner._simulationTime;
 
-        /// <summary>Playfield rectangle in simulation space (spawn, cull, spatial queries).</summary>
-        public Rect Playfield => _owner._simulationZone != null ? _owner._simulationZone.rect : default;
+        /// <summary>
+        /// Playfield in simulation space: x = 0 (left) .. width (right); y = 0 at vertical center (±height/2).
+        /// </summary>
+        public Rect Playfield => _owner._playfield;
 
         /// <summary>Parallel enemy column views; valid until next enemy list mutation.</summary>
         public EnemyBuffers EnemyBuffers => _owner._enemyManager.GetBuffers();

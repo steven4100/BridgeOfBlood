@@ -30,6 +30,7 @@ MonoBehaviour:
   critDamageMultiplierRange:
     min: 1
     max: 1
+  knockbackStrength: 0
   entityVelocity: {x: -250.14, y: 0}
   hitBoxData:
     isSphere: 1
@@ -43,6 +44,7 @@ MonoBehaviour:
   - rid: 72257236218675259
   - rid: 4884261957644320834
   - rid: 4884261957644320835
+  - rid: 5585034573601833022
   visual: {fileID: 11400000, guid: 6c03777a1f3524145980b04cac24ecd0, type: 2}
   onDamageSound: {fileID: 11400000, guid: c8c9c7244ecabe24888b59279c10d0c9, type: 2}
   references:
@@ -52,7 +54,7 @@ MonoBehaviour:
       type: {class: ExpirationBehavior, ns: , asm: Assembly-CSharp}
       data:
         isActive: 1
-        maxTimeAlive: 3
+        maxTimeAlive: 6
         maxDistanceTravelled: 0
         maxFrames: 0
     - rid: 72257236218675259
@@ -68,3 +70,14 @@ MonoBehaviour:
       type: {class: OnKillEffectBehavior, ns: , asm: Assembly-CSharp}
       data:
         config: {fileID: 11400000, guid: 469335601d0786d4ea6b11cc3dd255c1, type: 2}
+    - rid: 5585034573601833022
+      type: {class: TangentialWaveMotionBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        isActive: 1
+        waves:
+        - type: 0
+          amplitude: 2580.8
+          frequency: 3.03
+          phase: 0.25
+          pulseWidth: 0.5
+          offset: 0

@@ -3,9 +3,10 @@ Shader "LayerBlurRenderGraph"
     Properties
     {
         _BlurRadius ("Blur Radius", Range(0.25, 4)) = 1.5
-        _CelAlphaThreshold ("Cel Alpha Threshold", Range(0, 1)) = 0.35
-        _CelShadeSteps ("Cel Shade Steps", Range(2, 8)) = 4
-        _OverlayColor ("Overlay Color", Color) = (0.55, 0.02, 0.02, 1)
+        _PoolMin ("Pool Min", Range(0, 1)) = 0.2
+        _AlphaSoftness ("Alpha Softness", Range(0, 1)) = 0.15
+        _EdgeColor ("Edge Color", Color) = (0.75, 0.05, 0.08, 1)
+        _CoreColor ("Core Color", Color) = (0.35, 0.0, 0.05, 1)
         _OverlayDepth ("Overlay Depth", Range(0, 1)) = 0.5
     }
 
@@ -87,9 +88,10 @@ Shader "LayerBlurRenderGraph"
             TEXTURE2D_X(_BlurTex);
 
             CBUFFER_START(UnityPerMaterial)
-                float _CelAlphaThreshold;
-                float _CelShadeSteps;
-                half4 _OverlayColor;
+                float _PoolMin;
+                float _AlphaSoftness;
+                half4 _EdgeColor;
+                half4 _CoreColor;
                 float _OverlayDepth;
             CBUFFER_END
 
@@ -135,13 +137,21 @@ Shader "LayerBlurRenderGraph"
 
             half4 Frag(Varyings input) : SV_Target
             {
-                float2 uv = float2(input.uv.x, input.uv.y);
-                half4 color = SAMPLE_TEXTURE2D_X(_BlurTex, sampler_LinearClamp, uv);
+                half intensity = SAMPLE_TEXTURE2D_X(_BlurTex, sampler_LinearClamp, input.uv).r;
+                half poolMin = saturate(_PoolMin);
 
-                if (color.r >= _CelAlphaThreshold)
-                    return half4(_OverlayColor.rgb, 1.0h);
+                if (intensity < poolMin)
+                    return half4(0.0h, 0.0h, 0.0h, 0.0h);
 
-                return half4(0.0h, 0.0h, 0.0h, 0.0h);
+                // Color: Pool Min → peak intensity (1)
+                half colorT = saturate((intensity - poolMin) / max(1.0h - poolMin, 1e-4h));
+                half3 rgb = lerp(_EdgeColor.rgb, _CoreColor.rgb, colorT);
+
+                // Alpha: Pool Min → Pool Min + Softness (independent of color)
+                half alphaT = saturate((intensity - poolMin) / max(_AlphaSoftness, 1e-4h));
+                half alpha = lerp(_EdgeColor.a, _CoreColor.a, alphaT);
+
+                return half4(rgb, alpha);
             }
             ENDHLSL
         }

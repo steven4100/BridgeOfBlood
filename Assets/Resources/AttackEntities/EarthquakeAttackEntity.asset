@@ -36,7 +36,7 @@ MonoBehaviour:
     isSphere: 1
     isRect: 0
     rectDimension: {x: 0, y: 0}
-    sphereRadius: 191.5
+    sphereRadius: 607.6
     scaleGrowthRate: 0
   rehitCooldownSeconds: 100
   behaviors:

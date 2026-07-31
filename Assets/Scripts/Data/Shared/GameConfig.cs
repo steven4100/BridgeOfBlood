@@ -66,10 +66,6 @@ namespace BridgeOfBlood.Data.Shared
 		[Tooltip("Weighted shop type/item rules. Shared authoring asset — not cloned with the runtime GameConfig.")]
 		public ShopConfig shopConfig;
 
-		[Header("Presentation")]
-		[Tooltip("Materials and sprite atlas database used to build the combat presentation layer. Scene-bound collaborators (audio manager, attack entity manager) are wired separately at runtime.")]
-		public CombatPresentationResources presentationResources = new CombatPresentationResources();
-
 		/// <summary>
 		/// Builds a session-owned <see cref="GameConfig"/> clone: duplicates this asset, then unique wallet/inventory instances
 		/// so runtime mutation never touches the authoring asset on disk.

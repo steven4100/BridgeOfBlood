@@ -13,6 +13,7 @@ Short reference for where systems live and how data flows. Update when adding ma
 | `Assets/Scripts/Systems/` | Combat pipeline: collision, hit resolve, chain, damage, pierce, expiration, damage numbers, telemetry aggregation |
 | `Assets/Scripts/Enemies/` | Enemy manager, movement, culling, spawner, grid, render |
 | `Assets/Scripts/Data/` | Shared enums, runtime/authoring structs (Enemies, Idols, Shared, Shop) |
+| `Assets/Scripts/Presentation/` | Combat presentation: `CombatPresentationDriver` (materials/atlas on the component), damage numbers, VFX |
 | `Assets/Scripts/Player/` | Player, PlayerRenderer, Stats |
 | `Assets/Scripts/Editor/` | Unity editors/drawers (e.g. AttackEntityData, `ScriptableObjectImplementsDrawer`, Probability Editor) |
 | `Assets/Shaders/` | DamageNumberUnlit, EnemyIndirectUnlit |
@@ -33,9 +34,11 @@ Three-layer system: Authoring > Editor Bake > Runtime.
 - **Authoring**: `SpriteEntityVisual` (ScriptableObject) holds a `Sprite` reference and `scale`. Only layer that touches `UnityEngine.Sprite`. Assigned to `EnemyAuthoringData.visual` and `AttackEntityData.visual`.
 - **Bake**: `SpriteAtlasBuilder` (editor menu) finds all `SpriteEntityVisual` assets, packs sprites into a texture atlas via `Texture2D.PackTextures`, computes UV frames, writes `SpriteRenderDatabase` asset, and stamps `bakedFrameIndex` back onto each visual.
 - **Runtime**: `Enemy` and `AttackEntity` structs carry `EntityVisual` (frameIndex + scale), populated from authoring data at spawn. `SpriteInstanceBuilder.Build(enemies, attacks)` builds a combined `SpriteInstanceData[]` by looking up `SpriteRenderDatabase.frames[frameIndex]`, then `SpriteInstancedRenderer.Render` issues a single `Graphics.RenderMeshIndirect` draw call. Shader `InstancedSprite.shader` remaps quad UVs via `lerp(uvRect.xy, uvRect.zw, meshUV)`.
-- **Debug**: `AttackEntityDebugRenderer` still renders hitbox shapes (circles/rects) on top of sprite visuals.
+- **Debug**: `AttackEntityDebugRenderer` (under Presentation) still renders hitbox shapes (circles/rects) on top of sprite visuals.
 
 Visual data flow: `SpriteEntityVisual.bakedFrameIndex` > `EnemyAuthoringData.CreateRuntimeEnemy` / `AttackEntityModificationApplicator.BuildRolledEntity` > `EntityVisual` on entity struct > `SpriteInstanceBuilder` > `SpriteInstancedRenderer`.
+
+**Bootstrap**: Materials and `SpriteRenderDatabase` serialize on scene/prefab `CombatPresentationDriver` (not `GameConfig`). The driver owns `CombatPresentationLayer` and draws on `SimulationCompleteEvent`; simulation never constructs or calls presentation.
 
 ---
 
@@ -62,7 +65,7 @@ Order of steps in `GameSimulation._steps` (after Move/BuildGrid/Cull/RemoveCulle
 
 **Event types**: `HitEvent`, `DamageEvent` (enriched: per-type damage, spell provenance, kill/overkill), `EnemyHitEvent`, `EnemyKilledEvent`, `AttackEntityRemovalEvent` (see `CombatEvents.cs`).
 
-After the step loop, `RoundController` and `LabbingScene` raise `SimulationCompleteEvent` on `SharedGameEventBus.Bus` before `GameSimulation.ClearFrameCombatEvents()`. The payload exposes `GameSimulation.SimulationState`, frame delta, simulation time, whether time advanced, and the frame's `SpellCastResult`. `TelemetryAggregator`, `CombatPresentationLayer`, `GameAudioManager`, `EnemyPositionVfxController` subclasses, and future completed-frame consumers subscribe instead of being called directly by the simulation runners.
+After the step loop, `CombatSimulationController` raises `SimulationCompleteEvent` on `SharedGameEventBus.Bus` before `GameSimulation.ClearFrameCombatEvents()`. The payload exposes `GameSimulation.SimulationState`, frame delta, simulation time, whether time advanced, the frame's `SpellCastResult`, and `playerPosition`. `TelemetryAggregator`, `CombatPresentationDriver` / `CombatPresentationLayer`, `GameAudioManager`, `EnemyPositionVfxController` subclasses, and future completed-frame consumers subscribe instead of being called directly by the simulation runners.
 
 ---
 
@@ -83,9 +86,9 @@ Hierarchical aggregation at five time scales: Frame > Spell Cast > Spell Loop > 
 ## Damage numbers
 
 - **Source**: `DamageSystem.ProcessHits` fills `outDamageEvents` (`DamageEvent`: position, damageDealt, enemyIndex, isCrit, plus telemetry fields).
-- **Spawn**: `CombatPresentationLayer` subscribes to `SimulationCompleteEvent`, then calls `DamageNumberController.SpawnFromDamageEvents` > `DamageNumberManager.Spawn(position, damage, velocityX, isCrit)`. Scale from value and crit exclamation are applied in the manager.
-- **Render**: `DamageNumberRenderSystem.Render(numbers, rect, camera)` -- instance buffer with per-number scale and color (yellow for crit); shader `DamageNumberUnlit.shader` uses 11-cell atlas (digits + `!`).
-- **Generic presentation hook**: `GameAudioManager`, `EnemyPositionVfxController` subclasses, and `CombatPresentationLayer` subscribe to `SimulationCompleteEvent` and read completed-frame buffers from the event's `SimulationState`; future presentation systems can use the same event without adding dependencies to `GameSimulation` or frame runners.
+- **Spawn**: `CombatPresentationDriver` → `CombatPresentationLayer.HandleFrameComplete` on `SimulationCompleteEvent`, then `DamageNumberController.SpawnFromDamageEvents` > `DamageNumberManager.Spawn(position, damage, velocityX, isCrit)`. Scale from value and crit exclamation are applied in the manager.
+- **Render**: Same frame-complete handler draws sprites, hitbox debug, and `DamageNumberRenderSystem.Render(numbers, rect, camera)` -- instance buffer with per-number scale and color (yellow for crit); shader `DamageNumberUnlit.shader` uses 11-cell atlas (digits + `!`).
+- **Generic presentation hook**: `GameAudioManager`, `EnemyPositionVfxController` subclasses, and `CombatPresentationDriver` subscribe to `SimulationCompleteEvent` and read completed-frame buffers from the event's `SimulationState`; future presentation systems can use the same event without adding dependencies to `GameSimulation` or frame runners.
 
 ---
 
@@ -155,7 +158,7 @@ Session phase enter/exit events and post-simulation frame notifications use the 
 
 Round-internal phase management by `RoundController`; session-level transitions handled by `SessionStateMachine` above.
 
-- **Config**: `GameConfig` (ScriptableObject): authoring asset holds round tuning + wallet/inventory **templates**. At session start (and Lose → Retry), `GameConfig.CreateRuntimeCopy` **`Instantiate`s** the whole config plus unique wallet/inventory clones; gameplay reads **`runtimeGameConfig.playerWallet`**, **`playerInventory`**, and scaling fields from that **one** session clone (`GameConfig.DestroyRuntimeCopy` on teardown / rebuild).
+- **Config**: `GameConfig` (ScriptableObject): authoring asset holds round tuning + wallet/inventory **templates** (no materials/presentation). Combat visuals serialize on scene/prefab `CombatPresentationDriver`. At session start (and Lose → Retry), `GameConfig.CreateRuntimeCopy` **`Instantiate`s** the whole config plus unique wallet/inventory clones; gameplay reads **`runtimeGameConfig.playerWallet`**, **`playerInventory`**, and scaling fields from that **one** session clone (`GameConfig.DestroyRuntimeCopy` on teardown / rebuild).
 - **Per-round quota**: `RoundController` sets `BloodQuota` from `gameConfig.bloodQuotaScaling.BuildForRound(RoundNumber)` on construct, `StartNextRound`, and `Retry`.
 - **Phase flow**: `Playing` → (loops exhausted) → `AwaitingDespawn` → (no active casts, no pending spawns, no attack entities) → `RoundEnd` → session state machine transitions to `Shop` or `Lose`.
 - **Blood tracking**: `DamageEvent.bloodExtracted` (currently `damageDealt + overkillDamage`). Aggregated through `CombatMetrics.bloodExtracted` at all telemetry levels. Quota comparison uses `TelemetryAggregator.CurrentRound.aggregate.bloodExtracted`.

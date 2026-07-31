@@ -4,18 +4,12 @@ using UnityEngine;
 /// <summary>
 /// MonoBehaviour bridge that syncs its transform to the player's simulation position.
 /// Place as a child of the simulation zone RectTransform so local position matches rect-local space.
-/// Driven by <see cref="CombatPresentationLayer"/> each render pass so player presentation runs
-/// in the same step as other combat draws (no separate LateUpdate timing).
+/// Driven by <see cref="CombatPresentationLayer"/> each frame-complete pass.
 /// </summary>
 public class PlayerRenderer : MonoBehaviour
 {
-    public Player Player { get; set; }
-
-    public void SyncTransform()
+    public void SyncTransform(float2 position)
     {
-        if (Player == null) return;
-
-        float2 p = Player.Position;
-        transform.localPosition = new Vector3(p.x, p.y, 0f);
+        transform.localPosition = new Vector3(position.x, position.y, 0f);
     }
 }

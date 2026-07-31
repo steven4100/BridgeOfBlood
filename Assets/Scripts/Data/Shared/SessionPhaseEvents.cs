@@ -1,5 +1,6 @@
 using GenericEventBus;
 using System;
+using UnityEngine;
 
 namespace BridgeOfBlood.Data.Shared
 {
@@ -30,6 +31,11 @@ namespace BridgeOfBlood.Data.Shared
 	{
 		public float bloodQuota;
 		public int spellLoopsPerRound;
+		/// <summary>
+		/// Simulation playfield: x = 0 (left) .. width (right); y = 0 at vertical center (±height/2).
+		/// Presentation syncs the UI SimulationRect from this.
+		/// </summary>
+		public Rect playfield;
 	}
 
 	[Serializable]

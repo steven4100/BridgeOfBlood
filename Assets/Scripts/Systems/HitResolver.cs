@@ -8,7 +8,7 @@ using Unity.Mathematics;
 /// Detect → Resolve → Chain → Damage with no separate pierce step.
 /// No side effects—no damage, no telemetry, no enemiesHit update.
 /// Outputs HitEvents for ChainSystem and DamageSystem to consume.
-/// Assumes collision indices are valid; caller (e.g. AttackEntityManager / pipeline owner) must validate upstream.
+/// Assumes collision entity ids are valid; caller (e.g. AttackEntityManager / pipeline owner) must validate upstream.
 /// </summary>
 public class HitResolver
 {
@@ -41,7 +41,7 @@ public class HitResolver
             for (int c = 0; c < collisions.Length; c++)
             {
                 CollisionEvent col = collisions[c];
-                int ai = col.attackEntityIndex;
+                int ai = col.attackEntityId.Index;
 
                 if (applyPierce && countPerEntity.IsCreated)
                 {
@@ -70,8 +70,7 @@ public class HitResolver
 
                 hitEvents.Add(new HitEvent
                 {
-                    attackEntityIndex = col.attackEntityIndex,
-                    enemyIndex = col.enemyIndex,
+                    attackEntityId = col.attackEntityId,
                     enemyEntityId = col.enemyEntityId,
                     hitPosition = col.enemyPosition
                 });

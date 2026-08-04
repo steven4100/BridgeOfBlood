@@ -7,8 +7,7 @@ using Unity.Mathematics;
 /// </summary>
 public struct HitEvent
 {
-    public int attackEntityIndex;
-    public int enemyIndex;
+    public EntityId attackEntityId;
     public EntityId enemyEntityId;
     public float2 hitPosition;
 }
@@ -32,7 +31,7 @@ public enum AttackEntityRemovalReason
 /// </summary>
 public struct AttackEntityRemovalEvent
 {
-    public int entityId;
+    public EntityId entityId;
     public AttackEntityRemovalReason reason;
 }
 
@@ -54,11 +53,8 @@ public struct DamageEvent
 {
     public float2 position;
     public float damageDealt;
-    /// <summary>Index into the enemies array at emit time (so consumers can look up target for presentation, e.g. velocity).</summary>
-    public int enemyIndex;
     public EntityId enemyEntityId;
-    /// <summary>Index into the attack entities array at emit time (so consumers can look up source for VFX config).</summary>
-    public int attackEntityIndex;
+    public EntityId attackEntityId;
     public bool isCrit;
 
     public float physicalDamage;
@@ -73,7 +69,7 @@ public struct DamageEvent
     public float bloodExtracted;
     /// <summary>Snapshotted at hit time for centralized audio playback.</summary>
     public AudioUnitRuntime onDamageSound;
-    /// <summary>Snapshotted at hit time so VFX work after the attack entity row is removed (swap-back / expiration).</summary>
+    /// <summary>Snapshotted at hit time so VFX work after the attack entity slot is tombstoned / expired.</summary>
     public EffectSpriteConfigRuntime onHitEffectForVfx;
     /// <summary>Snapshotted at hit time; use with <see cref="wasKill"/>.</summary>
     public EffectSpriteConfigRuntime onKillEffectForVfx;
@@ -88,7 +84,6 @@ public struct StatusAilmentAppliedEvent
 {
     public int spellId;
     public int spellInvocationId;
-    public int enemyIndex;
     public EntityId enemyEntityId;
     public float2 position;
     public StatusAilmentFlag ailmentFlag;
@@ -105,15 +100,12 @@ public enum TickDamageSource : byte
 }
 
 /// <summary>
-/// Resolved DoT damage for telemetry and numbers. Not a projectile hit; <see cref="AttackEntityIndexNone"/> for attack index.
+/// Resolved DoT damage for telemetry and numbers. Not a projectile hit (no attack entity).
 /// </summary>
 public struct TickDamageEvent
 {
-    public const int AttackEntityIndexNone = -1;
-
     public float2 position;
     public float damageDealt;
-    public int enemyIndex;
     public EntityId enemyEntityId;
     public int spellId;
     public int spellInvocationId;

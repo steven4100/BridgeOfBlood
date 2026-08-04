@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
 using EZServiceLocation;
 using UnityEngine;
@@ -7,8 +8,7 @@ using UnityEngine;
 /// <summary>
 /// Renders the player's spell loop as a horizontal strip and commits drag-reorder to the
 /// owning <see cref="ISpellInventoryService"/> on release. Binds from <see cref="ServiceLocator.Current"/>
-/// (<see cref="Initialize()"/> / <c>Start</c>) after installers or session code register
-/// <see cref="ISpellInventoryService"/>; explicit <see cref="Initialize(ISpellInventoryService)"/> remains for tests.
+/// on <see cref="ServicesRegisteredEvent"/>; explicit <see cref="Initialize(ISpellInventoryService)"/> remains for tests.
 /// </summary>
 [DefaultExecutionOrder(50)]
 public class SpellInventoryController : MonoBehaviour
@@ -61,7 +61,17 @@ public class SpellInventoryController : MonoBehaviour
         OnSpellsUpdated();
     }
 
-    private void Start()
+    void OnEnable()
+    {
+        ServicesRegisteredEvent.SubscribeAndCatchUp(OnServicesRegistered);
+    }
+
+    void OnDisable()
+    {
+        ServicesRegisteredEvent.Unsubscribe(OnServicesRegistered);
+    }
+
+    void OnServicesRegistered(ref ServicesRegisteredEvent _)
     {
         Initialize();
     }

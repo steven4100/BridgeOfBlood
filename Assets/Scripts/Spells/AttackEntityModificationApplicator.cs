@@ -1,6 +1,7 @@
 using BridgeOfBlood.Data.Shared;
 using Unity.Mathematics;
 using UnityEngine;
+using EntityId = BridgeOfBlood.Data.Shared.EntityId;
 
 namespace BridgeOfBlood.Data.Spells
 {
@@ -17,7 +18,7 @@ namespace BridgeOfBlood.Data.Spells
 		/// rolls them deterministically (seed from spell/keyframe/data id), and fills scalar fields.
 		/// Policies (chain/pierce/appliers) and effect scalars are applied separately by behaviors.
 		/// </summary>
-		public static AttackEntity BuildRolledEntity(in AttackEntityBuildContext ctx, int entityId)
+		public static AttackEntity BuildRolledEntity(in AttackEntityBuildContext ctx, EntityId entityId)
 		{
 			AttackEntityData data = ctx.data;
 			SpellModifications mods = ctx.modifications;
@@ -26,28 +27,14 @@ namespace BridgeOfBlood.Data.Spells
 			uint seed = AttackEntityBuildRngSeed.Mix(ctx.spellId, ctx.spellInvocationId, ctx.keyframeIndex, data.GetInstanceID());
 			var rng = Unity.Mathematics.Random.CreateFromIndex(seed);
 
-			FloatRange physR = data.physicalDamageRange;
-			FloatRange coldR = data.coldDamageRange;
-			FloatRange fireR = data.fireDamageRange;
-			FloatRange ltngR = data.lightningDamageRange;
+			ResolveDamageRanges(data, mods, mask, out FloatRange physR, out FloatRange coldR, out FloatRange fireR, out FloatRange ltngR);
 			FloatRange critChanceR = data.critChanceRange;
 			FloatRange critMultR = data.critDamageMultiplierRange;
-			HitBoxData hitBox = data.hitBoxData;
+			HitBoxData hitBox = ResolveHitBox(data.hitBoxData, mods, mask);
 			float knockback = Mathf.Max(0f, data.knockbackStrength);
 
 			if (mods != null)
 			{
-				var dmgScaling = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.DamageScaling, mask);
-				var typePhys = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.PhysicalDamageScaling, mask);
-				var typeCold = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.ColdDamageScaling, mask);
-				var typeFire = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.FireDamageScaling, mask);
-				var typeLtng = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.LightningDamageScaling, mask);
-
-				physR = ApplyDamageRange(data.physicalDamageRange, typePhys, dmgScaling);
-				coldR = ApplyDamageRange(data.coldDamageRange, typeCold, dmgScaling);
-				fireR = ApplyDamageRange(data.fireDamageRange, typeFire, dmgScaling);
-				ltngR = ApplyDamageRange(data.lightningDamageRange, typeLtng, dmgScaling);
-
 				var critChance = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.CritChance, mask);
 				critChanceR = new FloatRange
 				{
@@ -63,10 +50,6 @@ namespace BridgeOfBlood.Data.Spells
 					max = Mathf.Max(1f, data.critDamageMultiplierRange.max * critMult.Multiplier + critMult.flat / 100f)
 				};
 				critMultR.ClampOrder();
-
-				var aoe = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.AreaOfEffect, mask);
-				if (hitBox.isSphere) hitBox.sphereRadius = hitBox.sphereRadius * aoe.Multiplier + aoe.flat;
-				if (hitBox.isRect) hitBox.rectDimension = hitBox.rectDimension * aoe.Multiplier + new Vector2(aoe.flat, aoe.flat);
 
 				var knock = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.KnockbackStrength, mask);
 				knockback = Mathf.Max(0f, data.knockbackStrength * knock.Multiplier + knock.flat);
@@ -170,6 +153,55 @@ namespace BridgeOfBlood.Data.Spells
 				default:
 					break;
 			}
+		}
+
+		/// <summary>
+		/// Resolves mod-adjusted damage ranges from authoring data (pre-roll). Shared by spawn-time rolling and
+		/// by the spell forecast so previews report the same numbers the simulation will roll from.
+		/// </summary>
+		public static void ResolveDamageRanges(
+			AttackEntityData data,
+			SpellModifications mods,
+			SpellAttributeMask mask,
+			out FloatRange physical,
+			out FloatRange cold,
+			out FloatRange fire,
+			out FloatRange lightning)
+		{
+			if (mods == null)
+			{
+				physical = data.physicalDamageRange;
+				cold = data.coldDamageRange;
+				fire = data.fireDamageRange;
+				lightning = data.lightningDamageRange;
+				return;
+			}
+
+			var dmgScaling = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.DamageScaling, mask);
+			var typePhys = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.PhysicalDamageScaling, mask);
+			var typeCold = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.ColdDamageScaling, mask);
+			var typeFire = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.FireDamageScaling, mask);
+			var typeLtng = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.LightningDamageScaling, mask);
+
+			physical = ApplyDamageRange(data.physicalDamageRange, typePhys, dmgScaling);
+			cold = ApplyDamageRange(data.coldDamageRange, typeCold, dmgScaling);
+			fire = ApplyDamageRange(data.fireDamageRange, typeFire, dmgScaling);
+			lightning = ApplyDamageRange(data.lightningDamageRange, typeLtng, dmgScaling);
+		}
+
+		/// <summary>
+		/// Applies AreaOfEffect modifications to an authoring hitbox. Shared by spawn-time entity building and
+		/// by the spell forecast so AoE previews match the hitbox the simulation will use.
+		/// </summary>
+		public static HitBoxData ResolveHitBox(HitBoxData hitBox, SpellModifications mods, SpellAttributeMask mask)
+		{
+			if (mods == null)
+				return hitBox;
+
+			var aoe = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.AreaOfEffect, mask);
+			if (hitBox.isSphere) hitBox.sphereRadius = hitBox.sphereRadius * aoe.Multiplier + aoe.flat;
+			if (hitBox.isRect) hitBox.rectDimension = hitBox.rectDimension * aoe.Multiplier + new Vector2(aoe.flat, aoe.flat);
+			return hitBox;
 		}
 
 		static FloatRange ApplyDamageRange(FloatRange source, ResolvedModifier typeMod, ResolvedModifier dmgScaling)

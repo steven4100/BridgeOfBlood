@@ -5,6 +5,7 @@ using BridgeOfBlood.Data.Spells;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
+using EntityId = BridgeOfBlood.Data.Shared.EntityId;
 
 /// <summary>
 /// Wave shape used by <see cref="TangentialWaveMotionBehavior"/>. All shapes output in [-1, 1]
@@ -141,7 +142,7 @@ public class TangentialWaveMotionBehavior : AttackEntityBehavior
     [Tooltip("Waves are sampled at the entity's time alive and summed into one tangential force.")]
     public List<MotionWave> waves = new List<MotionWave>();
 
-    public MotionPolicyRuntime ToRuntime(float2 velocity, int entityId)
+    public MotionPolicyRuntime ToRuntime(float2 velocity, EntityId entityId)
     {
         float speed = math.length(velocity);
 
@@ -149,7 +150,7 @@ public class TangentialWaveMotionBehavior : AttackEntityBehavior
         {
             isActive = isActive && speed > 0.0001f && waves != null && waves.Count > 0,
             speed = speed,
-            phaseSeed = math.hash(new int2(entityId, 0x57415645)) / (float)uint.MaxValue, // "WAVE"
+            phaseSeed = math.hash(new int2(entityId.Index, (int)entityId.Generation ^ 0x57415645)) / (float)uint.MaxValue, // "WAVE"
             waves = default
         };
 

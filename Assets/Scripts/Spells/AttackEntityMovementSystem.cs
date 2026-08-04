@@ -7,11 +7,15 @@ using Unity.Mathematics;
 public struct MoveAttackEntitiesJob : IJobParallelFor
 {
     public NativeArray<AttackEntity> Entities;
+    [ReadOnly] public NativeArray<byte> Alive;
     public NativeArray<MotionPolicyRuntime> MotionPolicies;
     public float DeltaTime;
 
     public void Execute(int index)
     {
+        if (Alive[index] == 0)
+            return;
+
         AttackEntity e = Entities[index];
 
         MotionPolicyRuntime policy = MotionPolicies[index];
@@ -58,6 +62,7 @@ public class AttackEntityMovementSystem
 {
     public void MoveEntities(
         NativeArray<AttackEntity> entities,
+        NativeArray<byte> alive,
         NativeArray<MotionPolicyRuntime> motionPolicies,
         float deltaTime)
     {
@@ -66,6 +71,7 @@ public class AttackEntityMovementSystem
         var job = new MoveAttackEntitiesJob
         {
             Entities = entities,
+            Alive = alive,
             MotionPolicies = motionPolicies,
             DeltaTime = deltaTime
         };

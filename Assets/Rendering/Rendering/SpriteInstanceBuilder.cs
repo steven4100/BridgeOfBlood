@@ -64,6 +64,9 @@ public class SpriteInstanceBuilder
         for (int i = 0; i < attacks.Length; i++)
         {
             AttackEntity a = attacks[i];
+            if (!a.entityId.IsValid)
+                continue;
+
             int dbIndex = ResolveDatabaseFrameIndex(in a.visual, a.timeAlive, dbLen);
             if (dbIndex < 0) continue;
 

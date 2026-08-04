@@ -38,12 +38,13 @@ public class ChainSystem
         for (int h = 0; h < hitEvents.Length; h++)
         {
             HitEvent hit = hitEvents[h];
+            int ai = hit.attackEntityId.Index;
 
-            ChainPolicyRuntime policy = chainPolicies[hit.attackEntityIndex];
+            ChainPolicyRuntime policy = chainPolicies[ai];
             if (!policy.isActive || !policy.enabled || policy.chainHitsSoFar >= policy.chainCount || policy.chainRange <= 0f)
                 continue;
 
-            AttackEntity atk = attackEntities[hit.attackEntityIndex];
+            AttackEntity atk = attackEntities[ai];
 
             _candidateIndices.Clear();
             grid.QueryNeighbors(hit.hitPosition, policy.chainRange, _candidateIndices);
@@ -54,7 +55,7 @@ public class ChainSystem
             {
                 int r = random.NextInt(_candidateIndices.Length);
                 int ei = _candidateIndices[r];
-                if (ei == hit.enemyIndex)
+                if (ei == hit.enemyEntityId.Index)
                 {
                     _candidateIndices.RemoveAtSwapBack(r);
                     continue;
@@ -67,7 +68,7 @@ public class ChainSystem
             if (bestIndex < 0)
             {
                 policy.chainHitsSoFar = policy.chainCount;
-                chainPolicies[hit.attackEntityIndex] = policy;
+                chainPolicies[ai] = policy;
                 continue;
             }
 
@@ -80,15 +81,15 @@ public class ChainSystem
 
             policy.chainHitsSoFar++;
 
-            MotionPolicyRuntime motion = motionPolicies[hit.attackEntityIndex];
+            MotionPolicyRuntime motion = motionPolicies[ai];
             if (motion.isActive)
             {
                 motion.speed = speed;
-                motionPolicies[hit.attackEntityIndex] = motion;
+                motionPolicies[ai] = motion;
             }
 
-            attackEntities[hit.attackEntityIndex] = atk;
-            chainPolicies[hit.attackEntityIndex] = policy;
+            attackEntities[ai] = atk;
+            chainPolicies[ai] = policy;
         }
     }
 
@@ -98,11 +99,15 @@ public class ChainSystem
     /// </summary>
     public void CollectRemovals(
         NativeArray<AttackEntity> attackEntities,
+        NativeArray<byte> alive,
         NativeArray<ChainPolicyRuntime> chainPolicies,
         NativeList<AttackEntityRemovalEvent> removalEvents)
     {
         for (int i = 0; i < attackEntities.Length; i++)
         {
+            if (alive[i] == 0)
+                continue;
+
             ChainPolicyRuntime policy = chainPolicies[i];
             if (!policy.isActive || !policy.enabled || policy.chainCount <= 0) continue;
             if (policy.chainHitsSoFar < policy.chainCount) continue;

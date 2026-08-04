@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Shop;
@@ -7,26 +6,18 @@ using EZServiceLocation;
 using UnityEngine;
 
 /// <summary>
-/// Combat lab: session bootstrap and simulation ownership.
-/// Simulation frame coordination (including item evaluation) lives in <see cref="CombatSimulationController"/>.
-/// Combat draw/materials live on <see cref="CombatPresentationDriver"/> (bus-driven).
-/// Uses <see cref="SimulationConfig.spawner"/> as authored; brush input is wired via <see cref="BrushStrokeSpawnerController.Bind"/> when the simulation spawner is a <see cref="BrushStrokeEnemySpawner"/>.
-/// Registers session services from a runtime <see cref="GameConfig"/> copy for inventory/shop UI in the lab scene.
+/// Combat lab bootstrapper: runtime <see cref="GameConfig"/>, ServiceLocator registration,
+/// and ownership of <see cref="CombatSimulationController"/> tick/reset/dispose.
+/// After registration raises <see cref="ServicesRegisteredEvent"/> so dependents bind from the locator.
 /// </summary>
-[DefaultExecutionOrder(-90)]
+[DefaultExecutionOrder(-110)]
 public class LabbingScene : MonoBehaviour
 {
     [Tooltip("Authoring asset on disk. A runtime clone is created via GameConfig.CreateRuntimeCopy.")]
     [SerializeField] GameConfig gameConfig;
     [SerializeField] RectTransform simulationZone;
-    [SerializeField] BrushStrokeSpawnerController brushController;
-    [SerializeField] CombatPresentationDriver presentationDriver;
-
-    [Header("Brush / audio")]
-    [Tooltip("Camera for brush picking. Combat draw camera is on CombatPresentationDriver.")]
+    [Tooltip("Camera for simulation-zone pointer mapping (registered on ISimulationZoneService).")]
     [SerializeField] Camera renderCamera;
-    [Tooltip("Optional. Created under this object when unset.")]
-    [SerializeField] GameAudioManager gameAudioManager;
 
     [Header("Player")]
     [SerializeField] float playerMoveSpeed = 100f;
@@ -35,28 +26,16 @@ public class LabbingScene : MonoBehaviour
     [Tooltip("Default C so Space can toggle play/pause on Simulation Debug Controller.")]
     public KeyCode castInputKey = KeyCode.C;
     public SpellModificationsTestData castModifications;
-    [SerializeField] bool debugLogItemEval;
 
     [Header("Debug")]
     [SerializeField] SimulationDebugController debugController;
-    [SerializeField] bool debugLogTiming;
 
     /// <summary>Session-owned config (wallet, inventory); destroyed on teardown.</summary>
     GameConfig _runtimeConfig;
     CombatSimulationController _combatSimulation;
 
-    public GameSimulation Simulation => _combatSimulation?.Simulation;
-    public IReadOnlyList<ItemEvalResult> LastItemResults => _combatSimulation?.LastItemResults;
-
-    void Awake()
+    void Start()
     {
-        if (gameAudioManager == null)
-        {
-            var audioRoot = new GameObject("GameAudioManager");
-            audioRoot.transform.SetParent(transform, false);
-            gameAudioManager = audioRoot.AddComponent<GameAudioManager>();
-        }
-
         CreateRuntimeSession();
     }
 
@@ -89,22 +68,16 @@ public class LabbingScene : MonoBehaviour
         _runtimeConfig = GameConfig.CreateRuntimeCopy(gameConfig);
         PlayerInventory inventory = _runtimeConfig.playerInventory;
         inventory.SpellCollection.ClearRuntimeSpellTracking();
-        RegisterSessionServices();
 
         _combatSimulation = new CombatSimulationController(new CombatSimulationControllerConfig
         {
             RuntimeGameConfig = _runtimeConfig,
             PlayerMoveSpeed = playerMoveSpeed,
             CastModifications = castModifications,
-            DebugLogTiming = debugLogTiming,
-            DebugLogItemEval = debugLogItemEval,
             DebugController = debugController
         });
 
-        presentationDriver.Bind(_combatSimulation.Simulation.AttackEntityManager);
-
-        if (brushController != null)
-            brushController.Bind(simulationZone, renderCamera, _combatSimulation.Simulation.Spawner);
+        RegisterSessionServices();
 
         SharedGameEventBus.Bus.Raise(new RoundEnterEvent
         {
@@ -134,6 +107,10 @@ public class LabbingScene : MonoBehaviour
             new RepositoryShopService(
                 new ShopRepository(_runtimeConfig.shopConfig),
                 inventory));
+        ServiceLocator.Current.RegisterInstance<ISimulationZoneService>(
+            new SimulationZoneService(simulationZone, renderCamera));
+        ServiceLocator.Current.RegisterInstance(_combatSimulation);
+        ServicesRegisteredEvent.Raise();
     }
 
     void OnDestroy()
@@ -145,9 +122,6 @@ public class LabbingScene : MonoBehaviour
     {
         if (simulationZone == null)
             return;
-
-        Transform zone = simulationZone.transform;
-        brushController?.DrawGizmos(zone);
-        _combatSimulation?.DrawGizmos(zone);
+        _combatSimulation?.DrawGizmos(simulationZone);
     }
 }

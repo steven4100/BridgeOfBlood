@@ -1,57 +1,59 @@
 using BridgeOfBlood.Data.Shared;
+using EZServiceLocation;
 using UnityEngine;
 
 /// <summary>
 /// Scene-bound owner of combat presentation: materials/atlas serialized on this component,
-/// camera/zone/player renderer, and draw/update driven by <see cref="SimulationCompleteEvent"/>.
-/// Simulation never references this type — wire in the scene (or a prefab) and call <see cref="Bind"/> after the
-/// combat simulation is constructed.
+/// player renderer, and draw/update driven by <see cref="SimulationCompleteEvent"/>.
+/// Zone/camera and attack-entity debug bind from <see cref="ServiceLocator"/> on
+/// <see cref="ServicesRegisteredEvent"/> — simulation never references this type.
 /// </summary>
 [DefaultExecutionOrder(-100)]
 public sealed class CombatPresentationDriver : MonoBehaviour
 {
 	[SerializeField] CombatPresentationResources resources = new CombatPresentationResources();
-	[SerializeField] Camera renderCamera;
-	[SerializeField] RectTransform simulationZone;
 	[SerializeField] PlayerRenderer playerRenderer;
 
 	CombatPresentationLayer _layer;
+	ISimulationZoneService _zoneService;
 
 	void OnEnable()
 	{
 		EnsureLayer();
 		SharedGameEventBus.Bus.SubscribeTo<SimulationCompleteEvent>(OnSimulationComplete);
+		ServicesRegisteredEvent.SubscribeAndCatchUp(OnServicesRegistered);
 	}
 
 	void OnDisable()
 	{
 		SharedGameEventBus.Bus.UnsubscribeFrom<SimulationCompleteEvent>(OnSimulationComplete);
+		ServicesRegisteredEvent.Unsubscribe(OnServicesRegistered);
 		_layer?.Dispose();
 		_layer = null;
+		_zoneService = null;
 	}
 
-	/// <summary>
-	/// Wires attack-entity debug gizmos to the live manager (presentation → simulation).
-	/// Call after constructing <see cref="CombatSimulationController"/> / on lab reset.
-	/// </summary>
-	public void Bind(AttackEntityManager attackEntityManager)
+	void OnServicesRegistered(ref ServicesRegisteredEvent _)
 	{
 		EnsureLayer();
-		_layer.BindAttackEntities(attackEntityManager);
+		_zoneService = ServiceLocator.Current.GetService<ISimulationZoneService>();
+		var combat = ServiceLocator.Current.GetService<CombatSimulationController>();
+		_layer.BindAttackEntities(combat.Simulation.AttackEntityManager);
 	}
 
 	void OnSimulationComplete(ref SimulationCompleteEvent @event)
 	{
 		EnsureLayer();
-		Camera cam = renderCamera != null ? renderCamera : Camera.main;
-		_layer.HandleFrameComplete(ref @event, simulationZone, cam);
+		RectTransform zone = _zoneService.Zone;
+		Camera cam = _zoneService.Camera != null ? _zoneService.Camera : Camera.main;
+		_layer.HandleFrameComplete(ref @event, zone, cam);
 	}
 
 	void OnDrawGizmos()
 	{
-		if (simulationZone == null || _layer == null)
+		if (_zoneService?.Zone == null || _layer == null)
 			return;
-		_layer.DrawGizmos(simulationZone);
+		_layer.DrawGizmos(_zoneService.Zone);
 	}
 
 	void EnsureLayer()

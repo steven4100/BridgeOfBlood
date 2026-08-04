@@ -161,7 +161,6 @@ public static class TickDamagePipeline
         {
             position = position,
             damageDealt = d,
-            enemyIndex = enemyIndex,
             enemyEntityId = enemyId,
             spellId = spellId,
             spellInvocationId = spellInvocationId,

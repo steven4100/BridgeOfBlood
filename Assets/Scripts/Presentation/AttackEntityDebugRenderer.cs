@@ -41,6 +41,9 @@ public class AttackEntityDebugRenderer : IDebugDrawable
 			for (int i = 0; i < entities.Length; i++)
 			{
 				AttackEntity e = entities[i];
+				if (!e.entityId.IsValid)
+					continue;
+
 				float scale = e.currentHitBoxScale;
 
 				Mesh mesh;
@@ -92,6 +95,9 @@ public class AttackEntityDebugRenderer : IDebugDrawable
 			for (int i = 0; i < entities.Length; i++)
 			{
 				AttackEntity e = entities[i];
+				if (!e.entityId.IsValid)
+					continue;
+
 				float scale = e.currentHitBoxScale;
 
 				Vector3 worldPos = transform.TransformPoint(new Vector3(e.position.x, e.position.y, 0f));

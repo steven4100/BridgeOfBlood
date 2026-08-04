@@ -71,11 +71,7 @@ public class SpellCollection : ISpellInventoryService
     public void ClearRuntimeSpellTracking()
     {
         for (int i = 0; i < _runtimeSpells.Count; i++)
-        {
-            RuntimeSpell s = _runtimeSpells[i];
-            s.invocationCount = 0;
-            s.roundTimeInvokedAt = 0;
-        }
+            _runtimeSpells[i].ResetTracking();
     }
 
     IReadOnlyList<RuntimeSpell> ISpellInventoryService.GetSpells()

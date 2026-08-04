@@ -304,15 +304,17 @@ public partial class GameSimulation
 
     private void StepAttackTickAndMove()
     {
+        if (_attackEntityManager.EntityCount == 0)
+            return;
+
         var attackEntities = _attackEntityManager.GetEntities();
-        if (attackEntities.Length > 0)
-        {
-            _attackTimeSystem.Tick(attackEntities, _frameDeltaTime);
-            _attackMovementSystem.MoveEntities(
-                _attackEntityManager.GetEntities(),
-                _attackEntityManager.GetMotionPolicies(),
-                _frameDeltaTime);
-        }
+        var alive = _attackEntityManager.GetAlive();
+        _attackTimeSystem.Tick(attackEntities, alive, _frameDeltaTime);
+        _attackMovementSystem.MoveEntities(
+            attackEntities,
+            alive,
+            _attackEntityManager.GetMotionPolicies(),
+            _frameDeltaTime);
     }
 
     private void StepCollision()
@@ -322,6 +324,7 @@ public partial class GameSimulation
             _enemyManager.ValidateGridForCurrentEnemies();
             _collisionSystem.Detect(
                 _attackEntityManager.GetEntities(),
+                _attackEntityManager.GetAlive(),
                 _enemyManager.GetBuffers(),
                 _enemyManager.Grid,
                 _rawCollisionEvents);
@@ -431,10 +434,11 @@ public partial class GameSimulation
 
         _attackEntityManager.ValidateParallelLists();
         NativeArray<AttackEntity> entities = _attackEntityManager.GetEntities();
-        _attackEntityCullingSystem.CollectRemovals(entities, PlayfieldRect, _attackRemovalEvents);
-        _pierceSystem.CollectRemovals(entities, _attackEntityManager.GetPiercePolicies(), _attackRemovalEvents);
-        _expirationSystem.CollectRemovals(entities, _attackEntityManager.GetExpirationPolicies(), _attackRemovalEvents);
-        _chainSystem.CollectRemovals(entities, _attackEntityManager.GetChainPolicies(), _attackRemovalEvents);
+        NativeArray<byte> alive = _attackEntityManager.GetAlive();
+        _attackEntityCullingSystem.CollectRemovals(entities, alive, PlayfieldRect, _attackRemovalEvents);
+        _pierceSystem.CollectRemovals(entities, alive, _attackEntityManager.GetPiercePolicies(), _attackRemovalEvents);
+        _expirationSystem.CollectRemovals(entities, alive, _attackEntityManager.GetExpirationPolicies(), _attackRemovalEvents);
+        _chainSystem.CollectRemovals(entities, alive, _attackEntityManager.GetChainPolicies(), _attackRemovalEvents);
         _attackEntityManager.ApplyRemovals(_attackRemovalEvents);
         _attackRemovalEvents.Clear();
     }

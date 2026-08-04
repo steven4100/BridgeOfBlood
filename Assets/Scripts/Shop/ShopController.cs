@@ -1,3 +1,4 @@
+using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Shop;
 using BridgeOfBlood.Data.Spells;
 using EZServiceLocation;
@@ -26,32 +27,39 @@ public class ShopController : MonoBehaviour
 
     private PurchasableSpellTargetItemUI focusedSpellTargetRow;
 
-    private void Awake()
-    {
-        shopService = ServiceLocator.Current.GetService<IShopService>();
-        IInventoryService inventoryService = ServiceLocator.Current.GetService<IInventoryService>();
-        IWalletService walletService = ServiceLocator.Current.GetService<IWalletService>();
-        ISpellInventoryService spellInventorySvc = ServiceLocator.Current.GetService<ISpellInventoryService>();
-        purchaseContext = new PurchaseContext(inventoryService, walletService, spellInventorySvc);
-    }
-
     private void OnEnable()
     {
-        shopService.ShopRefreshed += OnShopRefreshed;
         spellInventoryController.SpellTileClicked += OnSpellTileClicked;
         spellInventoryController.SpellStripRendered += OnSpellStripRendered;
+        if (shopService != null)
+            shopService.ShopRefreshed += OnShopRefreshed;
+
+        // Last: a replayed ServicesRegisteredEvent rebinds shopService, so the wiring above must already be in place.
+        ServicesRegisteredEvent.SubscribeAndCatchUp(OnServicesRegistered);
     }
 
     private void OnDisable()
     {
-        shopService.ShopRefreshed -= OnShopRefreshed;
+        ServicesRegisteredEvent.Unsubscribe(OnServicesRegistered);
+        if (shopService != null)
+            shopService.ShopRefreshed -= OnShopRefreshed;
         spellInventoryController.SpellTileClicked -= OnSpellTileClicked;
         spellInventoryController.SpellStripRendered -= OnSpellStripRendered;
         ClearSpellTargetingUi();
     }
 
-    private void Start()
+    void OnServicesRegistered(ref ServicesRegisteredEvent _)
     {
+        if (shopService != null)
+            shopService.ShopRefreshed -= OnShopRefreshed;
+
+        shopService = ServiceLocator.Current.GetService<IShopService>();
+        IInventoryService inventoryService = ServiceLocator.Current.GetService<IInventoryService>();
+        IWalletService walletService = ServiceLocator.Current.GetService<IWalletService>();
+        ISpellInventoryService spellInventorySvc = ServiceLocator.Current.GetService<ISpellInventoryService>();
+        purchaseContext = new PurchaseContext(inventoryService, walletService, spellInventorySvc);
+
+        shopService.ShopRefreshed += OnShopRefreshed;
         ClearItems();
         SpawnItems();
     }

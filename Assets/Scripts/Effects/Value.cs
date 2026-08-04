@@ -84,7 +84,7 @@ namespace BridgeOfBlood.Effects
 				var spell = spells[i];
 				var def = spell.Definition;
 				if (def != null && (def.attributeMask & mask) != 0)
-					count += spell.invocationCount;
+					count += spell.InvocationCount;
 			}
 			return count;
 		}

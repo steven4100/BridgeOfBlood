@@ -20,7 +20,7 @@ public struct BleedTrackAndApplyJob : IJob
         for (int i = 0; i < HitEvents.Length; i++)
         {
             DamageEvent hit = HitEvents[i];
-            BleedApplierRuntime applier = Appliers[hit.attackEntityIndex];
+            BleedApplierRuntime applier = Appliers[hit.attackEntityId.Index];
             if (!applier.isActive)
                 continue;
 
@@ -34,7 +34,7 @@ public struct BleedTrackAndApplyJob : IJob
             if (!proc)
                 continue;
 
-            int ei = hit.enemyIndex;
+            int ei = hit.enemyEntityId.Index;
             EntityId entityId = hit.enemyEntityId;
             StatusAilmentFlag flags = Status[ei];
             bool alreadyHad = (flags & StatusAilmentFlag.Bleeding) != 0;
@@ -62,7 +62,6 @@ public struct BleedTrackAndApplyJob : IJob
                 {
                     spellId = hit.spellId,
                     spellInvocationId = hit.spellInvocationId,
-                    enemyIndex = ei,
                     enemyEntityId = entityId,
                     position = hit.position,
                     ailmentFlag = StatusAilmentFlag.Bleeding,

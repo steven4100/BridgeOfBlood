@@ -8,11 +8,12 @@ using UnityEngine;
 public class AttackEntityCullingSystem
 {
     /// <summary>
-    /// For each attack entity whose position is outside the given bounds,
+    /// For each live attack entity whose position is outside the given bounds,
     /// appends a removal event with reason CulledOffScreen.
     /// </summary>
     public void CollectRemovals(
         NativeArray<AttackEntity> attackEntities,
+        NativeArray<byte> alive,
         Rect bounds,
         NativeList<AttackEntityRemovalEvent> removalEvents)
     {
@@ -23,6 +24,9 @@ public class AttackEntityCullingSystem
 
         for (int i = 0; i < attackEntities.Length; i++)
         {
+            if (alive[i] == 0)
+                continue;
+
             AttackEntity e = attackEntities[i];
             float x = e.position.x;
             float y = e.position.y;

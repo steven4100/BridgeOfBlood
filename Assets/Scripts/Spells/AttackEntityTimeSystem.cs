@@ -10,10 +10,14 @@ using Unity.Jobs;
 public struct TickAttackEntityTimeJob : IJobParallelFor
 {
     public NativeArray<AttackEntity> Entities;
+    [ReadOnly] public NativeArray<byte> Alive;
     public float DeltaTime;
 
     public void Execute(int index)
     {
+        if (Alive[index] == 0)
+            return;
+
         AttackEntity e = Entities[index];
 
         e.framesAlive++;
@@ -28,13 +32,14 @@ public struct TickAttackEntityTimeJob : IJobParallelFor
 
 public class AttackEntityTimeSystem
 {
-    public void Tick(NativeArray<AttackEntity> entities, float deltaTime)
+    public void Tick(NativeArray<AttackEntity> entities, NativeArray<byte> alive, float deltaTime)
     {
         if (entities.Length == 0) return;
 
         var job = new TickAttackEntityTimeJob
         {
             Entities = entities,
+            Alive = alive,
             DeltaTime = deltaTime
         };
 

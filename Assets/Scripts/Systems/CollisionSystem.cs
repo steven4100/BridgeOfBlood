@@ -9,10 +9,8 @@ using Unity.Mathematics;
 /// </summary>
 public struct CollisionEvent
 {
-    public int attackEntityId;
-    public int attackEntityIndex;
+    public EntityId attackEntityId;
     public EntityId enemyEntityId;
-    public int enemyIndex;
     public float2 enemyPosition;
     public float2 attackEntityPosition;
 }
@@ -35,6 +33,7 @@ public class CollisionSystem
 
     public void Detect(
         NativeArray<AttackEntity> attackEntities,
+        NativeArray<byte> attackAlive,
         EnemyBuffers enemies,
         GridSpatialPartition grid,
         NativeList<CollisionEvent> results)
@@ -43,6 +42,9 @@ public class CollisionSystem
 
         for (int ai = 0; ai < attackEntities.Length; ai++)
         {
+            if (attackAlive[ai] == 0)
+                continue;
+
             AttackEntity atk = attackEntities[ai];
             float queryRadius = HitBoxQueryRadius(atk);
 
@@ -63,9 +65,7 @@ public class CollisionSystem
                 results.Add(new CollisionEvent
                 {
                     attackEntityId = atk.entityId,
-                    attackEntityIndex = ai,
                     enemyEntityId = enemies.GetEntityId(ei),
-                    enemyIndex = ei,
                     enemyPosition = enemyPos,
                     attackEntityPosition = atk.position
                 });

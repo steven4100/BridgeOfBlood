@@ -28,7 +28,8 @@ public class TestSceneManager : MonoBehaviour
     public RectTransform simulationZone;
 
     [Header("Presentation")]
-    [SerializeField] CombatPresentationDriver presentationDriver;
+    [Tooltip("Camera for simulation-zone pointer mapping (registered on ISimulationZoneService).")]
+    [SerializeField] Camera renderCamera;
     [Tooltip("Scene-bound combat audio component. Materials/atlas live on CombatPresentationDriver.")]
     [SerializeField] GameAudioManager gameAudioManager;
 
@@ -42,7 +43,6 @@ public class TestSceneManager : MonoBehaviour
     public SpellModificationsTestData castModifications;
 
     [Header("Debug")]
-    public bool debugLogTiming;
     public SimulationDebugController debugController;
 
     CombatSimulationController _combatSimulation;
@@ -80,11 +80,10 @@ public class TestSceneManager : MonoBehaviour
             RuntimeGameConfig = _runtimeGameConfig,
             PlayerMoveSpeed = playerMoveSpeed,
             CastModifications = castModifications,
-            DebugLogTiming = debugLogTiming,
             DebugController = debugController
         });
-
-        presentationDriver.Bind(_combatSimulation.Simulation.AttackEntityManager);
+        ServiceLocator.Current.RegisterInstance(_combatSimulation);
+        ServicesRegisteredEvent.Raise();
 
         var sessionContext = new SessionFlowContext(
            _runtimeGameConfig,
@@ -106,7 +105,14 @@ public class TestSceneManager : MonoBehaviour
         _sessionFlow.AddPhase(_roundController, SessionState.Round);
         _sessionFlow.AddPhase(new PregameSessionPhase(_sessionFlow), SessionState.Pregame);
         _sessionFlow.AddPhase(new ShopSessionPhase(_sessionFlow), SessionState.Shop);
-        SessionFlow.AddPhase(new LoseSessionPhase(_sessionFlow, CreateRuntimeGameConfigCopy), SessionState.Lose);
+        SessionFlow.AddPhase(new LoseSessionPhase(_sessionFlow, RecreateRuntimeGameConfigAndNotify), SessionState.Lose);
+    }
+
+    GameConfig RecreateRuntimeGameConfigAndNotify()
+    {
+        GameConfig config = CreateRuntimeGameConfigCopy();
+        ServicesRegisteredEvent.Raise();
+        return config;
     }
 
     void Update()
@@ -130,6 +136,8 @@ public class TestSceneManager : MonoBehaviour
             new RepositoryShopService(
                 new ShopRepository(_runtimeGameConfig.shopConfig),
                 _runtimeGameConfig.playerInventory));
+        ServiceLocator.Current.RegisterInstance<ISimulationZoneService>(
+            new SimulationZoneService(simulationZone, renderCamera));
         return _runtimeGameConfig;
     }
 

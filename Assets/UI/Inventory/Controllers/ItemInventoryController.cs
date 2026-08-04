@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
 using BridgeOfBlood.Data.Inventory;
+using BridgeOfBlood.Data.Shared;
 using EZServiceLocation;
 using UnityEngine;
 
 /// <summary>
 /// Renders passive <see cref="Item"/> rows as a horizontal strip and commits drag-reorder to the
 /// owning <see cref="IInventoryService"/> on release. Binds from <see cref="ServiceLocator.Current"/>
-/// (<see cref="Initialize()"/> / <c>Start</c>) after installers or session code register
-/// <see cref="IInventoryService"/>; explicit <see cref="Initialize(IInventoryService)"/> remains for tests.
+/// on <see cref="ServicesRegisteredEvent"/>; explicit <see cref="Initialize(IInventoryService)"/> remains for tests.
 /// </summary>
 [DefaultExecutionOrder(50)]
 public class ItemInventoryController : MonoBehaviour
@@ -55,7 +55,17 @@ public class ItemInventoryController : MonoBehaviour
         OnItemsUpdated();
     }
 
-    private void Start()
+    void OnEnable()
+    {
+        ServicesRegisteredEvent.SubscribeAndCatchUp(OnServicesRegistered);
+    }
+
+    void OnDisable()
+    {
+        ServicesRegisteredEvent.Unsubscribe(OnServicesRegistered);
+    }
+
+    void OnServicesRegistered(ref ServicesRegisteredEvent _)
     {
         Initialize();
     }

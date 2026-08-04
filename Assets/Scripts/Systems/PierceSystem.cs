@@ -7,16 +7,20 @@ using Unity.Collections;
 public class PierceSystem
 {
     /// <summary>
-    /// For each attack entity where enemiesHit >= piercePolicy.maxEnemiesHit (and maxEnemiesHit > 0),
+    /// For each live attack entity where enemiesHit >= piercePolicy.maxEnemiesHit (and maxEnemiesHit > 0),
     /// appends a removal event. Call after damage has been applied (enemiesHit is current).
     /// </summary>
     public void CollectRemovals(
         NativeArray<AttackEntity> attackEntities,
+        NativeArray<byte> alive,
         NativeArray<PiercePolicyRuntime> piercePolicies,
         NativeList<AttackEntityRemovalEvent> removalEvents)
     {
         for (int i = 0; i < attackEntities.Length; i++)
         {
+            if (alive[i] == 0)
+                continue;
+
             AttackEntity e = attackEntities[i];
             PiercePolicyRuntime pierce = piercePolicies[i];
             if (!pierce.isActive) continue;

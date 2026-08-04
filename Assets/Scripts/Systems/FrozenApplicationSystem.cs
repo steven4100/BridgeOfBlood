@@ -22,7 +22,7 @@ public struct FrozenTrackAndApplyJob : IJob
         for (int i = 0; i < HitEvents.Length; i++)
         {
             DamageEvent hit = HitEvents[i];
-            FrozenApplierRuntime applier = Appliers[hit.attackEntityIndex];
+            FrozenApplierRuntime applier = Appliers[hit.attackEntityId.Index];
             if (!applier.isActive)
                 continue;
 
@@ -36,7 +36,7 @@ public struct FrozenTrackAndApplyJob : IJob
             if (!proc)
                 continue;
 
-            int ei = hit.enemyIndex;
+            int ei = hit.enemyEntityId.Index;
             EntityId entityId = hit.enemyEntityId;
             StatusAilmentFlag flags = Status[ei];
             bool alreadyHad = (flags & StatusAilmentFlag.Frozen) != 0;
@@ -59,7 +59,6 @@ public struct FrozenTrackAndApplyJob : IJob
                 {
                     spellId = hit.spellId,
                     spellInvocationId = hit.spellInvocationId,
-                    enemyIndex = ei,
                     enemyEntityId = entityId,
                     position = hit.position,
                     ailmentFlag = StatusAilmentFlag.Frozen,

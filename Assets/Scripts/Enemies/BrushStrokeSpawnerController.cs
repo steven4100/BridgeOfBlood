@@ -1,16 +1,14 @@
+using BridgeOfBlood.Data.Shared;
+using EZServiceLocation;
 using UnityEngine;
 
 /// <summary>
 /// Drives <see cref="BrushStrokeEnemySpawner"/> from mouse input, adjusts brush size, and draws the brush preview.
-/// Call <see cref="Bind"/> with the simulation zone, camera, and the simulation-owned <see cref="IEnemySpawner"/>.
+/// Binds zone and the simulation-owned brush spawner from <see cref="ServiceLocator"/> on <see cref="ServicesRegisteredEvent"/>.
 /// </summary>
 [DefaultExecutionOrder(-100)]
 public class BrushStrokeSpawnerController : MonoBehaviour, IDebugDrawable
 {
-    [SerializeField] RectTransform simulationZone;
-    [SerializeField] Camera renderCamera;
-    BrushStrokeEnemySpawner brushSpawner;
-
     [Header("Brush size")]
     [SerializeField] float minBrushRadius = 2f;
     [SerializeField] float maxBrushRadius = 80f;
@@ -27,25 +25,36 @@ public class BrushStrokeSpawnerController : MonoBehaviour, IDebugDrawable
     [SerializeField] Color brushFillColor = new Color(1f, 0.35f, 0.2f, 0.12f);
     [SerializeField] int brushCircleSegments = 48;
 
+    ISimulationZoneService _zoneService;
+    BrushStrokeEnemySpawner _brushSpawner;
     bool _hasHover;
     Vector2 _hoverLocal;
     bool _isPainting;
 
-    public BrushStrokeEnemySpawner BrushSpawner => brushSpawner;
+    public BrushStrokeEnemySpawner BrushSpawner => _brushSpawner;
 
-    /// <summary>
-    /// Wires scene deps and activates only when <paramref name="spawner"/> is a <see cref="BrushStrokeEnemySpawner"/>.
-    /// </summary>
-    public void Bind(RectTransform zone, Camera camera, IEnemySpawner spawner)
+    void OnEnable()
     {
-        simulationZone = zone;
-        renderCamera = camera;
-        brushSpawner = spawner as BrushStrokeEnemySpawner;
+        ServicesRegisteredEvent.SubscribeAndCatchUp(OnServicesRegistered);
+    }
+
+    void OnDisable()
+    {
+        ServicesRegisteredEvent.Unsubscribe(OnServicesRegistered);
+        _isPainting = false;
+        _hasHover = false;
+    }
+
+    void OnServicesRegistered(ref ServicesRegisteredEvent _)
+    {
+        _zoneService = ServiceLocator.Current.GetService<ISimulationZoneService>();
+        var combat = ServiceLocator.Current.GetService<CombatSimulationController>();
+        _brushSpawner = combat.Simulation.Spawner as BrushStrokeEnemySpawner;
     }
 
     void Update()
     {
-        if (brushSpawner == null || simulationZone == null)
+        if (_brushSpawner == null || _zoneService == null || _zoneService.Zone == null)
             return;
 
         HandleBrushSizeInput();
@@ -56,7 +65,7 @@ public class BrushStrokeSpawnerController : MonoBehaviour, IDebugDrawable
 
     void OnGUI()
     {
-        if (brushSpawner == null)
+        if (_brushSpawner == null)
             return;
 
         const int pad = 10;
@@ -64,7 +73,7 @@ public class BrushStrokeSpawnerController : MonoBehaviour, IDebugDrawable
         GUI.Box(rect, GUIContent.none);
         GUI.Label(
             new Rect(rect.x + 8f, rect.y + 6f, rect.width - 16f, 20f),
-            $"Brush radius: {brushSpawner.BrushRadius:0.#}");
+            $"Brush radius: {_brushSpawner.BrushRadius:0.#}");
         GUI.Label(
             new Rect(rect.x + 8f, rect.y + 26f, rect.width - 16f, 20f),
             "[ / ] or scroll — size   |   LMB drag — paint");
@@ -74,36 +83,38 @@ public class BrushStrokeSpawnerController : MonoBehaviour, IDebugDrawable
     {
         float step = brushRadiusStep;
         if (Input.GetKey(decreaseBrushKey))
-            brushSpawner.BrushRadius -= step * Time.deltaTime * 10f;
+            _brushSpawner.BrushRadius -= step * Time.deltaTime * 10f;
         if (Input.GetKey(increaseBrushKey))
-            brushSpawner.BrushRadius += step * Time.deltaTime * 10f;
+            _brushSpawner.BrushRadius += step * Time.deltaTime * 10f;
 
         if (Input.GetKeyDown(decreaseBrushKey))
-            brushSpawner.BrushRadius -= step;
+            _brushSpawner.BrushRadius -= step;
         if (Input.GetKeyDown(increaseBrushKey))
-            brushSpawner.BrushRadius += step;
+            _brushSpawner.BrushRadius += step;
 
         float scroll = Input.mouseScrollDelta.y;
         if (Mathf.Abs(scroll) > 0.01f)
-            brushSpawner.BrushRadius += scroll * scrollRadiusStep;
+            _brushSpawner.BrushRadius += scroll * scrollRadiusStep;
 
-        brushSpawner.BrushRadius = Mathf.Clamp(brushSpawner.BrushRadius, minBrushRadius, maxBrushRadius);
+        _brushSpawner.BrushRadius = Mathf.Clamp(_brushSpawner.BrushRadius, minBrushRadius, maxBrushRadius);
     }
 
     void UpdateHover()
     {
+        RectTransform zone = _zoneService.Zone;
         _hasHover = TryGetPlayfieldLocal(Input.mousePosition, out _hoverLocal)
-            && simulationZone.rect.Contains(_hoverLocal);
+            && zone.rect.Contains(_hoverLocal);
     }
 
     void HandlePaintInput()
     {
+        RectTransform zone = _zoneService.Zone;
         if (!TryGetPlayfieldLocal(Input.mousePosition, out Vector2 local)
-            || !simulationZone.rect.Contains(local))
+            || !zone.rect.Contains(local))
         {
             if (_isPainting)
             {
-                brushSpawner.EndStroke();
+                _brushSpawner.EndStroke();
                 _isPainting = false;
             }
             return;
@@ -111,30 +122,37 @@ public class BrushStrokeSpawnerController : MonoBehaviour, IDebugDrawable
 
         if (Input.GetMouseButtonDown(paintMouseButton))
         {
-            brushSpawner.BeginStroke();
-            brushSpawner.TryAddStrokeSample(local);
+            _brushSpawner.BeginStroke();
+            _brushSpawner.TryAddStrokeSample(local);
             _isPainting = true;
         }
         else if (Input.GetMouseButton(paintMouseButton) && _isPainting)
         {
-            brushSpawner.TryAddStrokeSample(local);
+            _brushSpawner.TryAddStrokeSample(local);
         }
         else if (Input.GetMouseButtonUp(paintMouseButton) && _isPainting)
         {
-            brushSpawner.EndStroke();
+            _brushSpawner.EndStroke();
             _isPainting = false;
         }
     }
 
     bool TryGetPlayfieldLocal(Vector2 screenPosition, out Vector2 localPoint) =>
-        SimulationZonePointer.TryGetLocalPoint(simulationZone, renderCamera, screenPosition, out localPoint);
+        SimulationZonePointer.TryGetLocalPoint(_zoneService.Zone, _zoneService.Camera, screenPosition, out localPoint);
+
+    void OnDrawGizmos()
+    {
+        if (_zoneService?.Zone == null)
+            return;
+        DrawGizmos(_zoneService.Zone.transform);
+    }
 
     public void DrawGizmos(Transform zoneTransform)
     {
-        if (brushSpawner == null || simulationZone == null || !_hasHover)
+        if (_brushSpawner == null || _zoneService?.Zone == null || !_hasHover)
             return;
 
-        DrawBrushCircle(zoneTransform, _hoverLocal, brushSpawner.BrushRadius);
+        DrawBrushCircle(zoneTransform, _hoverLocal, _brushSpawner.BrushRadius);
     }
 
     void DrawBrushCircle(Transform zoneTransform, Vector2 localCenter, float radius)
@@ -152,12 +170,13 @@ public class BrushStrokeSpawnerController : MonoBehaviour, IDebugDrawable
 
     void DrawRuntimeBrushPreview()
     {
-        if (!_hasHover || simulationZone == null)
+        RectTransform zone = _zoneService.Zone;
+        if (!_hasHover || zone == null)
             return;
 
-        Transform t = simulationZone.transform;
+        Transform t = zone.transform;
         Vector3 center = t.TransformPoint(new Vector3(_hoverLocal.x, _hoverLocal.y, 0f));
-        float radius = brushSpawner.BrushRadius * t.lossyScale.x;
+        float radius = _brushSpawner.BrushRadius * t.lossyScale.x;
         DrawWorldCircle(center, radius, brushCircleSegments, brushOutlineColor);
     }
 

@@ -21,6 +21,10 @@ namespace BridgeOfBlood.Data.Spells
 
 		public Sprite icon;
 
+		[Header("Presentation")]
+		[Tooltip("Diegetic renderer instantiated per loop slot by SpellRenderManager. Leave empty for spells with no world-space representation.")]
+		public SpellRenderer rendererPrefab;
+
 		float IRandomElement.Weight
 		{
 			get => ((IRandomElement)shopItemDefinition).Weight;

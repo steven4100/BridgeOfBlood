@@ -34,5 +34,19 @@ namespace BridgeOfBlood.Data.Spells
 			}
 			return new ResolvedModifier { flat = flat, percentIncreased = pct, moreCombined = more };
 		}
+
+		/// <summary>
+		/// Applies Projectiles modifications to an emitter's base count. Shared by the emission handler (spawn)
+		/// and the spell forecast (preview) so both report the same number.
+		/// </summary>
+		public static int ResolveEmitCount(SpellModifications mods, int baseCount, SpellAttributeMask mask)
+		{
+			if (mods != null)
+			{
+				ResolvedModifier resolved = Resolve(mods, SpellModificationProperty.Projectiles, mask);
+				baseCount = Mathf.Max(1, (int)(baseCount * resolved.Multiplier) + (int)resolved.flat);
+			}
+			return baseCount < 1 ? 1 : baseCount;
+		}
 	}
 }

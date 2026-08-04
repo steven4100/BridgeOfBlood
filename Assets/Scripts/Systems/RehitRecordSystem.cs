@@ -15,7 +15,7 @@ public static class RehitRecordSystem
         for (int i = 0; i < hitEvents.Length; i++)
         {
             HitEvent hit = hitEvents[i];
-            int ai = hit.attackEntityIndex;
+            int ai = hit.attackEntityId.Index;
             if (ai < 0 || ai >= rehitPolicies.Length) continue;
 
             RehitPolicyRuntime rehit = rehitPolicies[ai];

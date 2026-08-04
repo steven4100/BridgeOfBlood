@@ -9,16 +9,20 @@ using Unity.Collections;
 public class ExpirationSystem
 {
     /// <summary>
-    /// For each attack entity that has exceeded time or distance limits,
+    /// For each live attack entity that has exceeded time or distance limits,
     /// appends a removal event. Call after movement and time have been ticked.
     /// </summary>
     public void CollectRemovals(
         NativeArray<AttackEntity> attackEntities,
+        NativeArray<byte> alive,
         NativeArray<ExpirationPolicyRuntime> expirationPolicies,
         NativeList<AttackEntityRemovalEvent> removalEvents)
     {
         for (int i = 0; i < attackEntities.Length; i++)
         {
+            if (alive[i] == 0)
+                continue;
+
             AttackEntity e = attackEntities[i];
             ExpirationPolicyRuntime exp = expirationPolicies[i];
             if (!exp.isActive) continue;

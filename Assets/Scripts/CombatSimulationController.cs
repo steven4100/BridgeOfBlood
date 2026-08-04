@@ -1,12 +1,10 @@
 using System.Collections.Generic;
-using System.Diagnostics;
 using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
 using BridgeOfBlood.Effects;
 using Unity.Mathematics;
 using UnityEngine;
-using Debug = UnityEngine.Debug;
 
 /// <summary>
 /// Configuration for <see cref="CombatSimulationController"/> so callers do not pass MonoBehaviour fields ad hoc.
@@ -16,8 +14,6 @@ public sealed class CombatSimulationControllerConfig
     public GameConfig RuntimeGameConfig;
     public float PlayerMoveSpeed;
     public SpellModificationsTestData CastModifications;
-    public bool DebugLogTiming;
-    public bool DebugLogItemEval;
     public SimulationDebugController DebugController;
 }
 
@@ -108,6 +104,7 @@ public sealed class CombatSimulationController
         _player.Update(deltaTime, playfield);
 
         _emissionHandler.SetFrameModifications(mods);
+        _loopedSpellCaster.EvaluateForecasts(mods);
 
         var sim = _simulation.State;
         SpellCastResult castResult = _loopedSpellCaster.AttemptToCastNextSpell(
@@ -130,8 +127,6 @@ public sealed class CombatSimulationController
             _simulation.AdvanceTime(dt);
         }
 
-        Stopwatch sw = _config.DebugLogTiming ? new Stopwatch() : null;
-
         CombatReactionContractBuilder.Build(
             _config.RuntimeGameConfig.playerInventory,
             mods,
@@ -144,12 +139,7 @@ public sealed class CombatSimulationController
             for (int i = 0; i < _simulation.StepCount; i++)
             {
                 if (!hasController || debugCtrl.ShouldRunPhase(i, _simulation.GetStepName(i)))
-                {
-                    sw?.Restart();
                     _simulation.ExecuteStep(i);
-                    if (sw != null && _config.DebugLogTiming)
-                        Debug.Log($"[CombatSimulationController] {_simulation.GetStepName(i)}: {sw.ElapsedMilliseconds}ms");
-                }
             }
         }
         finally
@@ -201,8 +191,6 @@ public sealed class CombatSimulationController
             if (item == null) continue;
             bool applied = item.Apply(_effectContext);
             _lastItemResults.Add(new ItemEvalResult { itemName = item.name, applied = applied });
-            if (_config.DebugLogItemEval && applied)
-                Debug.Log($"[CombatSimulationController] Item applied: {item.name}");
         }
     }
 

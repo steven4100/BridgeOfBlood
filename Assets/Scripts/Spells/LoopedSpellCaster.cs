@@ -24,6 +24,10 @@ public struct SpellCastResult
 /// may only be cast after the current spell's castCompletionDuration has elapsed.
 /// When it's time to cast, uses its SpellInvoker to run the spell animation.
 /// Plain class — call AttemptToCastNextSpell each frame; call Update each frame to advance invoked casts.
+///
+/// Also the sole writer of <see cref="RuntimeSpell"/> forecast/cast state: call
+/// <see cref="EvaluateForecasts"/> each frame after item evaluation so presentation can preview what each
+/// upcoming spell would do under the current modifications.
 /// </summary>
 public class LoopedSpellCaster
 {
@@ -53,7 +57,7 @@ public class LoopedSpellCaster
             IReadOnlyList<RuntimeSpell> spells = _spellCollection.RuntimeSpells;
             int total = 0;
             for (int i = 0; i < spells.Count; i++)
-                total += spells[i].invocationCount;
+                total += spells[i].InvocationCount;
             return total;
         }
     }
@@ -118,22 +122,101 @@ public class LoopedSpellCaster
         if (next.Definition == null)
             return SpellCastResult.None;
 
-        next.roundTimeInvokedAt = roundTime;
-        next.invocationCount++;
+        next.RecordCast(roundTime);
 
         _indexOfLastCast = nextIndex;
         _timeOfLastCast = roundTime;
 
-        _spellInvoker.StartCast(next, origin, (float)roundTime, next.spellId, next.invocationCount);
+        // Flip on-deck immediately so previews swap without waiting for the next frame's forecast pass.
+        UpdateOnDeckFlags(spells);
+
+        _spellInvoker.StartCast(next, origin, (float)roundTime, next.spellId, next.InvocationCount);
 
         return new SpellCastResult
         {
             didCast = true,
             spellId = next.spellId,
-            invocationCount = next.invocationCount,
+            invocationCount = next.InvocationCount,
             loopCompleted = loopCompleted,
             loopCount = _loopCount
         };
+    }
+
+    /// <summary>
+    /// Resolves an "if cast right now" <see cref="SpellCastForecast"/> for every loop slot against
+    /// <paramref name="frameModifications"/> and pushes it onto each <see cref="RuntimeSpell"/>. Each spell
+    /// raises its own change events, so nothing is published when a forecast is unchanged.
+    ///
+    /// Call once per frame after item evaluation (while the frame's modifications are immutable) and before
+    /// <see cref="AttemptToCastNextSpell"/>.
+    /// </summary>
+    public void EvaluateForecasts(SpellModifications frameModifications)
+    {
+        IReadOnlyList<RuntimeSpell> spells = _spellCollection.RuntimeSpells;
+        for (int i = 0; i < spells.Count; i++)
+        {
+            RuntimeSpell spell = spells[i];
+            spell.SetCurrentForecast(BuildForecast(spell, frameModifications));
+        }
+
+        UpdateOnDeckFlags(spells);
+    }
+
+    void UpdateOnDeckFlags(IReadOnlyList<RuntimeSpell> spells)
+    {
+        int onDeck = NextCastIndex;
+        for (int i = 0; i < spells.Count; i++)
+            spells[i].SetOnDeck(i == onDeck);
+    }
+
+    /// <summary>
+    /// Builds the forecast for one slot. Spells currently emit from a single keyframe, so only the first one
+    /// is read; modification math is shared with the spawn path so preview and reality agree.
+    /// </summary>
+    static SpellCastForecast BuildForecast(RuntimeSpell spell, SpellModifications mods)
+    {
+        SpellAuthoringData definition = spell.Definition;
+        var forecast = new SpellCastForecast { spellId = spell.spellId };
+        if (definition == null)
+            return forecast;
+
+        forecast.castTime = definition.castTime;
+        forecast.castCompletionDuration = definition.castCompletionDuration;
+
+        List<SpellKeyFrame> keyFrames = definition.SpellAnimation?.keyFrames;
+        if (keyFrames == null || keyFrames.Count == 0)
+            return forecast;
+
+        SpellKeyFrame keyFrame = keyFrames[0];
+        if (keyFrame == null)
+            return forecast;
+
+        forecast.spawnTime = keyFrame.time;
+
+        SpellAttributeMask mask = definition.attributeMask;
+        AttackEntityEmitter emitter = keyFrame.attackEntityEmitter;
+        if (emitter != null)
+        {
+            forecast.emitCount = SpellModificationsApplicator.ResolveEmitCount(mods, emitter.baseEmitCount, mask);
+            forecast.originOffset = emitter.relativeToPlayerSpawnCriteria.offsetFromPlayer;
+            forecast.spreadDegrees = emitter.spreadDegrees;
+            forecast.emitDuration = emitter.emitDuration;
+            forecast.speed = emitter.speed;
+        }
+
+        AttackEntityData attackData = keyFrame.attackEntityData;
+        if (attackData != null)
+        {
+            forecast.hitBox = AttackEntityModificationApplicator.ResolveHitBox(attackData.hitBoxData, mods, mask);
+            AttackEntityModificationApplicator.ResolveDamageRanges(
+                attackData, mods, mask,
+                out forecast.physicalDamage,
+                out forecast.coldDamage,
+                out forecast.fireDamage,
+                out forecast.lightningDamage);
+        }
+
+        return forecast;
     }
 
     public void Update(float simulationTime, float2 forward)
@@ -147,6 +230,7 @@ public class LoopedSpellCaster
         _indexOfLastCast = -1;
         _timeOfLastCast = -1000.0;
         _loopCount = 0;
+        UpdateOnDeckFlags(_spellCollection.RuntimeSpells);
     }
 
     public void ClearCastState()

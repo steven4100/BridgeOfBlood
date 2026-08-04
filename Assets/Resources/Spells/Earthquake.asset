@@ -15,6 +15,7 @@ MonoBehaviour:
   shopItemDefinition:
     displayName: Earthquake
     description: AoE Spell
+    sprite: {fileID: 0}
     price: 5
     resellValue: 2
     isResellable: 1
@@ -39,3 +40,6 @@ MonoBehaviour:
   castCompletionDuration: 0.5
   castTime: 0
   attributeMask: 5
+  castAudio: {fileID: 0}
+  icon: {fileID: 0}
+  rendererPrefab: {fileID: 1370590332953185430, guid: eb9e132f49c7400a9cc87b679f767405, type: 3}

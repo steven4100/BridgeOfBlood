@@ -259,7 +259,7 @@ RectTransform:
   m_GameObject: {fileID: 53212320}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 1, y: 1, z: -1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 467884413}
@@ -664,7 +664,7 @@ RectTransform:
   m_GameObject: {fileID: 467884412}
   m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 1, y: 1, z: -1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 53212321}
@@ -674,6 +674,7 @@ RectTransform:
   - {fileID: 1452166381}
   - {fileID: 1528486771}
   - {fileID: 882388336}
+  - {fileID: 638075737}
   m_Father: {fileID: 1196815852}
   m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
@@ -1080,6 +1081,55 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &638075736
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 638075737}
+  - component: {fileID: 638075738}
+  m_Layer: 0
+  m_Name: SpellRenderers
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &638075737
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 638075736}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 467884413}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &638075738
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 638075736}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5cd218a3012e7497a8aae2baa1b1a19f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellRenderManager
+  rendererRoot: {fileID: 467884413}
 --- !u!1 &829841103
 GameObject:
   m_ObjectHideFlags: 0
@@ -1288,8 +1338,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: daafd7b9e9d0e514eadada8778c02cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  simulationZone: {fileID: 467884413}
-  renderCamera: {fileID: 1813748367}
   minBrushRadius: 2
   maxBrushRadius: 80
   brushRadiusStep: 2
@@ -1314,16 +1362,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   gameConfig: {fileID: 11400000, guid: 0708a3c162ca7784d9c5e3db9a7600ab, type: 2}
   simulationZone: {fileID: 467884413}
-  brushController: {fileID: 928116183}
-  presentationDriver: {fileID: 1347957816}
   renderCamera: {fileID: 1813748367}
-  gameAudioManager: {fileID: 0}
   playerMoveSpeed: 300
   castInputKey: 32
   castModifications: {fileID: 0}
-  debugLogItemEval: 0
   debugController: {fileID: 928116186}
-  debugLogTiming: 0
 --- !u!4 &928116185
 Transform:
   m_ObjectHideFlags: 0
@@ -2227,8 +2270,6 @@ MonoBehaviour:
     damageNumberMaterial: {fileID: 2100000, guid: c8f1a2b34d5e6478901ab2c3d4e5f678, type: 2}
     attackDebugMaterial: {fileID: 2100000, guid: 5cb69cd1c6441e44496eaf809f96136c, type: 2}
     spriteRenderDatabase: {fileID: 11400000, guid: 77a5fc279edf81d4c9cb56cd88810a36, type: 2}
-  renderCamera: {fileID: 1813748367}
-  simulationZone: {fileID: 467884413}
   playerRenderer: {fileID: 527639851}
 --- !u!4 &1347957817
 Transform:

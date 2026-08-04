@@ -51,3 +51,17 @@ public class RoundEnterEventListener : GameEventListener<RoundEnterEvent> { }
 
 [System.Serializable]
 public class ShopEnterEventListener : GameEventListener<ShopEnterEvent> { }
+
+[System.Serializable]
+public class ServicesRegisteredEventListener : GameEventListener<ServicesRegisteredEvent>
+{
+	public override void OnEnable()
+	{
+		ServicesRegisteredEvent.SubscribeAndCatchUp(Handle);
+	}
+
+	public override void OnDisable()
+	{
+		ServicesRegisteredEvent.Unsubscribe(Handle);
+	}
+}

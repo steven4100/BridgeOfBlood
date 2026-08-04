@@ -1,4 +1,5 @@
 using BridgeOfBlood.Data.Inventory;
+using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Shop;
 using BridgeOfBlood.Data.Spells;
 using BridgeOfBlood.Effects;
@@ -7,7 +8,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Scene bootstrapper for the shop test scene. Must execute before ShopController (DefaultExecutionOrder -100).
+/// Scene bootstrapper for the shop test scene. Registers services in Awake and raises
+/// <see cref="ServicesRegisteredEvent"/> in Start so UI controllers can bind.
 ///
 /// Two modes:
 ///   - Pure mock: leave all SO fields empty. Registers in-memory mocks with no Unity asset dependencies.
@@ -52,6 +54,11 @@ public class ShopTestServiceInstaller : MonoBehaviour
         RegisterSpellInventoryService();
         RegisterWalletService();
         RegisterShopService();
+    }
+
+    private void Start()
+    {
+        ServicesRegisteredEvent.Raise();
     }
 
     private void RegisterInventoryService()

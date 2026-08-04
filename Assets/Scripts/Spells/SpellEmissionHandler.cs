@@ -4,6 +4,7 @@ using BridgeOfBlood.Data.Spells;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
+using EntityId = BridgeOfBlood.Data.Shared.EntityId;
 
 /// <summary>
 /// Handles what happens when a spell keyframe fires: gets emit points (with time offsets) from the emitter,
@@ -44,7 +45,7 @@ public class SpellEmissionHandler : ISpellEmissionHandler
 
     private struct ActiveSubEmitter
     {
-        public int parentEntityId;
+        public EntityId parentEntityId;
         public AttackEntityEmitter emitter;
         public AttackEntityBuildContext childContext;
         public float emitInterval;
@@ -62,7 +63,6 @@ public class SpellEmissionHandler : ISpellEmissionHandler
 
     private readonly List<PendingSpawn> _pending = new List<PendingSpawn>();
     private readonly List<ActiveSubEmitter> _activeSubEmitters = new List<ActiveSubEmitter>();
-    private readonly Dictionary<int, int> _entityIdToIndex = new Dictionary<int, int>();
     private readonly List<BufferedAttackSpawn> _bufferedSpawns = new List<BufferedAttackSpawn>();
 
     public bool HasPendingSpawns => _pending.Count > 0;
@@ -181,19 +181,18 @@ public class SpellEmissionHandler : ISpellEmissionHandler
             return;
 
         NativeArray<AttackEntity> entities = _attackEntityManager.GetEntities();
-        BuildEntityIdLookup(entities);
 
         for (int i = _activeSubEmitters.Count - 1; i >= 0; i--)
         {
             var sub = _activeSubEmitters[i];
 
-            if (!_entityIdToIndex.TryGetValue(sub.parentEntityId, out int parentIdx))
+            if (!_attackEntityManager.IsValid(sub.parentEntityId))
             {
                 _activeSubEmitters.RemoveAt(i);
                 continue;
             }
 
-            AttackEntity parent = entities[parentIdx];
+            AttackEntity parent = entities[sub.parentEntityId.Index];
 
             if (parent.timeAlive < sub.startDelay)
                 continue;
@@ -246,7 +245,7 @@ public class SpellEmissionHandler : ISpellEmissionHandler
         for (int i = 0; i < _bufferedSpawns.Count; i++)
         {
             BufferedAttackSpawn b = _bufferedSpawns[i];
-            int entityId = _attackEntityManager.Spawn(b.context);
+            EntityId entityId = _attackEntityManager.Spawn(b.context);
             if (b.registerSubEmitter)
             {
                 _activeSubEmitters.Add(new ActiveSubEmitter
@@ -264,13 +263,6 @@ public class SpellEmissionHandler : ISpellEmissionHandler
         _bufferedSpawns.Clear();
     }
 
-    void BuildEntityIdLookup(NativeArray<AttackEntity> entities)
-    {
-        _entityIdToIndex.Clear();
-        for (int i = 0; i < entities.Length; i++)
-            _entityIdToIndex[entities[i].entityId] = i;
-    }
-
     static SubEmitterBehavior FindSubEmitterBehavior(AttackEntityData data)
     {
         if (data.behaviors == null) return null;
@@ -285,11 +277,6 @@ public class SpellEmissionHandler : ISpellEmissionHandler
     protected virtual int GetEmitCount(SpellKeyFrame keyFrame, SpellAttributeMask mask)
     {
         int baseCount = keyFrame.attackEntityEmitter != null ? keyFrame.attackEntityEmitter.baseEmitCount : 1;
-        if (_frameModifications != null)
-        {
-            var resolved = SpellModificationsApplicator.Resolve(_frameModifications, SpellModificationProperty.Projectiles, mask);
-            baseCount = Mathf.Max(1, (int)(baseCount * resolved.Multiplier) + (int)resolved.flat);
-        }
-        return baseCount < 1 ? 1 : baseCount;
+        return SpellModificationsApplicator.ResolveEmitCount(_frameModifications, baseCount, mask);
     }
 }

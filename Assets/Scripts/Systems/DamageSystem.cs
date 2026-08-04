@@ -11,7 +11,7 @@ using EntityId = BridgeOfBlood.Data.Shared.EntityId;
 /// Consumes HitEvents (from HitResolver + ChainSystem), applies damage to enemies, increments enemiesHit,
 /// and emits EnemyHitEvent / EnemyKilledEvent. Crit is rolled per hit: if roll < critChance, damage is multiplied by critDamageMultiplier.
 /// Hits where the target already has no HP remaining are ignored (no damage, events, or enemiesHit).
-/// Assumes hit indices are valid; caller (e.g. AttackEntityManager.ValidateHitEvents) must validate upstream.
+/// Assumes hit entity ids are valid; caller (e.g. AttackEntityManager.ValidateHitEvents) must validate upstream.
 /// </summary>
 public class DamageSystem
 {
@@ -27,7 +27,7 @@ public class DamageSystem
         NativeList<EnemyKilledEvent> outKillEvents,
         NativeList<DamageEvent> outDamageEvents = default,
         NativeHashMap<int, float> shockDamageTakenMultiplierByEntityId = default,
-        IReadOnlyDictionary<int, List<AttackEntityModifier>> hitModifierSets = null)
+        IReadOnlyDictionary<EntityId, List<AttackEntityModifier>> hitModifierSets = null)
     {
         bool emitDamageEvents = outDamageEvents.IsCreated;
         bool useShock = shockDamageTakenMultiplierByEntityId.IsCreated;
@@ -37,7 +37,8 @@ public class DamageSystem
         {
             HitEvent hit = hitEvents[i];
 
-            int ei = hit.enemyIndex;
+            int ei = hit.enemyEntityId.Index;
+            int ai = hit.attackEntityId.Index;
             if (!enemies.IsValid(hit.enemyEntityId))
                 continue;
 
@@ -45,7 +46,7 @@ public class DamageSystem
             if (vit.health <= 0f)
                 continue;
 
-            AttackEntity atk = attackEntities[hit.attackEntityIndex];
+            AttackEntity atk = attackEntities[ai];
             EntityId entityId = hit.enemyEntityId;
             EnemyCombatTraits traits = enemies.CombatTraits[ei];
             StatusAilmentFlag status = enemies.Status[ei];
@@ -118,9 +119,8 @@ public class DamageSystem
                 {
                     position = hit.hitPosition,
                     damageDealt = totalDamage,
-                    enemyIndex = hit.enemyIndex,
                     enemyEntityId = entityId,
-                    attackEntityIndex = hit.attackEntityIndex,
+                    attackEntityId = hit.attackEntityId,
                     isCrit = isCrit,
                     physicalDamage = physical,
                     fireDamage = fire,
@@ -155,7 +155,7 @@ public class DamageSystem
             enemies.Vitality[ei] = vit;
 
             atk.enemiesHit++;
-            attackEntities[hit.attackEntityIndex] = atk;
+            attackEntities[ai] = atk;
         }
     }
 

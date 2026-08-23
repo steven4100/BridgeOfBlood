@@ -157,7 +157,7 @@ namespace BridgeOfBlood.Data.Spells
 
 		/// <summary>
 		/// Resolves mod-adjusted damage ranges from authoring data (pre-roll). Shared by spawn-time rolling and
-		/// by the spell forecast so previews report the same numbers the simulation will roll from.
+		/// by spell preview renderers so previews report the same numbers the simulation will roll from.
 		/// </summary>
 		public static void ResolveDamageRanges(
 			AttackEntityData data,
@@ -191,7 +191,7 @@ namespace BridgeOfBlood.Data.Spells
 
 		/// <summary>
 		/// Applies AreaOfEffect modifications to an authoring hitbox. Shared by spawn-time entity building and
-		/// by the spell forecast so AoE previews match the hitbox the simulation will use.
+		/// by spell preview renderers so AoE previews match the hitbox the simulation will use.
 		/// </summary>
 		public static HitBoxData ResolveHitBox(HitBoxData hitBox, SpellModifications mods, SpellAttributeMask mask)
 		{

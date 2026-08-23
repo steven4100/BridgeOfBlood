@@ -1,12 +1,13 @@
+using BridgeOfBlood.Data.Shared;
+using EZServiceLocation;
 using UnityEditor;
 using UnityEngine;
-using BridgeOfBlood.Data.Shared;
 
 namespace BridgeOfBlood.Editor
 {
 	public class TelemetryViewerWindow : EditorWindow
 	{
-		private TestSceneManager _sceneManager;
+		CombatSimulationController _combatSimulation;
 		private Vector2 _scrollPos;
 		private bool _foldFrame = true;
 		private bool _foldSpellCast = true;
@@ -33,19 +34,19 @@ namespace BridgeOfBlood.Editor
 
 		void OnPlayModeStateChanged(PlayModeStateChange state)
 		{
-			_sceneManager = null;
+			_combatSimulation = null;
 			Repaint();
 		}
 
 		void Update()
 		{
-			if (Application.isPlaying && _sceneManager == null)
-			{
-				_sceneManager = Object.FindObjectOfType<TestSceneManager>();
-				if (_sceneManager != null)
-					Repaint();
-			}
-			if (Application.isPlaying && _sceneManager != null)
+			if (!Application.isPlaying)
+				return;
+
+			if (_combatSimulation == null)
+				_combatSimulation = ResolveCombatSimulation();
+
+			if (_combatSimulation != null)
 				Repaint();
 		}
 
@@ -60,18 +61,19 @@ namespace BridgeOfBlood.Editor
 				return;
 			}
 
-			if (_sceneManager == null)
+			if (_combatSimulation == null)
+				_combatSimulation = ResolveCombatSimulation();
+
+			if (_combatSimulation == null)
 			{
-				_sceneManager = Object.FindObjectOfType<TestSceneManager>();
-				if (_sceneManager == null)
-				{
-					EditorGUILayout.HelpBox("No TestSceneManager in scene. Start a scene that has the runner.", MessageType.Warning);
-					EditorGUILayout.EndScrollView();
-					return;
-				}
+				EditorGUILayout.HelpBox(
+					"CombatSimulationController is not registered on ServiceLocator yet. Start Test Scene or Labbing Scene.",
+					MessageType.Warning);
+				EditorGUILayout.EndScrollView();
+				return;
 			}
 
-			TelemetryAggregator agg = _sceneManager.TelemetryAggregator;
+			TelemetryAggregator agg = _combatSimulation.TelemetryAggregator;
 			if (agg == null)
 			{
 				EditorGUILayout.HelpBox("Telemetry not ready yet (Start may not have run).", MessageType.Warning);
@@ -87,7 +89,7 @@ namespace BridgeOfBlood.Editor
 				EditorGUILayout.LabelField("Simulation Time", f.simulationTime.ToString("F2"));
 			}, ref _foldFrame);
 
-			DrawSection("Spell Cast (current window)", _foldSpellCast, () =>
+			DrawSection("Last Cast (loop totals)", _foldSpellCast, () =>
 			{
 				var s = agg.CurrentSpellCast;
 				DrawMetrics(s.aggregate);
@@ -122,6 +124,9 @@ namespace BridgeOfBlood.Editor
 
 			EditorGUILayout.EndScrollView();
 		}
+
+		static CombatSimulationController ResolveCombatSimulation() =>
+			ServiceLocator.Current.GetService<CombatSimulationController>(throwError: false);
 
 		static void DrawSection(string title, bool folded, System.Action content, ref bool fold)
 		{

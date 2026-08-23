@@ -14,7 +14,7 @@ public interface ISpellEmissionHandler
     /// each frame after item evaluation; must be treated as immutable for the rest of the frame (delayed and
     /// sub-emitter spawns keep this reference as their snapshot).
     /// </summary>
-    void SetFrameModifications(SpellModifications modifications);
+    void SetFrameModifications(SpellModificationCollection modifications);
 
     void Update(float simulationTime);
 

@@ -12,7 +12,7 @@ namespace BridgeOfBlood.Effects
 	{
 		public static void Build(
 			PlayerInventory inventory,
-			SpellModifications mods,
+			SpellModificationCollection modifications,
 			IReadOnlyList<RuntimeSpell> spells,
 			out List<CombatSpawnContract> contracts)
 		{
@@ -52,7 +52,7 @@ namespace BridgeOfBlood.Effects
 					{
 						filters = snap,
 						attackData = reaction.attackEntity,
-						modifications = mods,
+						modificationCollection = modifications,
 						definitionSpellResolved = definitionSpellResolved,
 						definitionFilterSpellId = definitionFilterSpellId,
 					});

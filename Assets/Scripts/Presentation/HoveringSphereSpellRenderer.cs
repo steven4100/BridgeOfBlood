@@ -3,7 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// Diegetic <see cref="SpellRenderer"/>: a sphere that hovers above the playfield at half the spell's
-/// resolved AoE radius. On cast it crashes to the ground over <see cref="SpellCastForecast.spawnTime"/>
+/// resolved AoE radius. On cast it crashes to the ground over the primary keyframe's spawn time
 /// (matching attack-entity emit), then slowly rises back to hover height.
 ///
 /// Height is on local Z — the simulation zone lies flat, so Z is "up" from the ground plane, and
@@ -38,6 +38,8 @@ public sealed class HoveringSphereSpellRenderer : SpellRenderer
 	Material _material;
 	bool _ownsMesh;
 	float _visualRadius = 1f;
+	float _lastVisualRadius = -1f;
+	HitBoxData _lastHitBox;
 	Phase _phase = Phase.Hovering;
 	float _phaseElapsed;
 	float _crashDuration;
@@ -79,16 +81,37 @@ public sealed class HoveringSphereSpellRenderer : SpellRenderer
 		ApplyColor();
 	}
 
-	protected override void OnForecastChanged()
+	protected override void InvalidatePreviewCache()
 	{
-		ApplyScale(Spell.CurrentForecast.hitBox);
+		base.InvalidatePreviewCache();
+		_lastVisualRadius = -1f;
+	}
+
+	protected override bool IsPreviewDirty()
+	{
+		AttackEntityData attackData = PrimaryKeyFrame.attackEntityData;
+		HitBoxData hitBox = AttackEntityModificationApplicator.ResolveHitBox(
+			attackData.hitBoxData, FrameMods, AttributeMask);
+		float visualRadius = Mathf.Max(minRadius, ResolveAoeRadius(hitBox) * aoeRadiusScale);
+
+		if (visualRadius == _lastVisualRadius && HitBoxEquals(hitBox, _lastHitBox))
+			return false;
+
+		_lastVisualRadius = visualRadius;
+		_lastHitBox = hitBox;
+		return true;
+	}
+
+	protected override void OnPreviewRefresh()
+	{
+		ApplyScale();
 		if (_phase == Phase.Hovering)
 			SetHeight(HoverHeight);
 	}
 
 	protected override void OnCastInvoked()
 	{
-		BeginCrash(Spell.LastCastForecast.spawnTime);
+		BeginCrash(PrimaryKeyFrame.time);
 	}
 
 	protected override void OnDeckChanged(bool isOnDeck)
@@ -151,10 +174,9 @@ public sealed class HoveringSphereSpellRenderer : SpellRenderer
 		ApplyColor();
 	}
 
-	void ApplyScale(in HitBoxData hitBox)
+	void ApplyScale()
 	{
-		float aoeRadius = ResolveAoeRadius(hitBox);
-		_visualRadius = Mathf.Max(minRadius, aoeRadius * aoeRadiusScale);
+		_visualRadius = _lastVisualRadius;
 		// Builtin / unit sphere mesh has diameter 1 (radius 0.5), so scale = diameter.
 		float diameter = _visualRadius * 2f;
 		transform.localScale = new Vector3(diameter, diameter, diameter);

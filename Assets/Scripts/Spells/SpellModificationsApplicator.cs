@@ -37,7 +37,7 @@ namespace BridgeOfBlood.Data.Spells
 
 		/// <summary>
 		/// Applies Projectiles modifications to an emitter's base count. Shared by the emission handler (spawn)
-		/// and the spell forecast (preview) so both report the same number.
+		/// and spell preview renderers so both report the same number.
 		/// </summary>
 		public static int ResolveEmitCount(SpellModifications mods, int baseCount, SpellAttributeMask mask)
 		{

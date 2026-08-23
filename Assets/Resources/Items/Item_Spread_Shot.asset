@@ -91,12 +91,12 @@ MonoBehaviour:
     - rid: 9019951980704956476
       type: {class: CombatMetricValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
-        coefficient: 0.12
+        coefficient: 0.79
         scope: 1
         property: 0
     - rid: 9019951980704956477
       type: {class: CombatMetricValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
-        coefficient: 0.4
+        coefficient: 0.1
         scope: 1
         property: 0

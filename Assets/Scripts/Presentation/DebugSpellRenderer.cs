@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
@@ -7,8 +8,8 @@ using UnityEngine;
 /// one ray per emitted entity across the resolved spread, plus an outline of the resolved hitbox. Tints red
 /// while on deck and flashes on cast.
 ///
-/// The mesh is rebuilt only when the bound spell's forecast changes, so this doubles as a live check that
-/// forecasts track item modifications. Real spells replace this with diegetic art driven by the same data.
+/// The mesh is rebuilt only when resolved preview values change. Real spells replace this with diegetic art
+/// driven by the same resolution path.
 /// </summary>
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public sealed class DebugSpellRenderer : SpellRenderer
@@ -31,6 +32,10 @@ public sealed class DebugSpellRenderer : SpellRenderer
 	Material _material;
 	float _castFlashRemaining;
 
+	int _lastEmitCount = -1;
+	float _lastSpreadDegrees;
+	HitBoxData _lastHitBox;
+
 	void Awake()
 	{
 		EnsureResources();
@@ -45,7 +50,7 @@ public sealed class DebugSpellRenderer : SpellRenderer
 	{
 		if (_mesh == null)
 		{
-			_mesh = new Mesh { name = "DebugSpellForecast" };
+			_mesh = new Mesh { name = "DebugSpellPreview" };
 			_mesh.MarkDynamic();
 			GetComponent<MeshFilter>().mesh = _mesh;
 		}
@@ -66,9 +71,37 @@ public sealed class DebugSpellRenderer : SpellRenderer
 		ApplyColor();
 	}
 
-	protected override void OnForecastChanged()
+	protected override void InvalidatePreviewCache()
 	{
-		RebuildMesh(Spell.CurrentForecast);
+		base.InvalidatePreviewCache();
+		_lastEmitCount = -1;
+	}
+
+	protected override bool IsPreviewDirty()
+	{
+		SpellKeyFrame keyFrame = PrimaryKeyFrame;
+		AttackEntityEmitter emitter = keyFrame.attackEntityEmitter;
+		AttackEntityData attackData = keyFrame.attackEntityData;
+		SpellAttributeMask mask = AttributeMask;
+
+		int emitCount = SpellModificationsApplicator.ResolveEmitCount(FrameMods, emitter.baseEmitCount, mask);
+		float spreadDegrees = emitter.spreadDegrees;
+		HitBoxData hitBox = AttackEntityModificationApplicator.ResolveHitBox(attackData.hitBoxData, FrameMods, mask);
+
+		if (emitCount == _lastEmitCount
+			&& spreadDegrees == _lastSpreadDegrees
+			&& HitBoxEquals(hitBox, _lastHitBox))
+			return false;
+
+		_lastEmitCount = emitCount;
+		_lastSpreadDegrees = spreadDegrees;
+		_lastHitBox = hitBox;
+		return true;
+	}
+
+	protected override void OnPreviewRefresh()
+	{
+		RebuildMesh(_lastEmitCount, _lastSpreadDegrees, _lastHitBox);
 	}
 
 	protected override void OnCastInvoked()
@@ -105,22 +138,22 @@ public sealed class DebugSpellRenderer : SpellRenderer
 			: (isOnDeck ? onDeckColor : idleColor);
 	}
 
-	void RebuildMesh(in SpellCastForecast forecast)
+	void RebuildMesh(int emitCount, float spreadDegrees, in HitBoxData hitBox)
 	{
 		_vertices.Clear();
 		_triangles.Clear();
 
-		AddEmitRays(forecast);
-		AddHitBoxOutline(forecast.hitBox);
+		AddEmitRays(emitCount, spreadDegrees);
+		AddHitBoxOutline(hitBox);
 
 		UploadMesh();
 	}
 
-	void AddEmitRays(in SpellCastForecast forecast)
+	void AddEmitRays(int emitCount, float spreadDegrees)
 	{
-		int count = Mathf.Max(1, forecast.emitCount);
-		float startDegrees = forwardDegrees - forecast.spreadDegrees * 0.5f;
-		float stepDegrees = count > 1 ? forecast.spreadDegrees / count : 0f;
+		int count = Mathf.Max(1, emitCount);
+		float startDegrees = forwardDegrees - spreadDegrees * 0.5f;
+		float stepDegrees = count > 1 ? spreadDegrees / count : 0f;
 
 		for (int i = 0; i < count; i++)
 		{

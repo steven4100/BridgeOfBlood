@@ -1,16 +1,17 @@
 using System.Collections.Generic;
 using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Data.Spells;
 using Unity.Collections;
 
 /// <summary>
-/// Aggregates combat telemetry at five nested time scales: Frame, Spell Cast, Spell Loop, Round, Game.
-/// Consumes enriched <see cref="DamageEvent"/> and <see cref="TickDamageEvent"/> lists each frame as sources of truth for hits and DoT ticks.
-/// UI and other downstream systems read snapshots via properties -- never hook into combat logic directly.
+/// Aggregates combat telemetry at nested time scales: Frame, Spell Loop, Round, Game.
+/// Per-spell breakdowns for the current loop live in <c>_spellLoopPerSpell</c>.
+/// Consumes enriched <see cref="DamageEvent"/> and <see cref="TickDamageEvent"/> lists each frame.
+/// UI and other downstream systems read snapshots via properties — never hook into combat logic directly.
 /// </summary>
 public class TelemetryAggregator
 {
     private FrameSnapshot _currentFrame;
-    private CombatMetrics _currentSpellCastAggregate;
     private CombatMetrics _currentSpellLoopAggregate;
     private CombatMetrics _currentRoundAggregate;
     private CombatMetrics _gameAggregate;
@@ -37,7 +38,9 @@ public class TelemetryAggregator
 
     public SpellCastSnapshot CurrentSpellCast => new SpellCastSnapshot
     {
-        aggregate = _currentSpellCastAggregate,
+        aggregate = _spellLoopPerSpell.TryGetValue(_currentSpellCastId, out CombatMetrics loopMetrics)
+            ? loopMetrics
+            : default,
         spellId = _currentSpellCastId,
         invocationId = _currentSpellCastInvocation
     };
@@ -93,9 +96,8 @@ public class TelemetryAggregator
     }
 
     /// <summary>
-    /// Call once per frame after the damage step. Processes spell cast / loop boundaries first
-    /// (so damage from a newly-cast spell starts a fresh window), then iterates the DamageEvent
-    /// list to build the frame snapshot and accumulates into all higher-level metrics.
+    /// Call once per frame after the damage step. Processes loop boundaries when the last spell
+    /// in a loop is cast, then builds the frame snapshot and accumulates into spell-loop / round / game metrics.
     /// </summary>
     public void ProcessFrame(
         NativeArray<DamageEvent> damageEvents,
@@ -194,7 +196,6 @@ public class TelemetryAggregator
     private void AccumulateFrameIntoHigherLevels()
     {
         ref CombatMetrics frame = ref _currentFrame.aggregate;
-        _currentSpellCastAggregate.Accumulate(in frame);
         _currentSpellLoopAggregate.Accumulate(in frame);
         _currentRoundAggregate.Accumulate(in frame);
         _gameAggregate.Accumulate(in frame);
@@ -221,7 +222,24 @@ public class TelemetryAggregator
 
         _currentSpellCastId = castResult.spellId;
         _currentSpellCastInvocation = castResult.invocationCount;
-        _currentSpellCastAggregate.Reset();
+    }
+
+    /// <summary>
+    /// Fills <paramref name="destination"/> with per-spell loop metrics for each loop slot in order.
+    /// </summary>
+    public void FillSpellLoopMetricsByLoopSlot(IReadOnlyList<RuntimeSpell> spells, List<CombatMetrics> destination)
+    {
+        destination.Clear();
+        if (spells == null)
+            return;
+
+        for (int i = 0; i < spells.Count; i++)
+        {
+            int spellId = spells[i].spellId;
+            destination.Add(_spellLoopPerSpell.TryGetValue(spellId, out CombatMetrics metrics)
+                ? metrics
+                : default);
+        }
     }
 
     /// <summary>

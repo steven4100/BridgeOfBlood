@@ -1,3 +1,4 @@
+using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
@@ -5,13 +6,12 @@ using UnityEngine;
 /// Base for diegetic per-spell visuals: one instance per loop slot, instantiated from
 /// <see cref="SpellAuthoringData.rendererPrefab"/> by <see cref="SpellRenderManager"/>.
 ///
-/// Bound to a <see cref="RuntimeSpell"/> and driven by that spell's own change events, so a renderer only does
-/// work when its spell's data actually changes. Read <see cref="RuntimeSpell.CurrentForecast"/> to shape the
-/// on-deck preview (projectile counts, area sizes) and <see cref="RuntimeSpell.LastCastForecast"/> plus
-/// <see cref="RuntimeSpell.RoundTimeInvokedAt"/> to sync a cast animation to the actual spawn timing.
+/// Bound to a <see cref="RuntimeSpell"/> and driven by that spell's cast/on-deck events plus per-frame
+/// <see cref="SyncFrame"/> calls from the manager. Subclasses resolve preview fields from authoring data and
+/// frame modifications, rebuilding visuals only when resolved values change.
 ///
 /// Every cast originates at the player, so this base class places the instance at the player position plus the
-/// forecast's <see cref="SpellCastForecast.originOffset"/>; subclasses draw in local space around that origin.
+/// emitter's authoring offset; subclasses draw in local space around that origin.
 /// Instances must live under the simulation zone rect, where local space is simulation space.
 /// </summary>
 public abstract class SpellRenderer : MonoBehaviour
@@ -20,6 +20,14 @@ public abstract class SpellRenderer : MonoBehaviour
 	public RuntimeSpell Spell { get; private set; }
 
 	Vector2 _playerPosition;
+	bool _previewDirty = true;
+
+	/// <summary>Resolved modifications for the current simulation frame.</summary>
+	protected SpellModifications FrameMods { get; private set; }
+
+	protected SpellKeyFrame PrimaryKeyFrame => Spell.Definition.SpellAnimation.keyFrames[0];
+
+	protected SpellAttributeMask AttributeMask => Spell.Definition.attributeMask;
 
 	/// <summary>Binds to a loop slot and applies its current state. Rebinding unbinds the previous spell first.</summary>
 	public void Bind(RuntimeSpell spell)
@@ -30,13 +38,28 @@ public abstract class SpellRenderer : MonoBehaviour
 		Unbind();
 
 		Spell = spell;
-		spell.CurrentForecastChanged += HandleForecastChanged;
 		spell.CastInvoked += OnCastInvoked;
 		spell.OnDeckChanged += HandleOnDeckChanged;
 
+		InvalidatePreviewCache();
 		OnBound();
-		HandleForecastChanged();
 		HandleOnDeckChanged();
+	}
+
+	/// <summary>
+	/// Pushes frame modifications and refreshes the preview when resolved values change.
+	/// Called each simulation frame by <see cref="SpellRenderManager"/> for bound renderers only.
+	/// </summary>
+	public void SyncFrame(SpellModifications mods)
+	{
+		FrameMods = mods;
+		ApplyOrigin();
+
+		if (_previewDirty || IsPreviewDirty())
+		{
+			_previewDirty = false;
+			OnPreviewRefresh();
+		}
 	}
 
 	/// <summary>
@@ -57,10 +80,10 @@ public abstract class SpellRenderer : MonoBehaviour
 		if (Spell == null)
 			return;
 
-		Spell.CurrentForecastChanged -= HandleForecastChanged;
 		Spell.CastInvoked -= OnCastInvoked;
 		Spell.OnDeckChanged -= HandleOnDeckChanged;
 		Spell = null;
+		FrameMods = null;
 
 		OnUnbound();
 	}
@@ -70,31 +93,41 @@ public abstract class SpellRenderer : MonoBehaviour
 		Unbind();
 	}
 
-	/// <summary>Called after <see cref="Spell"/> is set, before the initial forecast/on-deck callbacks.</summary>
+	/// <summary>Called after <see cref="Spell"/> is set, before the initial on-deck callback.</summary>
 	protected virtual void OnBound() { }
 
 	/// <summary>Called after <see cref="Spell"/> is cleared.</summary>
 	protected virtual void OnUnbound() { }
 
 	/// <summary>
-	/// The bound spell's forecast changed (or was just bound). Re-read <see cref="RuntimeSpell.CurrentForecast"/>
-	/// and reshape the preview.
+	/// Resolves preview fields from <see cref="FrameMods"/> and returns whether they differ from the cached snapshot.
+	/// Updates the cache when values change.
 	/// </summary>
-	protected abstract void OnForecastChanged();
+	protected abstract bool IsPreviewDirty();
+
+	/// <summary>Rebuild preview visuals from the cached resolved values (updated by <see cref="IsPreviewDirty"/>).</summary>
+	protected abstract void OnPreviewRefresh();
 
 	/// <summary>
-	/// The bound spell was cast. Read <see cref="RuntimeSpell.LastCastForecast"/> and
-	/// <see cref="RuntimeSpell.RoundTimeInvokedAt"/> to drive a cast animation.
+	/// The bound spell was cast. Read <see cref="PrimaryKeyFrame"/>.time to drive cast animation timing.
 	/// </summary>
 	protected abstract void OnCastInvoked();
 
 	/// <summary>The bound spell became (or stopped being) the next spell to cast.</summary>
 	protected abstract void OnDeckChanged(bool isOnDeck);
 
-	void HandleForecastChanged()
+	protected virtual void InvalidatePreviewCache()
 	{
-		ApplyOrigin();
-		OnForecastChanged();
+		_previewDirty = true;
+	}
+
+	protected static bool HitBoxEquals(in HitBoxData a, in HitBoxData b)
+	{
+		return a.isSphere == b.isSphere
+			&& a.isRect == b.isRect
+			&& a.sphereRadius == b.sphereRadius
+			&& a.rectDimension == b.rectDimension
+			&& a.scaleGrowthRate == b.scaleGrowthRate;
 	}
 
 	void HandleOnDeckChanged()
@@ -102,10 +135,11 @@ public abstract class SpellRenderer : MonoBehaviour
 		OnDeckChanged(Spell.IsOnDeck);
 	}
 
-	/// <summary>Places the instance on its spell's spawn point: player position + the forecast's emitter offset.</summary>
+	/// <summary>Places the instance on its spell's spawn point: player position + the emitter's authoring offset.</summary>
 	void ApplyOrigin()
 	{
-		Vector2 origin = _playerPosition + Spell.CurrentForecast.originOffset;
+		Vector2 offset = PrimaryKeyFrame.attackEntityEmitter.relativeToPlayerSpawnCriteria.offsetFromPlayer;
+		Vector2 origin = _playerPosition + offset;
 		Vector3 local = transform.localPosition;
 		transform.localPosition = new Vector3(origin.x, origin.y, local.z);
 	}

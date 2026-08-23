@@ -77,8 +77,7 @@ namespace BridgeOfBlood.Data.Shared
 	}
 
 	/// <summary>
-	/// Snapshot of combat telemetry accumulated during a single spell's active window
-	/// (from when this spell is cast until the next spell is cast).
+	/// Snapshot for the most recently cast spell: its loop totals and invocation id.
 	/// </summary>
 	public struct SpellCastSnapshot
 	{

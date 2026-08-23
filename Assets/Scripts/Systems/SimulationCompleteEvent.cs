@@ -1,4 +1,5 @@
 using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Data.Spells;
 using Unity.Mathematics;
 
 /// <summary>
@@ -14,4 +15,6 @@ public struct SimulationCompleteEvent : IEvent
     public SpellCastResult spellCastResult;
     /// <summary>Player position in simulation-local space for presentation sync.</summary>
     public float2 playerPosition;
+    /// <summary>Resolved spell modifications for this frame. Valid only during the event callback.</summary>
+    public SpellModificationCollection frameModifications;
 }

@@ -77,14 +77,6 @@ namespace BridgeOfBlood.Data.Spells
         }
     }
 
-    public class SpellModificationCollection
-    {
-        public SpellModifications globalModifications = new SpellModifications();
-        public Dictionary<RuntimeSpell, SpellModifications> spellSpecificModifications = new Dictionary<RuntimeSpell, SpellModifications>();
-        public SpellModificationCollection() { }
-
-    }
-
     [System.Serializable]
     public class SpellModifications
     {
@@ -92,6 +84,51 @@ namespace BridgeOfBlood.Data.Spells
         public List<DamageConversion> conversions;
         public List<ExtraDamageAs> extraDamageAs;
         public List<AttackEntityModifier> attackEntityModifiers = new List<AttackEntityModifier>();
+
+        public bool IsEmpty =>
+            modifiers.Count == 0
+            && (conversions == null || conversions.Count == 0)
+            && (extraDamageAs == null || extraDamageAs.Count == 0)
+            && attackEntityModifiers.Count == 0;
+
+        public void Clear()
+        {
+            modifiers.Clear();
+            conversions?.Clear();
+            extraDamageAs?.Clear();
+            attackEntityModifiers.Clear();
+        }
+
+        public void MergeFrom(SpellModifications other)
+        {
+            if (other == null)
+                return;
+
+            foreach (var kvp in other.modifiers)
+            {
+                if (!modifiers.TryGetValue(kvp.Key, out List<ParameterModifier> list))
+                {
+                    list = new List<ParameterModifier>();
+                    modifiers[kvp.Key] = list;
+                }
+                list.AddRange(kvp.Value);
+            }
+
+            if (other.conversions != null && other.conversions.Count > 0)
+            {
+                conversions ??= new List<DamageConversion>();
+                conversions.AddRange(other.conversions);
+            }
+
+            if (other.extraDamageAs != null && other.extraDamageAs.Count > 0)
+            {
+                extraDamageAs ??= new List<ExtraDamageAs>();
+                extraDamageAs.AddRange(other.extraDamageAs);
+            }
+
+            if (other.attackEntityModifiers.Count > 0)
+                attackEntityModifiers.AddRange(other.attackEntityModifiers);
+        }
 
         public void Add(ParameterModifier modifier)
         {
@@ -107,10 +144,88 @@ namespace BridgeOfBlood.Data.Spells
         {
             attackEntityModifiers.Add(modifier);
         }
-        
 
-       
+        public SpellModifications Clone()
+        {
+            var copy = new SpellModifications();
+            copy.MergeFrom(this);
+            return copy;
+        }
+    }
 
-      
+    /// <summary>
+    /// Frame spell modifications: a global bucket plus per-<see cref="RuntimeSpell.spellId"/> overrides.
+    /// Call <see cref="FinalizeResolution"/> after item evaluation, then read via <see cref="ResolveFor"/>.
+    /// </summary>
+    public class SpellModificationCollection
+    {
+        public SpellModifications global = new SpellModifications();
+
+        readonly Dictionary<int, SpellModifications> perSpellId = new Dictionary<int, SpellModifications>();
+        readonly Dictionary<int, SpellModifications> resolvedBySpellId = new Dictionary<int, SpellModifications>();
+        readonly List<SpellModifications> mergedAllocations = new List<SpellModifications>();
+
+        public void ResetForFrame()
+        {
+            global.Clear();
+            perSpellId.Clear();
+            resolvedBySpellId.Clear();
+            mergedAllocations.Clear();
+        }
+
+        public SpellModifications ForSpell(int spellId)
+        {
+            if (!perSpellId.TryGetValue(spellId, out SpellModifications mods))
+            {
+                mods = new SpellModifications();
+                perSpellId[spellId] = mods;
+            }
+            return mods;
+        }
+
+        /// <summary>
+        /// Merges global + per-spell buckets into stable <see cref="SpellModifications"/> instances for each loop slot.
+        /// </summary>
+        public void FinalizeResolution(IReadOnlyList<RuntimeSpell> spells)
+        {
+            resolvedBySpellId.Clear();
+            mergedAllocations.Clear();
+
+            if (spells == null)
+                return;
+
+            for (int i = 0; i < spells.Count; i++)
+                resolvedBySpellId[spells[i].spellId] = BuildMerged(spells[i].spellId);
+        }
+
+        /// <summary>
+        /// Resolved modifications for <paramref name="spellId"/> after <see cref="FinalizeResolution"/>.
+        /// </summary>
+        public SpellModifications ResolveFor(int spellId)
+        {
+            if (resolvedBySpellId.TryGetValue(spellId, out SpellModifications resolved))
+                return resolved;
+            return global;
+        }
+
+        SpellModifications BuildMerged(int spellId)
+        {
+            perSpellId.TryGetValue(spellId, out SpellModifications specific);
+            bool hasGlobal = global != null && !global.IsEmpty;
+            bool hasSpecific = specific != null && !specific.IsEmpty;
+
+            if (hasGlobal && hasSpecific)
+            {
+                var merged = new SpellModifications();
+                merged.MergeFrom(global);
+                merged.MergeFrom(specific);
+                mergedAllocations.Add(merged);
+                return merged;
+            }
+
+            if (hasSpecific)
+                return specific;
+            return global;
+        }
     }
 }

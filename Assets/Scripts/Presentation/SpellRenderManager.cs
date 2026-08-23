@@ -9,9 +9,8 @@ using UnityEngine;
 /// <see cref="SpellAuthoringData.rendererPrefab"/>, binds it to that slot's <see cref="RuntimeSpell"/>, and
 /// keeps instance order in sync with the loop.
 ///
-/// Routes no forecast data: each bound renderer subscribes to its own spell's change events. The one thing this
-/// pushes per frame is the player position from <see cref="SimulationCompleteEvent"/>, since every cast origin is
-/// player-relative and the renderers place themselves against it.
+/// Each frame, pushes frame modifications and player position from <see cref="SimulationCompleteEvent"/>
+/// so renderers can resolve previews and place themselves on the cast origin.
 ///
 /// <see cref="rendererRoot"/> must be the simulation zone rect so instance local space is simulation space.
 /// </summary>
@@ -73,12 +72,16 @@ public sealed class SpellRenderManager : MonoBehaviour
 		Initialize();
 	}
 
-	/// <summary>Keeps every renderer on the player, the origin all cast emissions are offset from.</summary>
+	/// <summary>Keeps every renderer synced to frame mods and the player cast origin.</summary>
 	void OnSimulationComplete(ref SimulationCompleteEvent @event)
 	{
 		var playerPosition = new Vector2(@event.playerPosition.x, @event.playerPosition.y);
 		for (int i = 0; i < _boundRenderers.Count; i++)
-			_boundRenderers[i].SyncOrigin(playerPosition);
+		{
+			SpellRenderer renderer = _boundRenderers[i];
+			renderer.SyncFrame(@event.frameModifications.ResolveFor(renderer.Spell.spellId));
+			renderer.SyncOrigin(playerPosition);
+		}
 	}
 
 	void OnSpellsUpdated()

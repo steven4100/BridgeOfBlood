@@ -20,7 +20,10 @@ public class SpellEmissionHandler : ISpellEmissionHandler
     private readonly IEmissionTargetProvider _targetProvider;
 
     /// <summary>Spell modifications for the current frame; injected via <see cref="SetFrameModifications"/>. Immutable after item eval.</summary>
-    private SpellModifications _frameModifications;
+    private SpellModificationCollection _frameModifications;
+
+    SpellModifications ResolveModifications(int spellId) =>
+        _frameModifications != null ? _frameModifications.ResolveFor(spellId) : null;
 
     private struct PendingSpawn
     {
@@ -82,7 +85,7 @@ public class SpellEmissionHandler : ISpellEmissionHandler
         _targetProvider = targetProvider;
     }
 
-    public void SetFrameModifications(SpellModifications modifications)
+    public void SetFrameModifications(SpellModificationCollection modifications)
     {
         _frameModifications = modifications;
     }
@@ -92,9 +95,9 @@ public class SpellEmissionHandler : ISpellEmissionHandler
         if (keyFrame?.attackEntityEmitter == null || keyFrame.attackEntityData == null)
             return;
 
-        SpellAttributeMask mask = runtime?.Definition != null ? runtime.Definition.attributeMask : default;
+         SpellAttributeMask mask = runtime?.Definition != null ? runtime.Definition.attributeMask : default;
 
-        int count = GetEmitCount(keyFrame, mask);
+        int count = GetEmitCount(keyFrame, mask, spellId);
         var context = new SpellEmissionContext
         {
             origin = origin,
@@ -106,9 +109,11 @@ public class SpellEmissionHandler : ISpellEmissionHandler
         if (emitPoints.Count == 0)
             return;
 
+        SpellModifications mods = ResolveModifications(spellId)?.Clone();
+
         var baseContext = new AttackEntityBuildContext(
             keyFrame.attackEntityData, spellId, spellInvocationId, keyframeIndex,
-            _frameModifications, mask, float2.zero, float2.zero);
+            mods, mask, float2.zero, float2.zero);
 
         float speed = keyFrame.attackEntityEmitter.speed;
         if (speed < 0.0001f)
@@ -125,7 +130,7 @@ public class SpellEmissionHandler : ISpellEmissionHandler
                 emitter = subBehavior.subEmitter,
                 childContext = new AttackEntityBuildContext(
                     subBehavior.subAttackEntityData, spellId, spellInvocationId, keyframeIndex,
-                    _frameModifications, mask, float2.zero, float2.zero),
+                    mods, mask, float2.zero, float2.zero),
                 emitInterval = subBehavior.emitInterval,
                 startDelay = subBehavior.startDelay
             };
@@ -274,9 +279,9 @@ public class SpellEmissionHandler : ISpellEmissionHandler
         return null;
     }
 
-    protected virtual int GetEmitCount(SpellKeyFrame keyFrame, SpellAttributeMask mask)
+    protected virtual int GetEmitCount(SpellKeyFrame keyFrame, SpellAttributeMask mask, int spellId)
     {
         int baseCount = keyFrame.attackEntityEmitter != null ? keyFrame.attackEntityEmitter.baseEmitCount : 1;
-        return SpellModificationsApplicator.ResolveEmitCount(_frameModifications, baseCount, mask);
+        return SpellModificationsApplicator.ResolveEmitCount(ResolveModifications(spellId), baseCount, mask);
     }
 }

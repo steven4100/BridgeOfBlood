@@ -15,13 +15,54 @@ MonoBehaviour:
   shopItemDefinition:
     displayName: Infernal Sequence
     description: When the previous spell is Fire, gain +30% fire damage and +2 projectiles.
+    sprite: {fileID: 0}
     price: 7
     resellValue: 3
     isResellable: 1
     rarity: 2
     shopItemType: 1
     weight: 0.6
-  effects: []
+  effects:
+  - rid: 3017610179149824064
+  combatReactions: []
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 3017610179149824064
+      type: {class: ConditionalEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        conditions:
+        - rid: 3017610179149824066
+        effects:
+        - rid: 3017610179149824074
+    - rid: 3017610179149824066
+      type: {class: ValueCondition, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        lhs:
+          rid: 3017610179149824073
+        comparison: 0
+        rhs:
+          rid: -2
+    - rid: 3017610179149824073
+      type: {class: SlotAttributeCheckValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        slot: 1
+        attributeFilter: 0
+    - rid: 3017610179149824074
+      type: {class: SpellModificationEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        modifier:
+          rid: 3017610179149824075
+    - rid: 3017610179149824075
+      type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
+      data:
+        property: 0
+        filter: 0
+        flatAdditive:
+          rid: -2
+        percentIncreased:
+          rid: -2
+        moreMultiplier:
+          rid: -2

@@ -34,6 +34,7 @@ public sealed class CombatSimulationController
     readonly TelemetryAggregator _telemetryAggregator;
     readonly EnemyEmissionTargetProvider _emissionTargetProvider;
     readonly EffectContext _effectContext = new EffectContext();
+    readonly SpellModificationCollection _frameModifications = new SpellModificationCollection();
     readonly List<ItemEvalResult> _lastItemResults = new List<ItemEvalResult>();
 
     public GameConfig RuntimeGameConfig => _config.RuntimeGameConfig;
@@ -90,10 +91,13 @@ public sealed class CombatSimulationController
     /// </summary>
     public void Tick(float deltaTime, bool castRequested, int spellLoopsPerRound)
     {
-        SpellModifications mods = _config.CastModifications != null
-            ? _config.CastModifications.GetModifications()
-            : new SpellModifications();
+        SpellModificationCollection mods = _frameModifications;
+        mods.ResetForFrame();
+        if (_config.CastModifications != null)
+            mods.global.MergeFrom(_config.CastModifications.GetModifications());
+
         EvaluateItems(mods, spellLoopsPerRound);
+        mods.FinalizeResolution(_loopedSpellCaster.Spells);
 
         SimulationDebugController debugCtrl = _config.DebugController;
         bool hasController = debugCtrl != null;
@@ -104,7 +108,6 @@ public sealed class CombatSimulationController
         _player.Update(deltaTime, playfield);
 
         _emissionHandler.SetFrameModifications(mods);
-        _loopedSpellCaster.EvaluateForecasts(mods);
 
         var sim = _simulation.State;
         SpellCastResult castResult = _loopedSpellCaster.AttemptToCastNextSpell(
@@ -155,7 +158,8 @@ public sealed class CombatSimulationController
             simulationTime = sim.SimulationTime,
             simulationAdvanced = advanceTime,
             spellCastResult = castResult,
-            playerPosition = _player.Position
+            playerPosition = _player.Position,
+            frameModifications = mods
         });
 
         _simulation.ClearFrameCombatEvents();
@@ -164,33 +168,49 @@ public sealed class CombatSimulationController
             debugCtrl.NotifyFrameComplete();
     }
 
-    void EvaluateItems(SpellModifications mods, int spellLoopsPerRound)
+    void EvaluateItems(SpellModificationCollection collection, int spellLoopsPerRound)
     {
         _effectContext.frameMetrics = _telemetryAggregator.CurrentFrame.aggregate;
-        _effectContext.spellCastMetrics = _telemetryAggregator.CurrentSpellCast.aggregate;
+        _telemetryAggregator.FillSpellLoopMetricsByLoopSlot(
+            _loopedSpellCaster.Spells, _effectContext.spellCastMetrics);
         _effectContext.spellLoopMetrics = _telemetryAggregator.CurrentSpellLoop.aggregate;
         _effectContext.roundMetrics = _telemetryAggregator.CurrentRound.aggregate;
         _effectContext.gameMetrics = _telemetryAggregator.Game.aggregate;
-        _effectContext.spellModifications = mods;
+        _effectContext.spellModificationCollection = collection;
 
-        _effectContext.spellInvocation = new SpellInvocationContext
+        IReadOnlyList<RuntimeSpell> spells = _loopedSpellCaster.Spells;
+        int onDeckIndex = _loopedSpellCaster.NextCastIndex;
+
+        var invocation = new SpellInvocationContext
         {
             totalSpellsCasted = _loopedSpellCaster.TotalInvocationCount,
             spellLoopNumber = _loopedSpellCaster.LoopCount + 1,
-            spellSlotNumber = _loopedSpellCaster.NextCastIndex + 1,
             spellLoopSlotCount = _loopedSpellCaster.SpellCount,
             spellLoopsPerRound = spellLoopsPerRound,
-            spells = _loopedSpellCaster.Spells,
+            spells = spells,
         };
+        _effectContext.spellInvocation = invocation;
 
         _lastItemResults.Clear();
-        var items = _config.RuntimeGameConfig.playerInventory.GetPassiveItems();
-        for (int i = 0; i < items.Count; i++)
+        IReadOnlyList<Item> items = _config.RuntimeGameConfig.playerInventory.GetPassiveItems();
+
+        for (int slot = 0; slot < spells.Count; slot++)
         {
-            Item item = items[i];
-            if (item == null) continue;
-            bool applied = item.Apply(_effectContext);
-            _lastItemResults.Add(new ItemEvalResult { itemName = item.name, applied = applied });
+            RuntimeSpell spell = spells[slot];
+            SpellModifications writeTarget = collection.ForSpell(spell.spellId);
+            writeTarget.Clear();
+
+            invocation.spellSlotNumber = slot + 1;
+            _effectContext.spellModifications = writeTarget;
+            _effectContext.spellInvocation = invocation;
+            for (int i = 0; i < items.Count; i++)
+            {
+                Item item = items[i];
+                if (item == null) continue;
+                bool applied = item.Apply(_effectContext);
+                if (slot == onDeckIndex)
+                    _lastItemResults.Add(new ItemEvalResult { itemName = item.name, applied = applied });
+            }
         }
     }
 

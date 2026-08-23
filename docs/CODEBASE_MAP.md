@@ -45,9 +45,8 @@ Visual data flow: `SpriteEntityVisual.bakedFrameIndex` > `EnemyAuthoringData.Cre
 
 ## Spell cast flow
 
-1. **Entry**: `TestSceneManager` / lab bootstrap (`LabbingScene`) create `CombatSimulationController` and register session services (`ISimulationZoneService`, inventory/shop/wallet, `CombatSimulationController`) on `ServiceLocator`, then raise `ServicesRegisteredEvent`. Casting proceeds via `LoopedSpellCaster.AttemptToCastNextSpell(...)` → `SpellCastResult` (didCast, spellId, invocationCount, loopCompleted, loopCount). When a cast occurs, the frame runner raises `SpellCastEvent` on `SharedGameEventBus.Bus` for presentation/audio subscribers. The caster owns cast timing plus forecast evaluation (below); it carries no `SpellModifications` of its own.
-2. **Mods injection**: each frame, after item evaluation, `ISpellEmissionHandler.SetFrameModifications(mods)` injects the frame's `SpellModifications` (built fresh by `RoundController` / lab cast mods, treated as immutable for the rest of the frame). There is **no** `SpellAuthoringData.Modify` clone — mods are applied at spawn, not on the authoring asset.
-2b. **Forecast**: still in the same frame, `LoopedSpellCaster.EvaluateForecasts(mods)` resolves an "if cast right now" `SpellCastForecast` for every loop slot and pushes it onto each `RuntimeSpell` (see *Spell forecasts* below).
+1. **Entry**: `TestSceneManager` / lab bootstrap (`LabbingScene`) create `CombatSimulationController` and register session services (`ISimulationZoneService`, inventory/shop/wallet, `CombatSimulationController`) on `ServiceLocator`, then raise `ServicesRegisteredEvent`. Casting proceeds via `LoopedSpellCaster.AttemptToCastNextSpell(...)` → `SpellCastResult` (didCast, spellId, invocationCount, loopCompleted, loopCount). When a cast occurs, the frame runner raises `SpellCastEvent` on `SharedGameEventBus.Bus` for presentation/audio subscribers. The caster owns cast timing and on-deck flags; it carries no `SpellModifications` of its own.
+2. **Mods injection**: each frame, after item evaluation, `ISpellEmissionHandler.SetFrameModifications(mods)` injects the frame's `SpellModifications` (built fresh by `RoundController` / lab cast mods, treated as immutable for the rest of the frame). There is **no** `SpellAuthoringData.Modify` clone — mods are applied at spawn, not on the authoring asset. The same `SpellModificationCollection` is also published on `SimulationCompleteEvent.frameModifications` for spell preview renderers.
 3. **Invoke**: `SpellInvoker.StartCast(runtime, origin, time, spellId, spellInvocationId)` stores an active cast playing `runtime.Definition` directly; each frame `Update(simulationTime, forward)` fires keyframes.
 4. **Emit**: On keyframe, `SpellEmissionHandler.OnKeyframeFired` builds an `AttackEntityBuildContext` (authoring `AttackEntityData` + spell provenance + frame mods snapshot + `attributeMask`), resolves the projectile-count mod for emit count, and queues pending contexts; transform (position/velocity) is filled at flush via `ctx.WithTransform`.
 5. **Spawn**: `AttackEntityManager.Spawn(in AttackEntityBuildContext)` rolls stats + applies parameter mods via `AttackEntityModificationApplicator.BuildRolledEntity`, appends default policies, then each authoring `AttackEntityBehavior.ApplyTo(manager, index, mods, mask)` writes its contribution (chain/pierce/expiration/appliers/effect scalars) directly into the parallel lists by index. Hit-conditional `AttackEntityModifier`s are snapshotted into a registry keyed by entity id.
@@ -56,25 +55,16 @@ Visual data flow: `SpriteEntityVisual.bakedFrameIndex` > `EnemyAuthoringData.Cre
 
 ---
 
-## Spell forecasts (diegetic previews)
-
-Answers "what would this spell do if cast right now, with the items I have" so previews can be diegetic (a spell that fires 30 projectiles shows 30 spines; a big AoE shows a bigger rock).
-
-- **Data**: `SpellCastForecast` (`SpellForecast.cs`, `BridgeOfBlood.Data.Spells`) — flat, value-equatable struct: cast timings (`castTime`, `castCompletionDuration`, `spawnTime`), emission shape (`emitCount`, `spreadDegrees`, `emitDuration`, `speed`), resolved `HitBoxData`, and pre-roll damage ranges per type. Spells currently emit from a single `SpellAnimation` keyframe, so there is no per-keyframe list.
-- **Evaluation**: `LoopedSpellCaster.EvaluateForecasts(mods)` runs once per frame from `CombatSimulationController.Tick` (after item eval, before the cast attempt). It forecasts **every** loop slot; the on-deck slot is exact because item conditions already evaluated against it, later slots are best-effort under current-frame conditions.
-- **Shared math**: forecasts and spawns use the same helpers so preview matches reality — `SpellModificationsApplicator.ResolveEmitCount` (also used by `SpellEmissionHandler.GetEmitCount`) and `AttackEntityModificationApplicator.ResolveHitBox` / `ResolveDamageRanges` (also used by `BuildRolledEntity`).
-- **Storage + events**: `RuntimeSpell` owns the data **and** the change events. `CurrentForecast`, `LastCastForecast`, `IsOnDeck`, `InvocationCount`, `RoundTimeInvokedAt` are read-only properties; mutation goes through `SetCurrentForecast`, `RecordCast`, `SetOnDeck`, `ResetTracking` so `CurrentForecastChanged` / `CastInvoked` / `OnDeckChanged` cannot be skipped. `LoopedSpellCaster` is the only caller of the mutators; `RecordCast` snapshots `CurrentForecast` into `LastCastForecast` at cast time.
-- **No bus event**: forecast changes are per-spell C# instance events, not `SharedGameEventBus` traffic. `SpellCastEvent` remains for cross-cutting consumers (audio, telemetry).
-
 ## Spell renderers
 
 - **Authoring**: `SpellAuthoringData.rendererPrefab` (a `SpellRenderer`) — optional; spells with no world-space representation leave it empty.
-- **Base**: `SpellRenderer` (abstract MonoBehaviour, `Presentation/`). `Bind(RuntimeSpell)` subscribes to that spell's three events and applies initial state; `Unbind()` detaches. Subclass hooks: `OnForecastChanged()`, `OnCastInvoked()`, `OnDeckChanged(bool)`, plus `OnBound` / `OnUnbound`. Cast animations sync from `LastCastForecast` + `RoundTimeInvokedAt`.
-- **Origin**: all casts emit from the player, so the base class sets `localPosition` to player position + `SpellCastForecast.originOffset` (the emitter's `RelativeToPlayerSpawnCriteria`) and subclasses draw in local space around that. Instances are parented to the simulation zone rect, where local space is simulation space (same convention as `PlayerRenderer` / `AttackEntityDebugRenderer`).
-- **Lifecycle**: `SpellRenderManager` (MonoBehaviour) binds `ISpellInventoryService` on `ServicesRegisteredEvent` and reacts to `SpellsUpdated` — instantiates/destroys instances keyed by `spellId` and syncs sibling order to loop order. It routes no forecast data (each renderer is driven by its own spell's events); its only per-frame work is pushing `SimulationCompleteEvent.playerPosition` into every bound renderer via `SyncOrigin`.
+- **Base**: `SpellRenderer` (abstract MonoBehaviour, `Presentation/`). `Bind(RuntimeSpell)` subscribes to cast/on-deck events; `Unbind()` detaches. Each frame, `SpellRenderManager` calls `SyncFrame(mods)` then `SyncOrigin(playerPosition)`. Subclasses implement `IsPreviewDirty()` / `OnPreviewRefresh()` to resolve only the preview fields they need from authoring + `SpellModifications`, rebuilding visuals when resolved values change. Cast animations read `PrimaryKeyFrame.time` from authoring.
+- **Origin**: all casts emit from the player, so the base class sets `localPosition` to player position + the emitter's `RelativeToPlayerSpawnCriteria.offsetFromPlayer` and subclasses draw in local space around that. Instances are parented to the simulation zone rect, where local space is simulation space (same convention as `PlayerRenderer` / `AttackEntityDebugRenderer`).
+- **Lifecycle**: `SpellRenderManager` (MonoBehaviour) binds `ISpellInventoryService` on `ServicesRegisteredEvent` and reacts to `SpellsUpdated` — instantiates/destroys instances keyed by `spellId` and syncs sibling order to loop order. On `SimulationCompleteEvent`, pushes `frameModifications.ResolveFor(spellId)` and `playerPosition` into every bound renderer.
+- **Shared math**: previews and spawns use the same helpers — `SpellModificationsApplicator.ResolveEmitCount` and `AttackEntityModificationApplicator.ResolveHitBox`.
 - **Reference impls**:
-  - `DebugSpellRenderer` — forecast line mesh (emit rays + hitbox outline), tinted on deck / flash on cast.
-  - `HoveringSphereSpellRenderer` — sphere at half resolved AoE radius, hovering on local Z (clearance above ground contact); on cast crashes to ground contact over `LastCastForecast.spawnTime`, then rises back over `riseDuration`. Prefab: `Assets/Prefabs/SpellRenderers/HoveringSphereSpellRenderer.prefab`.
+  - `DebugSpellRenderer` — line mesh (emit rays + hitbox outline), tinted on deck / flash on cast.
+  - `HoveringSphereSpellRenderer` — sphere at half resolved AoE radius, hovering on local Z (clearance above ground contact); on cast crashes to ground contact over keyframe `time`, then rises back over `riseDuration`. Prefab: `Assets/Prefabs/SpellRenderers/HoveringSphereSpellRenderer.prefab`.
 
 ---
 
@@ -221,7 +211,7 @@ Reusable probability primitives in `BridgeOfBlood.Data.Shared`.
 ## Key data splits
 
 - **Authoring (ScriptableObject)**: `GameConfig`, `PlayerWallet`, `PlayerInventory`, `SpellAuthoringData`, `AttackEntityData`, `EnemyAuthoringData`, `EnemySpawnTable`, `SpawnPattern`, `IdolAuthoringData`, `SpellModificationsTestData`, `SpriteEntityVisual`, `SpriteRenderDatabase`, `ShopItemDefinition`, `ShopConfig`. Lives in project; session uses **`Instantiate`** copies of wallet/inventory templates so templates stay read-only on disk.
-- **Runtime (structs / NativeList)**: `AttackEntity`, `Enemy`, `HitEvent`, `DamageEvent`, `DamageNumber`, chain/pierce/expiration/rehit policy structs, `EntityVisual`, `SpriteFrame`, `SpriteInstanceData`, `CombatMetrics`, `SpellCastResult`, `SpellCastForecast`. Simulation-only, no MonoBehaviours in hot path.
+- **Runtime (structs / NativeList)**: `AttackEntity`, `Enemy`, `HitEvent`, `DamageEvent`, `DamageNumber`, chain/pierce/expiration/rehit policy structs, `EntityVisual`, `SpriteFrame`, `SpriteInstanceData`, `CombatMetrics`, `SpellCastResult`. Simulation-only, no MonoBehaviours in hot path.
 - **Enums / shared**: `DamageType`, `SpellAttributeMask`, `Rarity`, `CurrencyType`, `ShopItemType` in `Data/Shared/Enums.cs`. `IRandomElement`, `WeightedSelection` in `Data/Shared/`.
 
 ---

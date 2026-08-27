@@ -43,6 +43,8 @@ namespace BridgeOfBlood.Data.Spells
         LightningPenetration = 23,
 
         KnockbackStrength = 24,
+
+        ManaCost = 25,
     }
 
     [Serializable]

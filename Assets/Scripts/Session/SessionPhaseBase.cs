@@ -1,6 +1,5 @@
 /// <summary>
-/// Runs phase logic via <see cref="TickAndBuildViewData"/>, then passes the result to the presenter every tick.
-/// Calls <see cref="IStatePresenter{TViewData}.SetRootVisible"/> after <see cref="OnEnter"/> and before <see cref="OnExit"/>.
+/// Shared Enter / Exit / Tick wiring for one <see cref="SessionState"/>.
 /// </summary>
 public abstract class SessionPhaseBase : ISessionPhase
 {

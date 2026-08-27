@@ -12,8 +12,6 @@ using UnityEngine;
 public sealed class CombatSimulationControllerConfig
 {
     public GameConfig RuntimeGameConfig;
-    public float PlayerMoveSpeed;
-    public SpellModificationsTestData CastModifications;
     public SimulationDebugController DebugController;
 }
 
@@ -50,11 +48,12 @@ public sealed class CombatSimulationController
         PlayerInventory inventory = runtime.playerInventory;
 
         _simulation = new GameSimulation(runtime.simulationConfig);
+        _simulation.ApplyRoundConfig(runtime.GetRoundConfig(1));
 
         Rect playfield = _simulation.State.Playfield;
         _player = new Player(
             new float2(playfield.xMax - 10f, playfield.center.y),
-            config.PlayerMoveSpeed);
+            runtime.playerStartMoveSpeed);
 
         _emissionTargetProvider = new EnemyEmissionTargetProvider(_simulation.EnemyManager);
         _emissionHandler = new SpellEmissionHandler(_simulation.AttackEntityManager, _emissionTargetProvider);
@@ -76,6 +75,14 @@ public sealed class CombatSimulationController
     }
 
     /// <summary>
+    /// Assigns this round's playfield, spawner, and enemy scaling. Call before <see cref="ResetForNewRound"/>.
+    /// </summary>
+    public void ApplyRoundConfig(in RoundConfig roundConfig)
+    {
+        _simulation.ApplyRoundConfig(in roundConfig);
+    }
+
+    /// <summary>
     /// Clears simulation/cast state and repositions the player for a fresh round.
     /// </summary>
     public void ResetForNewRound()
@@ -93,8 +100,8 @@ public sealed class CombatSimulationController
     {
         SpellModificationCollection mods = _frameModifications;
         mods.ResetForFrame();
-        if (_config.CastModifications != null)
-            mods.global.MergeFrom(_config.CastModifications.GetModifications());
+        if (_config.RuntimeGameConfig.castModifications != null)
+            mods.global.MergeFrom(_config.RuntimeGameConfig.castModifications.GetModifications());
 
         EvaluateItems(mods, spellLoopsPerRound);
         mods.FinalizeResolution(_loopedSpellCaster.Spells);
@@ -111,7 +118,7 @@ public sealed class CombatSimulationController
 
         var sim = _simulation.State;
         SpellCastResult castResult = _loopedSpellCaster.AttemptToCastNextSpell(
-            sim.SimulationTime, _player.Position, castRequested);
+            sim.SimulationTime, _player.Position, castRequested, mods, _config.RuntimeGameConfig.totalMana);
         if (castResult.didCast)
         {
             SharedGameEventBus.Bus.Raise(new SpellCastEvent
@@ -210,6 +217,14 @@ public sealed class CombatSimulationController
                 bool applied = item.Apply(_effectContext);
                 if (slot == onDeckIndex)
                     _lastItemResults.Add(new ItemEvalResult { itemName = item.name, applied = applied });
+            }
+
+            for (int g = 0; g < spell.spellItems.Count; g++)
+            {
+                SpellItem gem = spell.spellItems[g].spellItem;
+                bool applied = gem.Apply(_effectContext);
+                if (slot == onDeckIndex)
+                    _lastItemResults.Add(new ItemEvalResult { itemName = gem.name, applied = applied });
             }
         }
     }

@@ -48,6 +48,8 @@ public partial class GameSimulation
 
         public int EnemyCount => _owner._enemyManager.EnemyCount;
 
+        public int EnemiesSpawnedThisRound => _owner._enemyManager.SpawnedThisRound;
+
         public int AttackEntityCount => _owner._attackEntityManager.EntityCount;
     }
 }

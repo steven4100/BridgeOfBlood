@@ -44,6 +44,8 @@ namespace BridgeOfBlood.Data.Enemies
 			int index,
 			float2 position,
 			uint randomSeed,
+			float healthMultiplier,
+			float moveSpeedMultiplier,
 			NativeList<EnemyMotion> motion,
 			NativeList<EnemyVitality> vitality,
 			NativeList<EnemyCombatTraits> combatTraits,
@@ -51,10 +53,11 @@ namespace BridgeOfBlood.Data.Enemies
 			NativeList<EnemyPresentation> presentation)
 		{
 			var random = Unity.Mathematics.Random.CreateFromIndex(randomSeed);
-			float moveSpeed = random.NextFloat(minMoveSpeed, maxMoveSpeed);
+			float moveSpeed = random.NextFloat(minMoveSpeed, maxMoveSpeed) * moveSpeedMultiplier;
+			float health = healthPoints * healthMultiplier;
 
 			motion[index] = new EnemyMotion { position = position, moveSpeed = moveSpeed, knockbackVelocity = float2.zero };
-			vitality[index] = new EnemyVitality { health = healthPoints, maxHealth = healthPoints };
+			vitality[index] = new EnemyVitality { health = health, maxHealth = health };
 			combatTraits[index] = new EnemyCombatTraits
 			{
 				corruptionFlag = corruptionFlag,

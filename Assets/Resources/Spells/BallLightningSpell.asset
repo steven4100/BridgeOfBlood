@@ -38,4 +38,5 @@ MonoBehaviour:
   baseMultiplier: 1
   castCompletionDuration: 1
   castTime: 0.5
+  manaCost: 25
   attributeMask: 0

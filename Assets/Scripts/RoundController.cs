@@ -37,9 +37,11 @@ public sealed class RoundController : SessionPhaseBase
 
 	public GameLoopPhase Phase { get; private set; }
 	public int RoundNumber { get; private set; }
-	public float BloodQuota { get; private set; }
+	public int MinEnemiesKilled { get; private set; }
+	public float KillQuotaPercent { get; private set; }
 	public int SpellLoopsPerRound { get; private set; }
 	public float BloodExtractedThisRound { get; private set; }
+	public int KillsThisRound { get; private set; }
 	public bool QuotaMet { get; private set; }
 
 	public IReadOnlyList<ItemEvalResult> LastItemResults => _combatSimulation.LastItemResults;
@@ -72,13 +74,14 @@ public sealed class RoundController : SessionPhaseBase
 	{
 		SetGameConfig(context.RuntimeGameConfig);
 		PrepareForRoundAfterShop();
+		ApplyRoundRuntimeFromConfig();
 		context.RuntimeGameConfig.playerInventory.SpellCollection.ClearRuntimeSpellTracking();
 		ResetForNewRound();
 		SharedGameEventBus.Bus.Raise(new RoundEnterEvent
 		{
 			state = SessionState.Round,
 			roundNumber = RoundNumber,
-			bloodQuota = BloodQuota,
+			killQuotaPercent = KillQuotaPercent,
 			spellLoopsPerRound = SpellLoopsPerRound,
 			playfield = _combatSimulation.Simulation.State.Playfield
 		});
@@ -105,8 +108,12 @@ public sealed class RoundController : SessionPhaseBase
 		_combatSimulation.Tick(deltaTime, castRequested, SpellLoopsPerRound);
 
 		BloodExtractedThisRound = _combatSimulation.TelemetryAggregator.CurrentRound.aggregate.bloodExtracted;
-
+		KillsThisRound = _combatSimulation.TelemetryAggregator.CurrentRound.aggregate.kills;
 		var sim = _combatSimulation.Simulation.State;
+		int spawned = sim.EnemiesSpawnedThisRound;
+		MinEnemiesKilled = _combatSimulation.RuntimeGameConfig.GetRoundConfig(RoundNumber)
+			.ResolveMinEnemiesKilled(spawned);
+
 		UpdatePhase(
 			loopsExhausted,
 			caster.HasActiveCasts,
@@ -117,8 +124,10 @@ public sealed class RoundController : SessionPhaseBase
 		{
 			_combatSimulation.TelemetryAggregator.EndRound();
 			RoundEndEvaluationInput endInput = new RoundEndEvaluationInput(
-				BloodExtractedThisRound,
-				BloodQuota,
+				KillsThisRound,
+				MinEnemiesKilled,
+				spawned,
+				KillQuotaPercent,
 				RoundNumber);
 			RoundEndEvaluationResult resolution = _roundEndStrategy.Evaluate(in endInput);
 			QuotaMet = resolution.QuotaMet;
@@ -149,10 +158,11 @@ public sealed class RoundController : SessionPhaseBase
 	{
 		RoundNumber++;
 		BloodExtractedThisRound = 0f;
+		KillsThisRound = 0;
 		QuotaMet = false;
 		Phase = GameLoopPhase.Playing;
 		ApplyRoundRuntimeFromConfig();
-		Debug.Log($"[RoundController] Starting round {RoundNumber}. Quota: {BloodQuota:F0}, Loops: {SpellLoopsPerRound}");
+		Debug.Log($"[RoundController] Starting round {RoundNumber}. Kill quota: {KillQuotaPercent:0.#}% of spawned, Loops: {SpellLoopsPerRound}");
 	}
 
 	/// <summary>
@@ -162,17 +172,21 @@ public sealed class RoundController : SessionPhaseBase
 	{
 		RoundNumber = 1;
 		BloodExtractedThisRound = 0f;
+		KillsThisRound = 0;
 		QuotaMet = false;
 		Phase = GameLoopPhase.Playing;
 		ApplyRoundRuntimeFromConfig();
-		Debug.Log($"[RoundController] Retrying from round 1. Quota: {BloodQuota:F0}, Loops: {SpellLoopsPerRound}");
+		Debug.Log($"[RoundController] Retrying from round 1. Kill quota: {KillQuotaPercent:0.#}% of spawned, Loops: {SpellLoopsPerRound}");
 	}
 
 	void ApplyRoundRuntimeFromConfig()
 	{
 		GameConfig gc = _combatSimulation.RuntimeGameConfig;
-		BloodQuota = gc.bloodQuotaScaling.BuildForRound(RoundNumber).bloodRequirement;
+		RoundConfig round = gc.GetRoundConfig(RoundNumber);
+		KillQuotaPercent = round.killQuotaPercent;
+		MinEnemiesKilled = round.ResolveMinEnemiesKilled(0);
 		SpellLoopsPerRound = Mathf.Max(0, gc.maxSpellLoopsPerRound);
+		_combatSimulation.ApplyRoundConfig(in round);
 	}
 
 	bool UpdatePhase(bool loopsExhausted, bool hasActiveCasts, bool hasPendingSpawns, int attackEntityCount)

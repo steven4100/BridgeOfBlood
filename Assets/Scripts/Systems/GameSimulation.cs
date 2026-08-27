@@ -12,11 +12,6 @@ using EntityId = BridgeOfBlood.Data.Shared.EntityId;
 [Serializable]
 public class SimulationConfig
 {
-    [SerializeReference, SerializeInterface]
-    [Tooltip("Spawn timing/origins. Pick Enemy Spawner from the type menu.")]
-    public IEnemySpawner spawner;
-    [Tooltip("Playfield in simulation space: x = 0 (left) .. width (right); y = 0 at vertical center, ±height/2.")]
-    public Rect playfield = new Rect(0f, -300f, 800f, 600f);
     public float SpawnRate = 2f;
     public float GizmoRadius = 5f;
 }
@@ -28,7 +23,7 @@ public class SimulationConfig
 /// </summary>
 public partial class GameSimulation
 {
-    private readonly Rect _playfield;
+    private Rect _playfield;
     private readonly float _gizmoRadius;
     private EnemyRemovalBatch _enemyRemovals;
 
@@ -36,6 +31,8 @@ public partial class GameSimulation
     private EnemyMovementSystemLinear _movementSystem;
     private EnemyCullingSystem _cullingSystem;
     private IEnemySpawner _spawner;
+    private float _enemyHealthMultiplier = 1f;
+    private float _enemyMoveSpeedMultiplier = 1f;
     private AttackEntityManager _attackEntityManager;
     private AttackEntityMovementSystem _attackMovementSystem;
     private AttackEntityTimeSystem _attackTimeSystem;
@@ -77,13 +74,11 @@ public partial class GameSimulation
         if (config == null)
             throw new ArgumentNullException(nameof(config));
 
-        _playfield = config.playfield;
         _gizmoRadius = config.GizmoRadius;
 
-        _enemyManager = new EnemyManager(_playfield);
+        _enemyManager = new EnemyManager(default);
         _movementSystem = new EnemyMovementSystemLinear();
         _cullingSystem = new EnemyCullingSystem();
-        _spawner = config.spawner;
 
         _attackEntityManager = new AttackEntityManager();
         _attackMovementSystem = new AttackEntityMovementSystem();
@@ -109,7 +104,7 @@ public partial class GameSimulation
         _shockDamageMultiplierScratch = new NativeHashMap<int, float>(256, Allocator.Persistent);
         _enemyRemovals = new EnemyRemovalBatch(Allocator.Persistent);
 
-        _debugDrawables.Add(_enemyManager.Grid);
+        _debugDrawables.Add(new EnemyGridGizmoDrawer(_enemyManager));
         _debugDrawables.Add(new EnemyManagerGizmoDrawer(_enemyManager, _gizmoRadius));
 
         _steps = new[]
@@ -166,6 +161,18 @@ public partial class GameSimulation
 
     /// <summary>Active enemy spawn strategy (rate line, brush stroke, etc.).</summary>
     public IEnemySpawner Spawner => _spawner;
+
+    /// <summary>
+    /// Assigns this round's playfield, spawner, and enemy scaling. Call before <see cref="ResetForNewRound"/>.
+    /// </summary>
+    public void ApplyRoundConfig(in RoundConfig roundConfig)
+    {
+        _playfield = roundConfig.ResolvePlayfield();
+        _enemyManager.RebuildSpatialGrid(_playfield);
+        _spawner = roundConfig.spawner;
+        _enemyHealthMultiplier = roundConfig.enemyHealthMultiplier;
+        _enemyMoveSpeedMultiplier = roundConfig.enemyMoveSpeedMultiplier;
+    }
 
     /// <summary>Combat reaction contracts for the current frame; does not take ownership of the list.</summary>
     public void SetFrameCombatReactionContracts(IReadOnlyList<CombatSpawnContract> contracts)
@@ -243,7 +250,11 @@ public partial class GameSimulation
         for (int i = 0; i < requests.Count; i++)
         {
             EnemySpawnRequest req = requests[i];
-            _enemyManager.CreateEnemies(req.positions, req.enemy);
+            _enemyManager.CreateEnemies(
+                req.positions,
+                req.enemy,
+                _enemyHealthMultiplier,
+                _enemyMoveSpeedMultiplier);
         }
     }
 
@@ -455,6 +466,21 @@ public partial class GameSimulation
             _attackEntityManager);
 
         _frameCombatContracts = null;
+    }
+
+    private struct EnemyGridGizmoDrawer : IDebugDrawable
+    {
+        public EnemyManager Manager;
+
+        public EnemyGridGizmoDrawer(EnemyManager manager)
+        {
+            Manager = manager;
+        }
+
+        public void DrawGizmos(Transform transform)
+        {
+            Manager.Grid.DrawGizmos(transform);
+        }
     }
 
     private struct AttackEntityManagerAilmentAppliers : AilmentSystem.AilmentApplierProvider

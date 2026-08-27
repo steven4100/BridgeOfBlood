@@ -5,7 +5,6 @@ using UnityEngine;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shop;
-using BridgeOfBlood.Data.Spells;
 
 /// <summary>
 /// A named simulation step that can be executed, timed, and stepped through by the debug controller.
@@ -33,14 +32,10 @@ public class TestSceneManager : MonoBehaviour
     [Tooltip("Scene-bound combat audio component. Materials/atlas live on CombatPresentationDriver.")]
     [SerializeField] GameAudioManager gameAudioManager;
 
-    [Header("Player")]
-    public float playerMoveSpeed = 100f;
-
     [Header("Spells & Items")]
     [Tooltip("Authoring asset on disk. A runtime clone is created via GameConfig.CreateRuntimeCopy.")]
     [SerializeField] GameConfig gameConfig;
     public KeyCode castInputKey = KeyCode.Space;
-    public SpellModificationsTestData castModifications;
 
     [Header("Debug")]
     public SimulationDebugController debugController;
@@ -78,8 +73,6 @@ public class TestSceneManager : MonoBehaviour
         _combatSimulation = new CombatSimulationController(new CombatSimulationControllerConfig
         {
             RuntimeGameConfig = _runtimeGameConfig,
-            PlayerMoveSpeed = playerMoveSpeed,
-            CastModifications = castModifications,
             DebugController = debugController
         });
         ServiceLocator.Current.RegisterInstance(_combatSimulation);
@@ -150,7 +143,9 @@ public class TestSceneManager : MonoBehaviour
             sessionState = _sessionFlow.CurrentState,
             phase = _roundController.Phase,
             roundNumber = _roundController.RoundNumber,
-            bloodQuota = _roundController.BloodQuota,
+            killQuotaPercent = _roundController.KillQuotaPercent,
+            minEnemiesKilled = _roundController.MinEnemiesKilled,
+            enemiesSpawnedThisRound = sim.EnemiesSpawnedThisRound,
             bloodExtracted = _roundController.BloodExtractedThisRound,
             quotaMet = _roundController.QuotaMet,
             spellLoopsPerRound = _roundController.SpellLoopsPerRound,

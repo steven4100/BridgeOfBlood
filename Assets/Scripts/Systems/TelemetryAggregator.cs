@@ -107,7 +107,7 @@ public class TelemetryAggregator
         float simulationTime,
         SpellCastResult castResult)
     {
-        if (castResult.didCast)
+        if (castResult.didCast || castResult.loopCompleted)
             OnSpellCast(castResult);
 
         BuildFrameSnapshot(damageEvents, tickDamageEvents, statusAilmentEvents, deltaTime, simulationTime);
@@ -215,6 +215,9 @@ public class TelemetryAggregator
             _spellLoopPerSpell.Clear();
             _spellLoopInvocations.Clear();
         }
+
+        if (!castResult.didCast)
+            return;
 
         TrackInvocation(_spellLoopInvocations, castResult.spellId);
         TrackInvocation(_roundInvocations, castResult.spellId);

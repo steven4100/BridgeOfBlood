@@ -6,7 +6,7 @@ using Unity.Mathematics;
 /// <summary>
 /// Returned by <see cref="LoopedSpellCaster.AttemptToCastNextSpell"/> each frame.
 /// Tells the caller exactly what happened: whether a spell was cast, which one,
-/// and whether the spell loop just completed (last slot was cast).
+/// and whether the spell loop just completed (last slot was cast, or mana reset).
 /// </summary>
 public struct SpellCastResult
 {
@@ -36,6 +36,7 @@ public class LoopedSpellCaster
     private int _indexOfLastCast;
     private double _timeOfLastCast;
     private int _loopCount;
+    private readonly List<float> _loopManaCosts = new List<float>();
 
     public IReadOnlyList<RuntimeSpell> Spells => _spellCollection.RuntimeSpells;
 
@@ -48,6 +49,23 @@ public class LoopedSpellCaster
     public int NextCastIndex => _spellCollection.Count > 0
         ? (_indexOfLastCast + 1) % _spellCollection.Count
         : -1;
+
+    /// <summary>
+    /// Mana left in the current loop: <paramref name="totalMana"/> minus prefix cost through the last cast slot.
+    /// After the last slot is cast, the next loop has not spent yet, so this returns <paramref name="totalMana"/>.
+    /// </summary>
+    public float GetRemainingMana(float totalMana, SpellModificationCollection modifications)
+    {
+        IReadOnlyList<RuntimeSpell> spells = _spellCollection.RuntimeSpells;
+        if (spells.Count == 0 || _indexOfLastCast < 0)
+            return totalMana;
+        if (NextCastIndex == 0 && _indexOfLastCast == spells.Count - 1)
+            return totalMana;
+
+        SpellModificationsApplicator.EvaluateLoopManaCosts(spells, modifications, _loopManaCosts);
+        float remaining = totalMana - _loopManaCosts[_indexOfLastCast];
+        return remaining < 0f ? 0f : remaining;
+    }
 
     public int TotalInvocationCount
     {
@@ -85,10 +103,17 @@ public class LoopedSpellCaster
     }
 
     /// <summary>
-    /// Casts the next spell in the loop if timing allows. Spell modifications are applied at spawn time by
+    /// Casts the next spell in the loop if timing and mana allow. Spell modifications are applied at spawn time by
     /// <see cref="AttackEntityManager"/> (fed via <see cref="SpellEmissionHandler"/>), not here.
+    /// When the prefix mana cost of the next slot exceeds <paramref name="totalMana"/>, the loop counts as
+    /// completed and this attempt casts the first spell of the new loop (if that spell fits the budget).
     /// </summary>
-    public SpellCastResult AttemptToCastNextSpell(double roundTime, float2 origin, bool castRequestedThisFrame)
+    public SpellCastResult AttemptToCastNextSpell(
+        double roundTime,
+        float2 origin,
+        bool castRequestedThisFrame,
+        SpellModificationCollection modifications,
+        float totalMana)
     {
         if (!castRequestedThisFrame)
             return SpellCastResult.None;
@@ -113,8 +138,29 @@ public class LoopedSpellCaster
         if (!canCastNext)
             return SpellCastResult.None;
 
-        bool loopCompleted = nextIndex == spells.Count - 1;
-        if (loopCompleted)
+        SpellModificationsApplicator.EvaluateLoopManaCosts(spells, modifications, _loopManaCosts);
+        bool completedByManaReset = false;
+        if (_loopManaCosts[nextIndex] > totalMana)
+        {
+            _indexOfLastCast = -1;
+            _loopCount++;
+            if (nextIndex == 0 || _loopManaCosts[0] > totalMana)
+            {
+                UpdateOnDeckFlags(spells);
+                return new SpellCastResult
+                {
+                    didCast = false,
+                    loopCompleted = true,
+                    loopCount = _loopCount
+                };
+            }
+
+            nextIndex = 0;
+            completedByManaReset = true;
+        }
+
+        bool loopCompleted = completedByManaReset || nextIndex == spells.Count - 1;
+        if (loopCompleted && !completedByManaReset)
             _loopCount++;
 
         RuntimeSpell next = spells[nextIndex];

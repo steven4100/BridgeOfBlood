@@ -15,8 +15,14 @@ namespace BridgeOfBlood.Data.Shared
 		/// <summary>1-based round index.</summary>
 		public int roundNumber;
 
-		/// <summary>Blood quota the player must meet this round.</summary>
-		public float bloodQuota;
+		/// <summary>Authored kill quota as a percent of enemies spawned this round.</summary>
+		public float killQuotaPercent;
+
+		/// <summary>Resolved kill count required this round (from quota percent × spawned).</summary>
+		public int minEnemiesKilled;
+
+		/// <summary>Enemies created this round (including already killed).</summary>
+		public int enemiesSpawnedThisRound;
 
 		/// <summary>Blood extracted so far this round.</summary>
 		public float bloodExtracted;

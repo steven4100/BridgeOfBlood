@@ -29,7 +29,7 @@ namespace BridgeOfBlood.Data.Shared
 	[Serializable]
 	public sealed class RoundEnterEvent : SessionPhaseEvent<RoundEnterEvent>
 	{
-		public float bloodQuota;
+		public float killQuotaPercent;
 		public int spellLoopsPerRound;
 		/// <summary>
 		/// Simulation playfield: x = 0 (left) .. width (right); y = 0 at vertical center (±height/2).

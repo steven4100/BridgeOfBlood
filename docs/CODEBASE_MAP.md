@@ -15,7 +15,7 @@ Short reference for where systems live and how data flows. Update when adding ma
 | `Assets/Scripts/Enemies/` | Enemy manager, movement, culling, spawner, grid, render |
 | `Assets/Scripts/Data/` | Shared enums, runtime/authoring structs (Enemies, Idols, Shared, Shop) |
 | `Assets/Scripts/Presentation/` | Combat presentation: `CombatPresentationDriver` (materials/atlas on the component), damage numbers, VFX, spell renderers (`SpellRenderer` / `SpellRenderManager`) |
-| `Assets/Scripts/Player/` | Player, PlayerRenderer, Stats |
+| `Assets/Scripts/Player/` | Player, PlayerRenderer |
 | `Assets/Scripts/Editor/` | Unity editors/drawers (e.g. AttackEntityData, `ScriptableObjectImplementsDrawer`, Probability Editor) |
 | `Assets/Shaders/` | DamageNumberUnlit, EnemyIndirectUnlit |
 | `Assets/Rendering/` | Sprite rendering system (atlas-based GPU instanced) |
@@ -45,7 +45,7 @@ Visual data flow: `SpriteEntityVisual.bakedFrameIndex` > `EnemyAuthoringData.Cre
 
 ## Spell cast flow
 
-1. **Entry**: `TestSceneManager` / lab bootstrap (`LabbingScene`) create `CombatSimulationController` and register session services (`ISimulationZoneService`, inventory/shop/wallet, `CombatSimulationController`) on `ServiceLocator`, then raise `ServicesRegisteredEvent`. Casting proceeds via `LoopedSpellCaster.AttemptToCastNextSpell(...)` → `SpellCastResult` (didCast, spellId, invocationCount, loopCompleted, loopCount). When a cast occurs, the frame runner raises `SpellCastEvent` on `SharedGameEventBus.Bus` for presentation/audio subscribers. The caster owns cast timing and on-deck flags; it carries no `SpellModifications` of its own.
+1. **Entry**: `TestSceneManager` / lab bootstrap (`LabbingScene`) create `CombatSimulationController` and register session services (`ISimulationZoneService`, inventory/shop/wallet, `CombatSimulationController`) on `ServiceLocator`, then raise `ServicesRegisteredEvent`. Casting proceeds via `LoopedSpellCaster.AttemptToCastNextSpell(...)` → `SpellCastResult` (didCast, spellId, invocationCount, loopCompleted, loopCount). After timing, the caster evaluates prefix mana costs (`SpellModificationsApplicator.EvaluateLoopManaCosts`) against `GameConfig.totalMana`; if the next slot would exceed the budget, the loop completes and this attempt casts the first spell of the new loop (`loopCompleted = true`, `didCast = true` unless slot 0 is also over budget). When a cast occurs, the frame runner raises `SpellCastEvent` on `SharedGameEventBus.Bus` for presentation/audio subscribers. The caster owns cast timing, mana gating, and on-deck flags; it carries no `SpellModifications` of its own.
 2. **Mods injection**: each frame, after item evaluation, `ISpellEmissionHandler.SetFrameModifications(mods)` injects the frame's `SpellModifications` (built fresh by `RoundController` / lab cast mods, treated as immutable for the rest of the frame). There is **no** `SpellAuthoringData.Modify` clone — mods are applied at spawn, not on the authoring asset. The same `SpellModificationCollection` is also published on `SimulationCompleteEvent.frameModifications` for spell preview renderers.
 3. **Invoke**: `SpellInvoker.StartCast(runtime, origin, time, spellId, spellInvocationId)` stores an active cast playing `runtime.Definition` directly; each frame `Update(simulationTime, forward)` fires keyframes.
 4. **Emit**: On keyframe, `SpellEmissionHandler.OnKeyframeFired` builds an `AttackEntityBuildContext` (authoring `AttackEntityData` + spell provenance + frame mods snapshot + `attributeMask`), resolves the projectile-count mod for emit count, and queues pending contexts; transform (position/velocity) is filled at flush via `ctx.WithTransform`.
@@ -116,9 +116,9 @@ Hierarchical aggregation at five time scales: Frame > Spell Cast > Spell Loop > 
 
 ## Modifications (spell stats)
 
-- **Data model**: `SpellModifications` (SpellModification.cs): `Dictionary<SpellModificationProperty, List<ParameterModifier>>` keyed by property. `ParameterModifier` (SpellModificationModifier.cs) carries `property`, `SpellAttributeMask filter`, and three `IValue<float>` fields (`flatAdditive`, `percentIncreased`, `moreMultiplier`). Structural lists for `FlatDamage`, `DamageConversion`, `ExtraDamageAs` remain separate. `SpellModificationProperty` enum covers core stats (CritChance..Projectiles), generic `DamageScaling`, per-type scaling (Physical/Cold/Fire/LightningDamageScaling), and per-type penetration.
+- **Data model**: `SpellModifications` (SpellModification.cs): `Dictionary<SpellModificationProperty, List<ParameterModifier>>` keyed by property. `ParameterModifier` (SpellModificationModifier.cs) carries `property`, `SpellAttributeMask filter`, and three `IValue<float>` fields (`flatAdditive`, `percentIncreased`, `moreMultiplier`). Structural lists for `FlatDamage`, `DamageConversion`, `ExtraDamageAs` remain separate. `SpellModificationProperty` enum covers core stats (CritChance..Projectiles), `ManaCost`, generic `DamageScaling`, per-type scaling (Physical/Cold/Fire/LightningDamageScaling), and per-type penetration.
 - **Effect → pool**: `SpellModificationEffect` serializes a `ParameterModifier` with `IValue<float>` fields. On `Apply`, it eagerly resolves (bakes) each `IValue` into a `ConstantValue` wrapper, then adds the baked modifier to `SpellModifications.Add(...)`.
-- **Resolution**: `SpellModificationsApplicator.Resolve(mods, property, mask)` returns a `ResolvedModifier` (flat, percentIncreased, moreCombined). The `Multiplier` property computes `(1 + pct/100) * moreCombined`. Used by `AttackEntityModificationApplicator`, behaviors (chain, pierce), and the emission handler (projectile count).
+- **Resolution**: `SpellModificationsApplicator.Resolve(mods, property, mask)` returns a `ResolvedModifier` (flat, percentIncreased, moreCombined). The `Multiplier` property computes `(1 + pct/100) * moreCombined`. Used by `AttackEntityModificationApplicator`, behaviors (chain, pierce), the emission handler (projectile count), and mana (`ResolveManaCost` / `EvaluateLoopManaCosts`). `SpellModificationProperty` includes `ManaCost`; items and gems apply it via `SpellModificationEffect`.
 - **Application (spawn-time)**: `AttackEntityModificationApplicator.BuildRolledEntity(in ctx, id)` resolves mod-adjusted ranges from the authoring `AttackEntityData` (no `Object.Instantiate`), rolls them deterministically, and fills the `AttackEntity` (damage scaling, crit, area hitbox, knockback). Behaviors apply chain/pierce mods by index during `AttackEntityManager.Spawn`.
 - **Application (hit-time)**: `AttackEntityModifier` (predicate + `SpellModificationProperty property` + `ResolvedModifier`) is evaluated per hit by `HitConditionalEvaluationSystem.ApplyMatching` and applied to **scratch** damage/crit inside `DamageSystem.ProcessHits` via `AttackEntityModificationApplicator.Apply` (never written back to the stored entity). The per-entity modifier set is snapshotted at spawn into `AttackEntityManager.HitModifierSets` (keyed by entity id).
 - **Test data**: `SpellModificationsTestData` (ScriptableObject) holds `List<ParameterModifier>` plus structural lists; `GetModifications()` builds runtime `SpellModifications`.
@@ -140,10 +140,11 @@ Items use `ICondition` / `IEffect` / `IValue<float>` (all in `BridgeOfBlood.Effe
 ## Enemy spawning
 
 - **Contract**: `IEnemySpawner.CollectSpawnRequests(time, playfield)` returns `EnemySpawnRequest` batches (`enemy` + playfield-local `positions`). `GameSimulation` only calls `EnemyManager.CreateEnemies` per request.
-- **Runtime identity/storage**: `EnemyManager` stores enemies in stable SoA slots. Removing an enemy marks its slot dead, adds the index to a free list, and does not swap later rows. Reusing a slot increments its generation; combat and ailment code carry `EntityId { Index, Generation }` and validate generation + alive state before direct slot lookup. `EnemyCount` is live count; `EnemyBuffers.Length`/`SlotCount` includes tombstones.
-- **Ownership**: Each spawner implementation owns an `EnemySpawnTable` (serialized on `EnemySpawner` or `BrushStrokeEnemySpawner` in `SimulationConfig.spawner`).
+- **Runtime identity/storage**: `EnemyManager` stores enemies in stable SoA slots. Removing an enemy marks its slot dead, adds the index to a free list, and does not swap later rows. Reusing a slot increments its generation; combat and ailment code carry `EntityId { Index, Generation }` and validate generation + alive state before direct slot lookup. `EnemyCount` is live count; `SpawnedThisRound` is cumulative creates since `Clear`; `EnemyBuffers.Length`/`SlotCount` includes tombstones.
+- **Ownership**: Each spawner implementation owns an `EnemySpawnTable` (serialized on the spawner). The active spawner lives on `RoundConfig.spawner` (`GameConfig.roundConfigs`), applied via `GameSimulation.ApplyRoundConfig` before each round reset.
 - **EnemySpawner** (rate / left edge): per spawn event, table pick + `SpawnPattern` expansion + `positionScale` (private resolve on the spawner).
 - **BrushStrokeEnemySpawner** (lab): brush circle fill is final placement; one table pick per drained batch; no `SpawnPattern` pass.
+- **Round scaling**: `EnemyAuthoringData.WriteRuntimeColumnsAt` multiplies rolled move speed and health by the active round's `enemyMoveSpeedMultiplier` / `enemyHealthMultiplier`.
 - **Pattern**: `SpawnPattern` (ScriptableObject): fill shape (circle/rectangle/triangle), spawn density (points per unit area), distribution (Random | Grid), optional omission zones. `SpawnShape` struct: type, center, size, rotation; helpers `GetArea()`, `Contains(point)`.
 - **Editor**: `SpawnPatternEditor` (CustomEditor): edit shape/density/omissions, preview point count and points; Scene view draws fill and omission shapes plus preview points when asset is selected.
 
@@ -172,17 +173,19 @@ Session phase enter/exit events and post-simulation frame notifications use the 
 
 Round-internal phase management by `RoundController`; session-level transitions handled by `SessionStateMachine` above.
 
-- **Config**: `GameConfig` (ScriptableObject): authoring asset holds round tuning + wallet/inventory **templates** (no materials/presentation). Combat visuals serialize on scene/prefab `CombatPresentationDriver`. At session start (and Lose → Retry), `GameConfig.CreateRuntimeCopy` **`Instantiate`s** the whole config plus unique wallet/inventory clones; gameplay reads **`runtimeGameConfig.playerWallet`**, **`playerInventory`**, and scaling fields from that **one** session clone (`GameConfig.DestroyRuntimeCopy` on teardown / rebuild).
-- **Per-round quota**: `RoundController` sets `BloodQuota` from `gameConfig.bloodQuotaScaling.BuildForRound(RoundNumber)` on construct, `StartNextRound`, and `Retry`.
+- **Config**: `GameConfig` (ScriptableObject): authoring asset holds `roundConfigs` + wallet/inventory **templates** (no materials/presentation). Combat visuals serialize on scene/prefab `CombatPresentationDriver`. At session start (and Lose → Retry), `GameConfig.CreateRuntimeCopy` **`Instantiate`s** the whole config plus unique wallet/inventory clones; gameplay reads **`runtimeGameConfig.playerWallet`**, **`playerInventory`**, and round fields from that **one** session clone (`GameConfig.DestroyRuntimeCopy` on teardown / rebuild). `SimulationConfig` on the asset holds gizmos/spawn-rate knobs only — playfield size lives on each `RoundConfig`.
+- **RoundConfig**: each entry (`class`) has `spawner`, `killQuotaPercent`, `enemyMoveSpeedMultiplier`, `enemyHealthMultiplier`, and `simulationSize` (`Vector2` width/height). `ResolvePlayfield()` builds sim space as x = 0..width, y = ±height/2. `GameConfig.GetRoundConfig(roundNumber)` is 1-based and clamps to the last list entry. `RoundController` / lab apply it through `CombatSimulationController.ApplyRoundConfig` before `ResetForNewRound`, which sets `GameSimulation` playfield and rebuilds the enemy spatial grid. `GameConfigEditor` duplicates rounds by cloning the spawner object (Unity aliases `[SerializeReference]` when this type is a struct).
+- **Per-round quota**: `RoundController` resolves `MinEnemiesKilled` as `ceil(spawnedThisRound × killQuotaPercent / 100)` from `EnemyManager.SpawnedThisRound`. Round success is `CurrentRound.aggregate.kills >= MinEnemiesKilled` (`QuotaBasedRoundEndStrategy`).
 - **Phase flow**: `Playing` → (loops exhausted) → `AwaitingDespawn` → (no active casts, no pending spawns, no attack entities) → `RoundEnd` → session state machine transitions to `Shop` or `Lose`.
-- **Blood tracking**: `DamageEvent.bloodExtracted` (currently `damageDealt + overkillDamage`). Aggregated through `CombatMetrics.bloodExtracted` at all telemetry levels. Quota comparison uses `TelemetryAggregator.CurrentRound.aggregate.bloodExtracted`.
-- **Round end**: `TelemetryAggregator.EndRound()` is called on RoundEnd, then `RoundController.EvaluateRoundEnd()` compares blood to quota.
-- **Spell loop cap**: `LoopedSpellCaster` reports `LoopCount`; `RoundController` compares against `SpellLoopsPerRound` (from `GameConfig.maxSpellLoopsPerRound`).
+- **Blood tracking**: `DamageEvent.bloodExtracted` (currently `damageDealt + overkillDamage`). Aggregated through `CombatMetrics.bloodExtracted` at all telemetry levels (display/items; not the round-win check).
+- **Round end**: `TelemetryAggregator.EndRound()` is called on RoundEnd, then `IRoundEndStrategy.Evaluate` compares round kills to the resolved kill quota.
+- **Spell loop cap**: `LoopedSpellCaster` reports `LoopCount`; `RoundController` compares against `SpellLoopsPerRound` (from `GameConfig.maxSpellLoopsPerRound`). Loop mana budget is `GameConfig.totalMana` on the session clone.
 - **Round reset**: `GameSimulation.ResetForNewRound()` clears enemies, attack entities, spawner, simulation time, event buffers. `LoopedSpellCaster.Reset()` + `ClearCastState()`. Player placed at right side of simulation zone.
+- **Lab**: `LabbingScene` IMGUI prev/next at the top of the screen iterates `roundConfigs`, applies the selected config, resets combat, and re-raises `ServicesRegisteredEvent` so brush spawners rebind.
 - **Session start / retry**: `TestSceneManager` replaces `_runtimeGameConfig` via `GameConfig.CreateRuntimeCopy`; `RoundController` receives the clone and uses `gameConfig.playerInventory` for items. Lose → Retry calls `RoundController.SetGameConfig` with the new clone.
 - **Placeholders**: Shop = press N to start next round. Lose = press R to retry from round 1.
 
-**Key types**: `GameConfig`, `BloodQuotaScaling`, `RoundRuntimeData`, `GameLoopPhase` (enum).
+**Key types**: `GameConfig`, `RoundConfig`, `GameLoopPhase` (enum).
 
 ---
 
@@ -219,7 +222,7 @@ Reusable probability primitives in `BridgeOfBlood.Data.Shared`.
 ## Namespaces
 
 - `BridgeOfBlood.Data.Spells`: spell/modification types, applicator, SpellAuthoringData, ResolvedKeyframe, etc.
-- `BridgeOfBlood.Data.Shared`: enums, `GameConfig`, `BloodQuotaScaling`, `RoundRuntimeData`, GameContext, `CombatMetrics`, snapshot structs (`FrameSnapshot`, `SpellCastSnapshot`, etc.).
+- `BridgeOfBlood.Data.Shared`: enums, `GameConfig`, `RoundConfig`, GameContext, `CombatMetrics`, snapshot structs (`FrameSnapshot`, `SpellCastSnapshot`, etc.).
 - `BridgeOfBlood.Data.Enemies` / `BridgeOfBlood.Data.Idols`: runtime/authoring for enemies and idols.
 - `BridgeOfBlood.Data.Shop`: shop item definitions, config, repository, `IPurchasable`.
 - Top-level (no namespace): many systems, CombatEvents, AttackEntity*, DamageNumber*, SpellInvoker, LoopedSpellCaster, SpriteInstancedRenderer, SpriteInstanceBuilder, etc.

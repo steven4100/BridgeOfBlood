@@ -38,7 +38,7 @@ MonoBehaviour:
     - rid: 4044631623268302849
       type: {class: CombatMetricValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
-        coefficient: 9.32
+        coefficient: 2
         scope: 1
         property: 0
     - rid: 4044631623268302850

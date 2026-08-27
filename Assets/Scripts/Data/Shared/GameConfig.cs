@@ -1,41 +1,50 @@
 using System;
+using System.Collections.Generic;
 using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shop;
+using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 namespace BridgeOfBlood.Data.Shared
 {
 	/// <summary>
-	/// Blood quota for round index n (1-based): baseQuota * multiplierPerRound^(n-1) + additivePerRound * (n-1).
+	/// Per-round spawn and objective tuning. Round index is 1-based via <see cref="GameConfig.GetRoundConfig"/>.
 	/// </summary>
 	[Serializable]
-	public struct BloodQuotaScaling
+	public class RoundConfig
 	{
-		[Tooltip("Blood required to pass round 1.")]
-		public float baseQuota;
+		[SerializeReference, SerializeInterface]
+		[Tooltip("Spawn timing/origins for this round. Pick Enemy Spawner from the type menu.")]
+		public IEnemySpawner spawner;
 
-		[Tooltip("Per-round multiplier k in base * k^(n-1). Use 1 for flat quota each round.")]
-		public float multiplierPerRound;
+		[Range(0f, 100f)]
+		[Tooltip("Percent of enemies spawned this round that must be killed to go to shop instead of lose.")]
+		public float killQuotaPercent;
 
-		[Tooltip("Added linearly: B * (n-1) after the exponential term.")]
-		public float additivePerRound;
+		[Tooltip("Multiplier on authored enemy min/max move speed.")]
+		public float enemyMoveSpeedMultiplier;
 
-		public RoundRuntimeData BuildForRound(int roundNumber)
+		[Tooltip("Multiplier on authored enemy health.")]
+		public float enemyHealthMultiplier;
+
+		[Tooltip("Playfield width and height in simulation space. Origin is x = 0 (left) .. width (right); y = ±height/2.")]
+		public Vector2 simulationSize = new Vector2(1600f, 800f);
+
+		public int ResolveMinEnemiesKilled(int enemiesSpawnedThisRound)
 		{
-			int n = Mathf.Max(1, roundNumber);
-			float expTerm = baseQuota * Mathf.Pow(multiplierPerRound, n - 1);
-			float linearTerm = additivePerRound * (n - 1);
-			return new RoundRuntimeData { bloodRequirement = expTerm + linearTerm };
+			float t = Mathf.Clamp(killQuotaPercent, 0f, 100f) * 0.01f;
+			return Mathf.CeilToInt(enemiesSpawnedThisRound * t);
 		}
-	}
 
-	/// <summary>
-	/// Resolved values for one round (extend with more fields later).
-	/// </summary>
-	[Serializable]
-	public struct RoundRuntimeData
-	{
-		public float bloodRequirement;
+		/// <summary>
+		/// Playfield in simulation space: x = 0 (left) .. width (right); y = 0 at vertical center (±height/2).
+		/// </summary>
+		public Rect ResolvePlayfield()
+		{
+			float w = simulationSize.x;
+			float h = simulationSize.y;
+			return new Rect(0f, -h * 0.5f, w, h);
+		}
 	}
 
 	[CreateAssetMenu(fileName = "GameConfig", menuName = "Bridge of Blood/Game Config")]
@@ -43,17 +52,30 @@ namespace BridgeOfBlood.Data.Shared
 	{
 		public SimulationConfig simulationConfig = new SimulationConfig();
 
-
 		[Header("Round")]
-		public BloodQuotaScaling bloodQuotaScaling = new BloodQuotaScaling
+		[Tooltip("Per-round spawners, kill quota, simulation size, and enemy scaling. Round n uses index n-1; later rounds reuse the last entry.")]
+		public List<RoundConfig> roundConfigs = new List<RoundConfig>
 		{
-			baseQuota = 1000f,
-			multiplierPerRound = 1f,
-			additivePerRound = 0f
+			new RoundConfig
+			{
+				killQuotaPercent = 100f,
+				enemyMoveSpeedMultiplier = 1f,
+				enemyHealthMultiplier = 1f,
+				simulationSize = new Vector2(1600f, 800f)
+			}
 		};
 
 		[Tooltip("Complete spell loops allowed per round.")]
 		public int maxSpellLoopsPerRound = 3;
+
+		[Tooltip("Mana budget for one spell loop. Prefix cost of the next spell above this resets the loop.")]
+		public float totalMana = 100f;
+
+		[Tooltip("Player WASD move speed at session start (simulation units per second).")]
+		public float playerStartMoveSpeed = 100f;
+
+		[Tooltip("Optional lab/debug mods merged into every frame's global spell modifications.")]
+		public SpellModificationsTestData castModifications;
 
 		[Header("Session defaults")]
 		[Tooltip("Template wallet (starting gold). Instantiate at session start — do not use the template reference at runtime.")]
@@ -65,6 +87,16 @@ namespace BridgeOfBlood.Data.Shared
 		[Header("Shop")]
 		[Tooltip("Weighted shop type/item rules. Shared authoring asset — not cloned with the runtime GameConfig.")]
 		public ShopConfig shopConfig;
+
+		/// <summary>
+		/// 1-based round lookup. Rounds past the list reuse the last authored config.
+		/// </summary>
+		public RoundConfig GetRoundConfig(int roundNumber)
+		{
+			int n = Mathf.Max(1, roundNumber);
+			int i = Mathf.Min(n - 1, roundConfigs.Count - 1);
+			return roundConfigs[i];
+		}
 
 		/// <summary>
 		/// Builds a session-owned <see cref="GameConfig"/> clone: duplicates this asset, then unique wallet/inventory instances

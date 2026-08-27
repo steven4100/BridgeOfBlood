@@ -5,14 +5,23 @@ using UnityEngine;
 /// </summary>
 public readonly struct RoundEndEvaluationInput
 {
-	public readonly float BloodExtractedThisRound;
-	public readonly float BloodQuota;
+	public readonly int KillsThisRound;
+	public readonly int MinEnemiesKilled;
+	public readonly int EnemiesSpawnedThisRound;
+	public readonly float KillQuotaPercent;
 	public readonly int RoundNumber;
 
-	public RoundEndEvaluationInput(float bloodExtractedThisRound, float bloodQuota, int roundNumber)
+	public RoundEndEvaluationInput(
+		int killsThisRound,
+		int minEnemiesKilled,
+		int enemiesSpawnedThisRound,
+		float killQuotaPercent,
+		int roundNumber)
 	{
-		BloodExtractedThisRound = bloodExtractedThisRound;
-		BloodQuota = bloodQuota;
+		KillsThisRound = killsThisRound;
+		MinEnemiesKilled = minEnemiesKilled;
+		EnemiesSpawnedThisRound = enemiesSpawnedThisRound;
+		KillQuotaPercent = killQuotaPercent;
 		RoundNumber = roundNumber;
 	}
 }
@@ -43,17 +52,17 @@ public interface IRoundEndStrategy
 }
 
 /// <summary>
-/// Default rule: meet blood quota → shop; otherwise → lose. Matches legacy <c>BloodExtracted &gt;= BloodQuota</c> behavior.
+/// Default rule: meet kill quota → shop; otherwise → lose.
 /// </summary>
 public sealed class QuotaBasedRoundEndStrategy : IRoundEndStrategy
 {
 	public RoundEndEvaluationResult Evaluate(in RoundEndEvaluationInput input)
 	{
-		bool met = input.BloodExtractedThisRound >= input.BloodQuota;
+		bool met = input.KillsThisRound >= input.MinEnemiesKilled;
 		GameLoopPhase internalPhase = met ? GameLoopPhase.RoundEnd : GameLoopPhase.Lose;
 		SessionState session = met ? SessionState.Shop : SessionState.Lose;
 		Debug.Log(
-			$"[RoundController] Round {input.RoundNumber} ended. Blood: {input.BloodExtractedThisRound:F0} / {input.BloodQuota:F0} — {(met ? "QUOTA MET" : "QUOTA FAILED")}");
+			$"[RoundController] Round {input.RoundNumber} ended. Kills: {input.KillsThisRound} / {input.MinEnemiesKilled} ({input.KillQuotaPercent:0.#}% of {input.EnemiesSpawnedThisRound} spawned) — {(met ? "QUOTA MET" : "QUOTA FAILED")}");
 		return new RoundEndEvaluationResult(met, session, internalPhase);
 	}
 }

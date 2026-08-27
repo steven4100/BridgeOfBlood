@@ -21,6 +21,7 @@ public class EnemyManager
     private NativeList<StatusAilmentFlag> _status;
     private NativeList<EnemyPresentation> _presentation;
     private int _aliveCount;
+    private int _spawnedThisRound;
     private GridSpatialPartition _grid;
 
     public EnemyManager(Rect playfield)
@@ -34,7 +35,21 @@ public class EnemyManager
         _status = new NativeList<StatusAilmentFlag>(Allocator.Persistent);
         _presentation = new NativeList<EnemyPresentation>(Allocator.Persistent);
         _aliveCount = 0;
-        _grid = new GridSpatialPartition(
+        _grid = CreateGrid(playfield);
+    }
+
+    /// <summary>
+    /// Rebuilds the spatial partition for a new playfield. Call when applying a round config, before spawn.
+    /// </summary>
+    public void RebuildSpatialGrid(Rect playfield)
+    {
+        _grid?.Dispose();
+        _grid = CreateGrid(playfield);
+    }
+
+    static GridSpatialPartition CreateGrid(Rect playfield)
+    {
+        return new GridSpatialPartition(
             new float2(playfield.xMin, playfield.yMin),
             new float2(playfield.xMax, playfield.yMax),
             unitLengthPerCell,
@@ -44,10 +59,15 @@ public class EnemyManager
     /// <summary>
     /// Spawns one enemy per position using the given authoring data.
     /// </summary>
-    public void CreateEnemies(List<Vector2> positions, EnemyAuthoringData authoringData)
+    public void CreateEnemies(
+        List<Vector2> positions,
+        EnemyAuthoringData authoringData,
+        float healthMultiplier,
+        float moveSpeedMultiplier)
     {
         int randomSeed = UnityEngine.Random.Range(0, 1000);
         if (positions == null || authoringData == null) return;
+        _spawnedThisRound += positions.Count;
         for (int i = 0; i < positions.Count; i++)
         {
             var p = positions[i];
@@ -57,6 +77,8 @@ public class EnemyManager
                 id.Index,
                 pos,
                 (uint)randomSeed + (uint)i,
+                healthMultiplier,
+                moveSpeedMultiplier,
                 _motion,
                 _vitality,
                 _combatTraits,
@@ -121,9 +143,11 @@ public class EnemyManager
         _status.Clear();
         _presentation.Clear();
         _aliveCount = 0;
+        _spawnedThisRound = 0;
     }
 
     public int EnemyCount => _aliveCount;
+    public int SpawnedThisRound => _spawnedThisRound;
     public int SlotCount => _motion.Length;
 
     public GridSpatialPartition Grid => _grid;

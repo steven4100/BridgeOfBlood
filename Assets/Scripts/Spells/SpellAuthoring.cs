@@ -14,6 +14,7 @@ namespace BridgeOfBlood.Data.Spells
 		public int baseMultiplier = 1;
 		public float castCompletionDuration = 1f;
 		public float castTime = 0.5f;
+		public float manaCost = 25f;
 		public SpellAttributeMask attributeMask;
 		public AudioUnit castAudio;
 

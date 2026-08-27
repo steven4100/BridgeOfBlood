@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8f2a1c3e9d4b6a0e1f2c3d4e5b6a7098, type: 3}
-  m_Name: GameConfig
+  m_Name: LabConfig
   m_EditorClassIdentifier: Assembly-CSharp::BridgeOfBlood.Data.Shared.GameConfig
   simulationConfig:
     SpawnRate: 2
@@ -21,13 +21,13 @@ MonoBehaviour:
     killQuotaPercent: 20
     enemyMoveSpeedMultiplier: 0
     enemyHealthMultiplier: 1
-    simulationSize: {x: 1600, y: 800}
+    simulationSize: {x: 1600, y: 400}
   - spawner:
       rid: 451927353652150340
     killQuotaPercent: 50
     enemyMoveSpeedMultiplier: 1
     enemyHealthMultiplier: 2
-    simulationSize: {x: 1600, y: 800}
+    simulationSize: {x: 1600, y: 600}
   - spawner:
       rid: 451927353652150341
     killQuotaPercent: 50
@@ -39,17 +39,17 @@ MonoBehaviour:
     killQuotaPercent: 50
     enemyMoveSpeedMultiplier: 2
     enemyHealthMultiplier: 6
-    simulationSize: {x: 1600, y: 800}
+    simulationSize: {x: 1600, y: 1000}
   - spawner:
       rid: 451927353652150343
     killQuotaPercent: 50
     enemyMoveSpeedMultiplier: 2.25
     enemyHealthMultiplier: 8
-    simulationSize: {x: 1600, y: 800}
+    simulationSize: {x: 1600, y: 1200}
   maxSpellLoopsPerRound: 4
   totalMana: 100
-  playerStartMoveSpeed: 500
-  castModifications: {fileID: 11400000, guid: 9641dd6fe2f6c5d4b9f5db999c5e4695, type: 2}
+  playerStartMoveSpeed: 300
+  castModifications: {fileID: 0}
   playerWallet: {fileID: 11400000, guid: ae75e8a41b95a4b229c0d74926a050f1, type: 2}
   playerInventory: {fileID: 11400000, guid: 55e0a5f84718f4ba3995dbebff6eba1b, type: 2}
   shopConfig: {fileID: 11400000, guid: d931a6d94d7cd4cc99f65bc94c33eece, type: 2}
@@ -68,17 +68,10 @@ MonoBehaviour:
         - enabled: 1
           type: 0
           blend: 0
-          weight: 0.5
-          frequency: 10
+          weight: 1
+          frequency: 18.36
           offset: {x: 0, y: 0}
           invert: 0
-        - enabled: 1
-          type: 2
-          blend: 0
-          weight: 0.5
-          frequency: 4
-          offset: {x: 0, y: 0}
-          invert: 1
     - rid: 451927353652150340
       type: {class: NoiseSheetEnemySpawner, ns: , asm: Assembly-CSharp}
       data:
@@ -91,17 +84,10 @@ MonoBehaviour:
         - enabled: 1
           type: 0
           blend: 0
-          weight: 0.5
+          weight: 1
           frequency: 10
           offset: {x: 0, y: 0}
           invert: 0
-        - enabled: 1
-          type: 2
-          blend: 0
-          weight: 0.5
-          frequency: 4
-          offset: {x: 0, y: 0}
-          invert: 1
     - rid: 451927353652150341
       type: {class: NoiseSheetEnemySpawner, ns: , asm: Assembly-CSharp}
       data:
@@ -114,17 +100,10 @@ MonoBehaviour:
         - enabled: 1
           type: 0
           blend: 0
-          weight: 0.5
+          weight: 1
           frequency: 10
           offset: {x: 0, y: 0}
           invert: 0
-        - enabled: 1
-          type: 2
-          blend: 0
-          weight: 0.5
-          frequency: 4
-          offset: {x: 0, y: 0}
-          invert: 1
     - rid: 451927353652150342
       type: {class: NoiseSheetEnemySpawner, ns: , asm: Assembly-CSharp}
       data:
@@ -137,17 +116,10 @@ MonoBehaviour:
         - enabled: 1
           type: 0
           blend: 0
-          weight: 0.5
+          weight: 1
           frequency: 10
           offset: {x: 0, y: 0}
           invert: 0
-        - enabled: 1
-          type: 2
-          blend: 0
-          weight: 0.5
-          frequency: 4
-          offset: {x: 0, y: 0}
-          invert: 1
     - rid: 451927353652150343
       type: {class: NoiseSheetEnemySpawner, ns: , asm: Assembly-CSharp}
       data:
@@ -160,14 +132,7 @@ MonoBehaviour:
         - enabled: 1
           type: 0
           blend: 0
-          weight: 0.5
+          weight: 1
           frequency: 10
           offset: {x: 0, y: 0}
           invert: 0
-        - enabled: 1
-          type: 2
-          blend: 0
-          weight: 0.5
-          frequency: 4
-          offset: {x: 0, y: 0}
-          invert: 1

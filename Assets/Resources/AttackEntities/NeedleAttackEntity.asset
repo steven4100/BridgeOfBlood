@@ -12,38 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
   m_Name: NeedleAttackEntity
   m_EditorClassIdentifier: 
-  physicalDamageRange:
-    min: 25
-    max: 50
-  coldDamageRange:
-    min: 0
-    max: 0
-  fireDamageRange:
-    min: 0
-    max: 0
-  lightningDamageRange:
-    min: 0
-    max: 0
-  critChanceRange:
-    min: 0
-    max: 0
-  critDamageMultiplierRange:
-    min: 1
-    max: 1
-  knockbackStrength: 0
   entityVelocity: {x: 0, y: 0}
-  hitBoxData:
-    isSphere: 1
-    isRect: 0
-    rectDimension: {x: 0, y: 0}
-    sphereRadius: 9.8
-    scaleGrowthRate: 0
   rehitCooldownSeconds: 1169.57
   behaviors:
   - rid: 72257236218675262
   - rid: 4884261957644320832
   - rid: 4884261957644320833
   - rid: 9019951869442916412
+  - rid: 9100000000000307015
+  - rid: 9100000000000307016
   visual: {fileID: 11400000, guid: 6a89cbba6c71e5440a3a15edec0394fe, type: 2}
   onDamageSound: {fileID: 11400000, guid: c8c9c7244ecabe24888b59279c10d0c9, type: 2}
   references:
@@ -71,3 +48,18 @@ MonoBehaviour:
       data:
         isActive: 1
         applyChance: 1
+    - rid: 9100000000000307015
+      type: {class: PhysicalDamageBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        damageRange:
+          min: 25.0
+          max: 50.0
+    - rid: 9100000000000307016
+      type: {class: HitBoxBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        hitBoxData:
+          isSphere: 1
+          isRect: 0
+          rectDimension: {x: 0, y: 0}
+          sphereRadius: 9.8
+          scaleGrowthRate: 0

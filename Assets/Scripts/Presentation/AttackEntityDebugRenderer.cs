@@ -29,7 +29,7 @@ public class AttackEntityDebugRenderer : IDebugDrawable
 		_manager = manager;
 	}
 
-	public void Render(NativeArray<AttackEntity> entities, RectTransform simZone, Camera camera)
+	public void Render(NativeArray<AttackEntity> entities, NativeArray<HitBoxRuntime> hitBoxes, RectTransform simZone, Camera camera)
 	{
 		if (entities.Length == 0 || simZone == null || camera == null) return;
 
@@ -44,23 +44,24 @@ public class AttackEntityDebugRenderer : IDebugDrawable
 				if (!e.entityId.IsValid)
 					continue;
 
-				float scale = e.currentHitBoxScale;
+				HitBoxRuntime hitBox = hitBoxes[i];
+				float scale = hitBox.currentScale;
 
 				Mesh mesh;
 				float sizeX, sizeY;
 
-				if (e.hitBox.isSphere)
+				if (hitBox.isActive && hitBox.hitBox.isSphere)
 				{
 					mesh = _circleMesh;
-					float diameter = e.hitBox.sphereRadius * scale * 2f;
+					float diameter = hitBox.hitBox.sphereRadius * scale * 2f;
 					sizeX = diameter;
 					sizeY = diameter;
 				}
-				else if (e.hitBox.isRect)
+				else if (hitBox.isActive && hitBox.hitBox.isRect)
 				{
 					mesh = _quadMesh;
-					sizeX = e.hitBox.rectDimension.x * scale;
-					sizeY = e.hitBox.rectDimension.y * scale;
+					sizeX = hitBox.hitBox.rectDimension.x * scale;
+					sizeY = hitBox.hitBox.rectDimension.y * scale;
 				}
 				else
 				{
@@ -92,22 +93,24 @@ public class AttackEntityDebugRenderer : IDebugDrawable
 		try
 		{
 			NativeArray<AttackEntity> entities = _manager.GetEntities();
+			NativeArray<HitBoxRuntime> hitBoxes = _manager.GetHitBoxes();
 			for (int i = 0; i < entities.Length; i++)
 			{
 				AttackEntity e = entities[i];
 				if (!e.entityId.IsValid)
 					continue;
 
-				float scale = e.currentHitBoxScale;
+				HitBoxRuntime hitBox = hitBoxes[i];
+				float scale = hitBox.currentScale;
 
 				Vector3 worldPos = transform.TransformPoint(new Vector3(e.position.x, e.position.y, 0f));
 				float worldScale = transform.lossyScale.x;
 
 				float radius;
-				if (e.hitBox.isSphere)
-					radius = e.hitBox.sphereRadius * scale * worldScale;
-				else if (e.hitBox.isRect)
-					radius = math.length(e.hitBox.rectDimension * 0.5f) * scale * worldScale;
+				if (hitBox.isActive && hitBox.hitBox.isSphere)
+					radius = hitBox.hitBox.sphereRadius * scale * worldScale;
+				else if (hitBox.isActive && hitBox.hitBox.isRect)
+					radius = math.length(hitBox.hitBox.rectDimension * 0.5f) * scale * worldScale;
 				else
 					radius = 2f * worldScale;
 

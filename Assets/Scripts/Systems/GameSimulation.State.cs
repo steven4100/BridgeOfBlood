@@ -30,8 +30,10 @@ public partial class GameSimulation
         /// <summary>Parallel enemy column views; valid until next enemy list mutation.</summary>
         public EnemyBuffers EnemyBuffers => _owner._enemyManager.GetBuffers();
 
-        /// <summary>Live attack entities.</summary>
+        /// <summary>Live attack entities (identity, transform, visuals). Combat stats live on parallel lists.</summary>
         public NativeArray<AttackEntity> AttackEntities => _owner._attackEntityManager.GetEntities();
+
+        public NativeArray<HitBoxRuntime> AttackHitBoxes => _owner._attackEntityManager.GetHitBoxes();
 
         /// <summary>Damage events produced by the last StepDamage.</summary>
         public NativeArray<DamageEvent> DamageEvents => _owner._damageEvents.AsArray();

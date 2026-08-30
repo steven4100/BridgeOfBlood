@@ -4,7 +4,7 @@ using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 [Serializable]
-public class ApplyPoisonedBehavior : AttackEntityBehavior
+public class ApplyPoisonedBehavior : FixedAttackEntityBehavior
 {
     [Tooltip("When false, poisoned application is skipped for this entity.")]
     public bool isActive = true;
@@ -17,7 +17,7 @@ public class ApplyPoisonedBehavior : AttackEntityBehavior
 
     public override AttackEntityBehavior Clone() => new ApplyPoisonedBehavior { isActive = isActive, applyChance = applyChance };
 
-    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask)
+    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
     {
         var arr = manager.GetPoisonedAppliers();
         arr[index] = ToRuntime();

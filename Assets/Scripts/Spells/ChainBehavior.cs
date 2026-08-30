@@ -5,7 +5,7 @@ using Unity.Collections;
 using UnityEngine;
 
 [Serializable]
-public class ChainBehavior : AttackEntityBehavior
+public class ChainBehavior : ModifiableAttackEntityBehavior
 {
     [Tooltip("When false, chain redirect and chain-limit removal are skipped for this entity.")]
     public bool isActive = true;
@@ -36,7 +36,7 @@ public class ChainBehavior : AttackEntityBehavior
         chainRange = chainRange, targetSelect = targetSelect, excludePreviouslyHit = excludePreviouslyHit
     };
 
-    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask)
+    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
     {
         int count = chainCount;
         if (mods != null)

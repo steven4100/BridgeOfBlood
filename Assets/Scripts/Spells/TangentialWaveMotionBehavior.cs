@@ -131,7 +131,7 @@ public struct MotionPolicyRuntime
 /// (sine / square / sawtooth / triangle). Direction-only: speed is preserved.
 /// </summary>
 [Serializable]
-public class TangentialWaveMotionBehavior : AttackEntityBehavior
+public class TangentialWaveMotionBehavior : FixedAttackEntityBehavior
 {
     /// <summary>Max waves baked into the runtime policy. Extras are ignored.</summary>
     public const int MaxWaves = 8;
@@ -182,7 +182,7 @@ public class TangentialWaveMotionBehavior : AttackEntityBehavior
         return clone;
     }
 
-    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask)
+    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
     {
         AttackEntity entity = manager.GetEntities()[index];
         var arr = manager.GetMotionPolicies();

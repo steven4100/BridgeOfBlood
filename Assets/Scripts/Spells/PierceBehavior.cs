@@ -4,7 +4,7 @@ using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 [Serializable]
-public class PierceBehavior : AttackEntityBehavior
+public class PierceBehavior : ModifiableAttackEntityBehavior
 {
     [Tooltip("When false, pierce logic is skipped (unlimited hits, no pierce removal).")]
     public bool isActive = true;
@@ -19,7 +19,7 @@ public class PierceBehavior : AttackEntityBehavior
 
     public override AttackEntityBehavior Clone() => new PierceBehavior { isActive = isActive, maxEnemiesHit = maxEnemiesHit };
 
-    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask)
+    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
     {
         int maxHit = maxEnemiesHit;
         if (mods != null)

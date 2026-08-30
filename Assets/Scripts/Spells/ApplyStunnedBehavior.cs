@@ -4,7 +4,7 @@ using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 [Serializable]
-public class ApplyStunnedBehavior : AttackEntityBehavior
+public class ApplyStunnedBehavior : FixedAttackEntityBehavior
 {
     [Tooltip("When false, stunned application is skipped for this entity.")]
     public bool isActive = true;
@@ -17,7 +17,7 @@ public class ApplyStunnedBehavior : AttackEntityBehavior
 
     public override AttackEntityBehavior Clone() => new ApplyStunnedBehavior { isActive = isActive, applyChance = applyChance };
 
-    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask)
+    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
     {
         var arr = manager.GetStunnedAppliers();
         arr[index] = ToRuntime();

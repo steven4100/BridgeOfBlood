@@ -10,6 +10,7 @@ using Unity.Jobs;
 public struct TickAttackEntityTimeJob : IJobParallelFor
 {
     public NativeArray<AttackEntity> Entities;
+    public NativeArray<HitBoxRuntime> HitBoxes;
     [ReadOnly] public NativeArray<byte> Alive;
     public float DeltaTime;
 
@@ -19,26 +20,33 @@ public struct TickAttackEntityTimeJob : IJobParallelFor
             return;
 
         AttackEntity e = Entities[index];
-
         e.framesAlive++;
         e.timeAlive += DeltaTime;
-
-        if (e.hitBox.scaleGrowthRate > 0f)
-            e.currentHitBoxScale += e.hitBox.scaleGrowthRate * DeltaTime;
-
         Entities[index] = e;
+
+        HitBoxRuntime hitBox = HitBoxes[index];
+        if (hitBox.isActive && hitBox.hitBox.scaleGrowthRate > 0f)
+        {
+            hitBox.currentScale += hitBox.hitBox.scaleGrowthRate * DeltaTime;
+            HitBoxes[index] = hitBox;
+        }
     }
 }
 
 public class AttackEntityTimeSystem
 {
-    public void Tick(NativeArray<AttackEntity> entities, NativeArray<byte> alive, float deltaTime)
+    public void Tick(
+        NativeArray<AttackEntity> entities,
+        NativeArray<HitBoxRuntime> hitBoxes,
+        NativeArray<byte> alive,
+        float deltaTime)
     {
         if (entities.Length == 0) return;
 
         var job = new TickAttackEntityTimeJob
         {
             Entities = entities,
+            HitBoxes = hitBoxes,
             Alive = alive,
             DeltaTime = deltaTime
         };

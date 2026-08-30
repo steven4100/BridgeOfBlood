@@ -12,32 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
   m_Name: FireballAttackEntity
   m_EditorClassIdentifier: 
-  physicalDamageRange:
-    min: 0
-    max: 0
-  coldDamageRange:
-    min: 0
-    max: 0
-  fireDamageRange:
-    min: 40
-    max: 80
-  lightningDamageRange:
-    min: 0
-    max: 0
-  critChanceRange:
-    min: 0
-    max: 0
-  critDamageMultiplierRange:
-    min: 1
-    max: 1
-  knockbackStrength: 0
   entityVelocity: {x: -250.14, y: 0}
-  hitBoxData:
-    isSphere: 1
-    isRect: 0
-    rectDimension: {x: 0, y: 0}
-    sphereRadius: 21.76
-    scaleGrowthRate: 0
   rehitCooldownSeconds: 100
   behaviors:
   - rid: 72257236218675258
@@ -45,6 +20,8 @@ MonoBehaviour:
   - rid: 4884261957644320834
   - rid: 4884261957644320835
   - rid: 5585034573601833022
+  - rid: 9100000000000620524
+  - rid: 9100000000000620525
   visual: {fileID: 11400000, guid: 6c03777a1f3524145980b04cac24ecd0, type: 2}
   onDamageSound: {fileID: 11400000, guid: c8c9c7244ecabe24888b59279c10d0c9, type: 2}
   references:
@@ -81,3 +58,18 @@ MonoBehaviour:
           phase: 0.25
           pulseWidth: 0.5
           offset: 0
+    - rid: 9100000000000620524
+      type: {class: FireDamageBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        damageRange:
+          min: 40.0
+          max: 80.0
+    - rid: 9100000000000620525
+      type: {class: HitBoxBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        hitBoxData:
+          isSphere: 1
+          isRect: 0
+          rectDimension: {x: 0, y: 0}
+          sphereRadius: 21.76
+          scaleGrowthRate: 0

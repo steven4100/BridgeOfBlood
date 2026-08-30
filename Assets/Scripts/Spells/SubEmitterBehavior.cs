@@ -14,7 +14,7 @@ using UnityEngine;
 /// </para>
 /// </summary>
 [Serializable]
-public class SubEmitterBehavior : AttackEntityBehavior
+public class SubEmitterBehavior : FixedAttackEntityBehavior
 {
     [Tooltip("Emission pattern for sub-emitted children (spread, speed, targeting mode, etc.).")]
     public AttackEntityEmitter subEmitter;
@@ -30,7 +30,7 @@ public class SubEmitterBehavior : AttackEntityBehavior
     [Min(0f)]
     public float startDelay = 0f;
 
-    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask) { }
+    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng) { }
 
     public override AttackEntityBehavior Clone() => new SubEmitterBehavior
     {

@@ -12,25 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
   m_Name: InfernoAttackEntity
   m_EditorClassIdentifier: 
-  physicalDamage: 0
-  coldDamage: 0
-  fireDamage: 60
-  lightningDamage: 0
-  critChance: 0
-  critDamageMultiplier: 0
   entityVelocity: {x: 0, y: 0}
-  hitBoxData:
-    isSphere: 1
-    isRect: 0
-    rectDimension: {x: 0, y: 0}
-    sphereRadius: 60
-    scaleGrowthRate: 0
   rehitCooldownSeconds: 100
   behaviors:
   - rid: 1000000000000000031
   - rid: 1000000000000000032
   - rid: 1000000000000000033
   - rid: 1000000000000000034
+  - rid: 9100000000000003086
+  - rid: 9100000000000003087
   visual: {fileID: 0}
   references:
     version: 2
@@ -54,3 +44,18 @@ MonoBehaviour:
       type: {class: OnKillEffectBehavior, ns: , asm: Assembly-CSharp}
       data:
         config: {fileID: 11400000, guid: 469335601d0786d4ea6b11cc3dd255c1, type: 2}
+    - rid: 9100000000000003086
+      type: {class: FireDamageBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        damageRange:
+          min: 60.0
+          max: 60.0
+    - rid: 9100000000000003087
+      type: {class: HitBoxBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        hitBoxData:
+          isSphere: 1
+          isRect: 0
+          rectDimension: {x: 0, y: 0}
+          sphereRadius: 60
+          scaleGrowthRate: 0

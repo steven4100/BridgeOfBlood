@@ -91,7 +91,7 @@ public sealed class HoveringSphereSpellRenderer : SpellRenderer
 	{
 		AttackEntityData attackData = PrimaryKeyFrame.attackEntityData;
 		HitBoxData hitBox = AttackEntityModificationApplicator.ResolveHitBox(
-			attackData.hitBoxData, FrameMods, AttributeMask);
+			attackData, FrameMods, AttributeMask);
 		float visualRadius = Mathf.Max(minRadius, ResolveAoeRadius(hitBox) * aoeRadiusScale);
 
 		if (visualRadius == _lastVisualRadius && HitBoxEquals(hitBox, _lastHitBox))

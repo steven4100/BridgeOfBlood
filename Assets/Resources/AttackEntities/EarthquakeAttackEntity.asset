@@ -12,32 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
   m_Name: EarthquakeAttackEntity
   m_EditorClassIdentifier: 
-  physicalDamageRange:
-    min: 25
-    max: 40
-  coldDamageRange:
-    min: 0
-    max: 0
-  fireDamageRange:
-    min: 0
-    max: 0
-  lightningDamageRange:
-    min: 0
-    max: 0
-  critChanceRange:
-    min: 0
-    max: 0
-  critDamageMultiplierRange:
-    min: 1
-    max: 1
-  knockbackStrength: 50
   entityVelocity: {x: 0, y: 0}
-  hitBoxData:
-    isSphere: 1
-    isRect: 0
-    rectDimension: {x: 0, y: 0}
-    sphereRadius: 100
-    scaleGrowthRate: 0
   rehitCooldownSeconds: 100
   behaviors:
   - rid: 4884261957644320836
@@ -45,6 +20,9 @@ MonoBehaviour:
   - rid: 4884261957644320838
   - rid: 4044632107998511173
   - rid: 8391160039522435133
+  - rid: 9100000000000831368
+  - rid: 9100000000000831369
+  - rid: 9100000000000831370
   visual: {fileID: 0}
   onDamageSound: {fileID: 11400000, guid: c8c9c7244ecabe24888b59279c10d0c9, type: 2}
   references:
@@ -75,3 +53,22 @@ MonoBehaviour:
       data:
         isActive: 1
         applyChance: 1
+    - rid: 9100000000000831368
+      type: {class: PhysicalDamageBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        damageRange:
+          min: 25.0
+          max: 40.0
+    - rid: 9100000000000831369
+      type: {class: HitBoxBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        hitBoxData:
+          isSphere: 1
+          isRect: 0
+          rectDimension: {x: 0, y: 0}
+          sphereRadius: 100
+          scaleGrowthRate: 0
+    - rid: 9100000000000831370
+      type: {class: KnockbackBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        knockbackStrength: 50.0

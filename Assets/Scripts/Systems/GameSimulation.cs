@@ -320,7 +320,7 @@ public partial class GameSimulation
 
         var attackEntities = _attackEntityManager.GetEntities();
         var alive = _attackEntityManager.GetAlive();
-        _attackTimeSystem.Tick(attackEntities, alive, _frameDeltaTime);
+        _attackTimeSystem.Tick(attackEntities, _attackEntityManager.GetHitBoxes(), alive, _frameDeltaTime);
         _attackMovementSystem.MoveEntities(
             attackEntities,
             alive,
@@ -336,6 +336,7 @@ public partial class GameSimulation
             _collisionSystem.Detect(
                 _attackEntityManager.GetEntities(),
                 _attackEntityManager.GetAlive(),
+                _attackEntityManager.GetHitBoxes(),
                 _enemyManager.GetBuffers(),
                 _enemyManager.Grid,
                 _rawCollisionEvents);
@@ -391,6 +392,12 @@ public partial class GameSimulation
             _damageSystem.ProcessHits(
                 resolvedHitsRO,
                 attackEntities,
+                _attackEntityManager.GetPhysicalDamages(),
+                _attackEntityManager.GetColdDamages(),
+                _attackEntityManager.GetFireDamages(),
+                _attackEntityManager.GetLightningDamages(),
+                _attackEntityManager.GetCrits(),
+                _attackEntityManager.GetKnockbacks(),
                 enemies,
                 _hitEvents,
                 _killEvents,

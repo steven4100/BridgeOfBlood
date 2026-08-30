@@ -12,38 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
   m_Name: LightningBoltAttackEntity
   m_EditorClassIdentifier: 
-  physicalDamageRange:
-    min: 0
-    max: 0
-  coldDamageRange:
-    min: 0
-    max: 0
-  fireDamageRange:
-    min: 0
-    max: 0
-  lightningDamageRange:
-    min: 3
-    max: 15
-  critChanceRange:
-    min: 0
-    max: 0
-  critDamageMultiplierRange:
-    min: 1
-    max: 1
-  knockbackStrength: 0
   entityVelocity: {x: 0, y: 0}
-  hitBoxData:
-    isSphere: 1
-    isRect: 0
-    rectDimension: {x: 0, y: 0}
-    sphereRadius: 10
-    scaleGrowthRate: 0
   rehitCooldownSeconds: 100000
   behaviors:
   - rid: 4044631629293158462
   - rid: 4044631629293158463
   - rid: 4044631629293158465
   - rid: 4044631629293158466
+  - rid: 9100000000000560932
+  - rid: 9100000000000560933
   visual: {fileID: 11400000, guid: 3467a9aa04ed0fb48abbc8ba59624aeb, type: 2}
   onDamageSound: {fileID: 11400000, guid: 2d4f694410b8696498a314cdcaabe39e, type: 2}
   references:
@@ -69,3 +46,18 @@ MonoBehaviour:
         maxTimeAlive: 1
         maxDistanceTravelled: 10000000
         maxFrames: 0
+    - rid: 9100000000000560932
+      type: {class: LightningDamageBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        damageRange:
+          min: 3.0
+          max: 15.0
+    - rid: 9100000000000560933
+      type: {class: HitBoxBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        hitBoxData:
+          isSphere: 1
+          isRect: 0
+          rectDimension: {x: 0, y: 0}
+          sphereRadius: 10
+          scaleGrowthRate: 0

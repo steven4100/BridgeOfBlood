@@ -12,37 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
   m_Name: HeraldOfAshEntity
   m_EditorClassIdentifier: 
-  physicalDamageRange:
-    min: 0
-    max: 0
-  coldDamageRange:
-    min: 0
-    max: 0
-  fireDamageRange:
-    min: 100
-    max: 500
-  lightningDamageRange:
-    min: 0
-    max: 0
-  critChanceRange:
-    min: 0
-    max: 0
-  critDamageMultiplierRange:
-    min: 1
-    max: 1
-  knockbackStrength: 0
   entityVelocity: {x: 0, y: 0}
-  hitBoxData:
-    isSphere: 1
-    isRect: 0
-    rectDimension: {x: 0, y: 0}
-    sphereRadius: 70
-    scaleGrowthRate: 0
   rehitCooldownSeconds: 100000000
   behaviors:
   - rid: 4044632273339809792
   - rid: 4044632273339809793
   - rid: 4044632273339809794
+  - rid: 9100000000000790513
+  - rid: 9100000000000790514
   visual: {fileID: 11400000, guid: 6c03777a1f3524145980b04cac24ecd0, type: 2}
   onDamageSound: {fileID: 11400000, guid: a4e1c965eda5e764e8bc21a2637d5e25, type: 2}
   references:
@@ -63,3 +40,18 @@ MonoBehaviour:
         maxTimeAlive: 0.2
         maxDistanceTravelled: 0
         maxFrames: 0
+    - rid: 9100000000000790513
+      type: {class: FireDamageBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        damageRange:
+          min: 100.0
+          max: 500.0
+    - rid: 9100000000000790514
+      type: {class: HitBoxBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        hitBoxData:
+          isSphere: 1
+          isRect: 0
+          rectDimension: {x: 0, y: 0}
+          sphereRadius: 70
+          scaleGrowthRate: 0

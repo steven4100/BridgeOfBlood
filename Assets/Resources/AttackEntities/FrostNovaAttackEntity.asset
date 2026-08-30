@@ -12,25 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
   m_Name: FrostNovaAttackEntity
   m_EditorClassIdentifier: 
-  physicalDamage: 0
-  coldDamage: 15
-  fireDamage: 0
-  lightningDamage: 0
-  critChance: 0
-  critDamageMultiplier: 0
   entityVelocity: {x: 0, y: 0}
-  hitBoxData:
-    isSphere: 1
-    isRect: 0
-    rectDimension: {x: 0, y: 0}
-    sphereRadius: 80
-    scaleGrowthRate: 0
   rehitCooldownSeconds: 100
   behaviors:
   - rid: 1000000000000000001
   - rid: 1000000000000000002
   - rid: 1000000000000000003
   - rid: 1000000000000000004
+  - rid: 9100000000000417245
+  - rid: 9100000000000417246
   visual: {fileID: 0}
   references:
     version: 2
@@ -54,3 +44,18 @@ MonoBehaviour:
       type: {class: OnKillEffectBehavior, ns: , asm: Assembly-CSharp}
       data:
         config: {fileID: 11400000, guid: 469335601d0786d4ea6b11cc3dd255c1, type: 2}
+    - rid: 9100000000000417245
+      type: {class: ColdDamageBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        damageRange:
+          min: 15.0
+          max: 15.0
+    - rid: 9100000000000417246
+      type: {class: HitBoxBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        hitBoxData:
+          isSphere: 1
+          isRect: 0
+          rectDimension: {x: 0, y: 0}
+          sphereRadius: 80
+          scaleGrowthRate: 0

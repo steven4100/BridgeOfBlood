@@ -14,54 +14,14 @@ namespace BridgeOfBlood.Data.Spells
 	public static class AttackEntityModificationApplicator
 	{
 		/// <summary>
-		/// Rolls a fresh <see cref="AttackEntity"/> from <paramref name="ctx"/>: resolves mod-adjusted ranges,
-		/// rolls them deterministically (seed from spell/keyframe/data id), and fills scalar fields.
-		/// Policies (chain/pierce/appliers) and effect scalars are applied separately by behaviors.
+		/// Fills identity, transform, visual, and audio. Damage, crit, hit box, and knockback are written
+		/// by authoring behaviors in <see cref="AttackEntityManager.Spawn"/>.
 		/// </summary>
 		public static AttackEntity BuildRolledEntity(in AttackEntityBuildContext ctx, EntityId entityId)
 		{
 			AttackEntityData data = ctx.data;
-			SpellModifications mods = ctx.modifications;
-			SpellAttributeMask mask = ctx.attributeMask;
 
 			uint seed = AttackEntityBuildRngSeed.Mix(ctx.spellId, ctx.spellInvocationId, ctx.keyframeIndex, data.GetInstanceID());
-			var rng = Unity.Mathematics.Random.CreateFromIndex(seed);
-
-			ResolveDamageRanges(data, mods, mask, out FloatRange physR, out FloatRange coldR, out FloatRange fireR, out FloatRange ltngR);
-			FloatRange critChanceR = data.critChanceRange;
-			FloatRange critMultR = data.critDamageMultiplierRange;
-			HitBoxData hitBox = ResolveHitBox(data.hitBoxData, mods, mask);
-			float knockback = Mathf.Max(0f, data.knockbackStrength);
-
-			if (mods != null)
-			{
-				var critChance = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.CritChance, mask);
-				critChanceR = new FloatRange
-				{
-					min = Mathf.Clamp01(data.critChanceRange.min * critChance.Multiplier + critChance.flat / 100f),
-					max = Mathf.Clamp01(data.critChanceRange.max * critChance.Multiplier + critChance.flat / 100f)
-				};
-				critChanceR.ClampOrder();
-
-				var critMult = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.CritMult, mask);
-				critMultR = new FloatRange
-				{
-					min = Mathf.Max(1f, data.critDamageMultiplierRange.min * critMult.Multiplier + critMult.flat / 100f),
-					max = Mathf.Max(1f, data.critDamageMultiplierRange.max * critMult.Multiplier + critMult.flat / 100f)
-				};
-				critMultR.ClampOrder();
-
-				var knock = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.KnockbackStrength, mask);
-				knockback = Mathf.Max(0f, data.knockbackStrength * knock.Multiplier + knock.flat);
-			}
-
-			float physicalDamage = physR.ResolveUniform(ref rng);
-			float coldDamage = coldR.ResolveUniform(ref rng);
-			float fireDamage = fireR.ResolveUniform(ref rng);
-			float lightningDamage = ltngR.ResolveUniform(ref rng);
-			float critChanceRolled = Mathf.Clamp01(critChanceR.ResolveUniform(ref rng));
-			float critMultRolled = Mathf.Max(1f, critMultR.ResolveUniform(ref rng));
-
 			uint visualSeed = seed ^ 0x9E3779B9u;
 			uint audioSeed = seed ^ 0x7F4A7C15u;
 
@@ -75,15 +35,6 @@ namespace BridgeOfBlood.Data.Spells
 				distanceTravelled = 0f,
 				enemiesHit = 0,
 				rehitCooldownSeconds = data.rehitCooldownSeconds,
-				physicalDamage = physicalDamage,
-				coldDamage = coldDamage,
-				fireDamage = fireDamage,
-				lightningDamage = lightningDamage,
-				critChance = critChanceRolled,
-				critDamageMultiplier = critMultRolled,
-				knockbackStrength = knockback,
-				hitBox = hitBox,
-				currentHitBoxScale = 1f,
 				visual = data.visual != null ? data.visual.Resolve(visualSeed) : EntityVisual.None,
 				onDamageSound = data.onDamageSound != null ? data.onDamageSound.ToRuntime(audioSeed) : AudioUnitRuntime.None,
 				onHitEffect = EffectSpriteConfigRuntime.Default(),
@@ -97,15 +48,20 @@ namespace BridgeOfBlood.Data.Spells
 		/// Scales all damage types so their total equals <paramref name="scaledTotal"/>, preserving the per-type ratio.
 		/// Used by combat reactions in <see cref="CombatReactionSpawnDamageMode.ScaleByTriggeringHitDamage"/>.
 		/// </summary>
-		public static void ApplyEventScaledDamage(ref AttackEntity e, float scaledTotal)
+		public static void ApplyEventScaledDamage(
+			ref PhysicalDamageRuntime physical,
+			ref ColdDamageRuntime cold,
+			ref FireDamageRuntime fire,
+			ref LightningDamageRuntime lightning,
+			float scaledTotal)
 		{
-			float sum = e.physicalDamage + e.coldDamage + e.fireDamage + e.lightningDamage;
+			float sum = physical.amount + cold.amount + fire.amount + lightning.amount;
 			if (sum <= 0f) return;
 			float factor = scaledTotal / sum;
-			e.physicalDamage *= factor;
-			e.coldDamage *= factor;
-			e.fireDamage *= factor;
-			e.lightningDamage *= factor;
+			physical.amount *= factor;
+			cold.amount *= factor;
+			fire.amount *= factor;
+			lightning.amount *= factor;
 		}
 
 		/// <summary>
@@ -155,9 +111,23 @@ namespace BridgeOfBlood.Data.Spells
 			}
 		}
 
+		public static FloatRange ResolveDamageRange(
+			FloatRange source,
+			SpellModificationProperty typeProperty,
+			SpellModifications mods,
+			SpellAttributeMask mask)
+		{
+			if (mods == null)
+				return source;
+
+			var dmgScaling = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.DamageScaling, mask);
+			var typeMod = SpellModificationsApplicator.Resolve(mods, typeProperty, mask);
+			return ApplyDamageRange(source, typeMod, dmgScaling);
+		}
+
 		/// <summary>
-		/// Resolves mod-adjusted damage ranges from authoring data (pre-roll). Shared by spawn-time rolling and
-		/// by spell preview renderers so previews report the same numbers the simulation will roll from.
+		/// Resolves mod-adjusted damage ranges from authoring behaviors (pre-roll). Shared by spawn-time
+		/// rolling and by spell preview renderers so previews report the same numbers the simulation will roll from.
 		/// </summary>
 		public static void ResolveDamageRanges(
 			AttackEntityData data,
@@ -168,25 +138,22 @@ namespace BridgeOfBlood.Data.Spells
 			out FloatRange fire,
 			out FloatRange lightning)
 		{
-			if (mods == null)
-			{
-				physical = data.physicalDamageRange;
-				cold = data.coldDamageRange;
-				fire = data.fireDamageRange;
-				lightning = data.lightningDamageRange;
-				return;
-			}
+			physical = ResolveBehaviorDamage<PhysicalDamageBehavior>(data, SpellModificationProperty.PhysicalDamageScaling, mods, mask);
+			cold = ResolveBehaviorDamage<ColdDamageBehavior>(data, SpellModificationProperty.ColdDamageScaling, mods, mask);
+			fire = ResolveBehaviorDamage<FireDamageBehavior>(data, SpellModificationProperty.FireDamageScaling, mods, mask);
+			lightning = ResolveBehaviorDamage<LightningDamageBehavior>(data, SpellModificationProperty.LightningDamageScaling, mods, mask);
+		}
 
-			var dmgScaling = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.DamageScaling, mask);
-			var typePhys = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.PhysicalDamageScaling, mask);
-			var typeCold = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.ColdDamageScaling, mask);
-			var typeFire = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.FireDamageScaling, mask);
-			var typeLtng = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.LightningDamageScaling, mask);
-
-			physical = ApplyDamageRange(data.physicalDamageRange, typePhys, dmgScaling);
-			cold = ApplyDamageRange(data.coldDamageRange, typeCold, dmgScaling);
-			fire = ApplyDamageRange(data.fireDamageRange, typeFire, dmgScaling);
-			lightning = ApplyDamageRange(data.lightningDamageRange, typeLtng, dmgScaling);
+		static FloatRange ResolveBehaviorDamage<T>(
+			AttackEntityData data,
+			SpellModificationProperty typeProperty,
+			SpellModifications mods,
+			SpellAttributeMask mask) where T : DamageBehavior
+		{
+			T behavior = data.GetBehavior<T>();
+			if (behavior == null)
+				return default;
+			return ResolveDamageRange(behavior.damageRange, typeProperty, mods, mask);
 		}
 
 		/// <summary>
@@ -204,7 +171,17 @@ namespace BridgeOfBlood.Data.Spells
 			return hitBox;
 		}
 
-		static FloatRange ApplyDamageRange(FloatRange source, ResolvedModifier typeMod, ResolvedModifier dmgScaling)
+		public static HitBoxData ResolveHitBox(AttackEntityData data, SpellModifications mods, SpellAttributeMask mask)
+		{
+			if (data == null)
+				return default;
+			HitBoxBehavior behavior = data.GetBehavior<HitBoxBehavior>();
+			if (behavior == null)
+				return default;
+			return ResolveHitBox(behavior.hitBoxData, mods, mask);
+		}
+
+		public static FloatRange ApplyDamageRange(FloatRange source, ResolvedModifier typeMod, ResolvedModifier dmgScaling)
 		{
 			float mult = typeMod.Multiplier * dmgScaling.Multiplier;
 			var r = new FloatRange

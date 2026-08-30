@@ -86,7 +86,7 @@ public sealed class DebugSpellRenderer : SpellRenderer
 
 		int emitCount = SpellModificationsApplicator.ResolveEmitCount(FrameMods, emitter.baseEmitCount, mask);
 		float spreadDegrees = emitter.spreadDegrees;
-		HitBoxData hitBox = AttackEntityModificationApplicator.ResolveHitBox(attackData.hitBoxData, FrameMods, mask);
+		HitBoxData hitBox = AttackEntityModificationApplicator.ResolveHitBox(attackData, FrameMods, mask);
 
 		if (emitCount == _lastEmitCount
 			&& spreadDegrees == _lastSpreadDegrees

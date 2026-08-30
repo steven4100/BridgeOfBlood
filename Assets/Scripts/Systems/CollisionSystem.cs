@@ -34,6 +34,7 @@ public class CollisionSystem
     public void Detect(
         NativeArray<AttackEntity> attackEntities,
         NativeArray<byte> attackAlive,
+        NativeArray<HitBoxRuntime> hitBoxes,
         EnemyBuffers enemies,
         GridSpatialPartition grid,
         NativeList<CollisionEvent> results)
@@ -45,8 +46,14 @@ public class CollisionSystem
             if (attackAlive[ai] == 0)
                 continue;
 
+            HitBoxRuntime hitBox = hitBoxes[ai];
+            if (!hitBox.isActive)
+                continue;
+
             AttackEntity atk = attackEntities[ai];
-            float queryRadius = HitBoxQueryRadius(atk);
+            float queryRadius = HitBoxQueryRadius(in hitBox);
+            if (queryRadius <= 0f)
+                continue;
 
             _candidateIndices.Clear();
             grid.QueryNeighbors(atk.position, queryRadius, _candidateIndices);
@@ -59,7 +66,7 @@ public class CollisionSystem
 
                 float2 enemyPos = enemies.Motion[ei].position;
 
-                if (!Overlaps(atk, enemyPos))
+                if (!Overlaps(in atk, in hitBox, enemyPos))
                     continue;
 
                 results.Add(new CollisionEvent
@@ -73,30 +80,30 @@ public class CollisionSystem
         }
     }
 
-    static float HitBoxQueryRadius(in AttackEntity atk)
+    static float HitBoxQueryRadius(in HitBoxRuntime hitBox)
     {
-        float scale = atk.currentHitBoxScale;
-        if (atk.hitBox.isSphere)
-            return atk.hitBox.sphereRadius * scale;
-        if (atk.hitBox.isRect)
-            return math.length(atk.hitBox.rectDimension * 0.5f) * scale;
+        float scale = hitBox.currentScale;
+        if (hitBox.hitBox.isSphere)
+            return hitBox.hitBox.sphereRadius * scale;
+        if (hitBox.hitBox.isRect)
+            return math.length(hitBox.hitBox.rectDimension * 0.5f) * scale;
         return 0f;
     }
 
-    static bool Overlaps(in AttackEntity atk, float2 point)
+    static bool Overlaps(in AttackEntity atk, in HitBoxRuntime hitBox, float2 point)
     {
-        float scale = atk.currentHitBoxScale;
+        float scale = hitBox.currentScale;
 
-        if (atk.hitBox.isSphere)
+        if (hitBox.hitBox.isSphere)
         {
-            float r = atk.hitBox.sphereRadius * scale;
+            float r = hitBox.hitBox.sphereRadius * scale;
             float distSq = math.distancesq(atk.position, point);
             return distSq <= r * r;
         }
 
-        if (atk.hitBox.isRect)
+        if (hitBox.hitBox.isRect)
         {
-            float2 halfExtents = atk.hitBox.rectDimension * 0.5f * scale;
+            float2 halfExtents = hitBox.hitBox.rectDimension * 0.5f * scale;
             float2 delta = math.abs(point - atk.position);
             return delta.x <= halfExtents.x && delta.y <= halfExtents.y;
         }

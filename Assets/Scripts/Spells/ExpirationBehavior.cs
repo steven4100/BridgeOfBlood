@@ -4,7 +4,7 @@ using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 [Serializable]
-public class ExpirationBehavior : AttackEntityBehavior
+public class ExpirationBehavior : FixedAttackEntityBehavior
 {
     [Tooltip("When false, expiration logic is skipped (no time/distance removal).")]
     public bool isActive = true;
@@ -31,7 +31,7 @@ public class ExpirationBehavior : AttackEntityBehavior
 
     public override AttackEntityBehavior Clone() => new ExpirationBehavior { isActive = isActive, maxTimeAlive = maxTimeAlive, maxDistanceTravelled = maxDistanceTravelled, maxFrames = maxFrames };
 
-    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask)
+    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
     {
         var arr = manager.GetExpirationPolicies();
         arr[index] = ToRuntime();

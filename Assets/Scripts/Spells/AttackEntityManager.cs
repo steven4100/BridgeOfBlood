@@ -22,15 +22,6 @@ public struct AttackEntity
     public int enemiesHit;
     public float rehitCooldownSeconds;
 
-    public float physicalDamage;
-    public float coldDamage;
-    public float fireDamage;
-    public float lightningDamage;
-    public float critChance;
-    public float critDamageMultiplier;
-    public float knockbackStrength;
-    public HitBoxData hitBox;
-    public float currentHitBoxScale;
     public EntityVisual visual;
     public AudioUnitRuntime onDamageSound;
     public EffectSpriteConfigRuntime onHitEffect;
@@ -63,6 +54,13 @@ public class AttackEntityManager
     private NativeList<StunnedApplierRuntime> _stunnedAppliers;
     private NativeList<BleedApplierRuntime> _bleedAppliers;
     private NativeList<MotionPolicyRuntime> _motionPolicies;
+    private NativeList<PhysicalDamageRuntime> _physicalDamages;
+    private NativeList<ColdDamageRuntime> _coldDamages;
+    private NativeList<FireDamageRuntime> _fireDamages;
+    private NativeList<LightningDamageRuntime> _lightningDamages;
+    private NativeList<CritRuntime> _crits;
+    private NativeList<HitBoxRuntime> _hitBoxes;
+    private NativeList<KnockbackRuntime> _knockbacks;
     private int _aliveCount;
 
     /// <summary>
@@ -89,6 +87,13 @@ public class AttackEntityManager
         _stunnedAppliers = new NativeList<StunnedApplierRuntime>(Allocator.Persistent);
         _bleedAppliers = new NativeList<BleedApplierRuntime>(Allocator.Persistent);
         _motionPolicies = new NativeList<MotionPolicyRuntime>(Allocator.Persistent);
+        _physicalDamages = new NativeList<PhysicalDamageRuntime>(Allocator.Persistent);
+        _coldDamages = new NativeList<ColdDamageRuntime>(Allocator.Persistent);
+        _fireDamages = new NativeList<FireDamageRuntime>(Allocator.Persistent);
+        _lightningDamages = new NativeList<LightningDamageRuntime>(Allocator.Persistent);
+        _crits = new NativeList<CritRuntime>(Allocator.Persistent);
+        _hitBoxes = new NativeList<HitBoxRuntime>(Allocator.Persistent);
+        _knockbacks = new NativeList<KnockbackRuntime>(Allocator.Persistent);
         _aliveCount = 0;
     }
 
@@ -108,20 +113,35 @@ public class AttackEntityManager
         int idx = id.Index;
 
         AttackEntity entity = AttackEntityModificationApplicator.BuildRolledEntity(in ctx, id);
-        if (ctx.eventScaledDamage > 0f)
-            AttackEntityModificationApplicator.ApplyEventScaledDamage(ref entity, ctx.eventScaledDamage);
-
         _entities[idx] = entity;
 
         var rehit = RehitPolicyRuntime.Default();
         rehit.rehitCooldownSeconds = ctx.data.rehitCooldownSeconds;
         _rehitPolicies[idx] = rehit;
 
+        uint seed = AttackEntityBuildRngSeed.Mix(
+            ctx.spellId, ctx.spellInvocationId, ctx.keyframeIndex, ctx.data.GetInstanceID());
+        var rng = Unity.Mathematics.Random.CreateFromIndex(seed);
+
         var behaviors = ctx.data.behaviors;
         if (behaviors != null)
         {
             for (int i = 0; i < behaviors.Count; i++)
-                behaviors[i]?.ApplyTo(this, idx, ctx.modifications, ctx.attributeMask);
+                behaviors[i]?.ApplyTo(this, idx, ctx.modifications, ctx.attributeMask, ref rng);
+        }
+
+        if (ctx.eventScaledDamage > 0f)
+        {
+            PhysicalDamageRuntime physical = _physicalDamages[idx];
+            ColdDamageRuntime cold = _coldDamages[idx];
+            FireDamageRuntime fire = _fireDamages[idx];
+            LightningDamageRuntime lightning = _lightningDamages[idx];
+            AttackEntityModificationApplicator.ApplyEventScaledDamage(
+                ref physical, ref cold, ref fire, ref lightning, ctx.eventScaledDamage);
+            _physicalDamages[idx] = physical;
+            _coldDamages[idx] = cold;
+            _fireDamages[idx] = fire;
+            _lightningDamages[idx] = lightning;
         }
 
         var hitModifiers = ctx.modifications?.attackEntityModifiers;
@@ -185,6 +205,13 @@ public class AttackEntityManager
     /// Returns a read-write view of the motion policy list. Same length and index alignment as GetEntities().
     /// </summary>
     public NativeArray<MotionPolicyRuntime> GetMotionPolicies() => _motionPolicies.AsArray();
+    public NativeArray<PhysicalDamageRuntime> GetPhysicalDamages() => _physicalDamages.AsArray();
+    public NativeArray<ColdDamageRuntime> GetColdDamages() => _coldDamages.AsArray();
+    public NativeArray<FireDamageRuntime> GetFireDamages() => _fireDamages.AsArray();
+    public NativeArray<LightningDamageRuntime> GetLightningDamages() => _lightningDamages.AsArray();
+    public NativeArray<CritRuntime> GetCrits() => _crits.AsArray();
+    public NativeArray<HitBoxRuntime> GetHitBoxes() => _hitBoxes.AsArray();
+    public NativeArray<KnockbackRuntime> GetKnockbacks() => _knockbacks.AsArray();
 
     /// <summary>Number of live attack entities (excludes tombstones).</summary>
     public int EntityCount => _aliveCount;
@@ -240,6 +267,20 @@ public class AttackEntityManager
             throw new InvalidOperationException($"AttackEntityManager: bleedAppliers.Length ({_bleedAppliers.Length}) != entities.Length ({n}).");
         if (_motionPolicies.Length != n)
             throw new InvalidOperationException($"AttackEntityManager: motionPolicies.Length ({_motionPolicies.Length}) != entities.Length ({n}).");
+        if (_physicalDamages.Length != n)
+            throw new InvalidOperationException($"AttackEntityManager: physicalDamages.Length ({_physicalDamages.Length}) != entities.Length ({n}).");
+        if (_coldDamages.Length != n)
+            throw new InvalidOperationException($"AttackEntityManager: coldDamages.Length ({_coldDamages.Length}) != entities.Length ({n}).");
+        if (_fireDamages.Length != n)
+            throw new InvalidOperationException($"AttackEntityManager: fireDamages.Length ({_fireDamages.Length}) != entities.Length ({n}).");
+        if (_lightningDamages.Length != n)
+            throw new InvalidOperationException($"AttackEntityManager: lightningDamages.Length ({_lightningDamages.Length}) != entities.Length ({n}).");
+        if (_crits.Length != n)
+            throw new InvalidOperationException($"AttackEntityManager: crits.Length ({_crits.Length}) != entities.Length ({n}).");
+        if (_hitBoxes.Length != n)
+            throw new InvalidOperationException($"AttackEntityManager: hitBoxes.Length ({_hitBoxes.Length}) != entities.Length ({n}).");
+        if (_knockbacks.Length != n)
+            throw new InvalidOperationException($"AttackEntityManager: knockbacks.Length ({_knockbacks.Length}) != entities.Length ({n}).");
     }
 
     /// <summary>
@@ -312,6 +353,7 @@ public class AttackEntityManager
         _stunnedAppliers[index] = StunnedApplierRuntime.Default();
         _bleedAppliers[index] = BleedApplierRuntime.Default();
         _motionPolicies[index] = MotionPolicyRuntime.Default();
+        ResetStatSlots(index);
         _freeSlots.Add(index);
         _aliveCount--;
     }
@@ -337,6 +379,13 @@ public class AttackEntityManager
         _stunnedAppliers.Clear();
         _bleedAppliers.Clear();
         _motionPolicies.Clear();
+        _physicalDamages.Clear();
+        _coldDamages.Clear();
+        _fireDamages.Clear();
+        _lightningDamages.Clear();
+        _crits.Clear();
+        _hitBoxes.Clear();
+        _knockbacks.Clear();
         _aliveCount = 0;
     }
 
@@ -357,6 +406,13 @@ public class AttackEntityManager
         if (_stunnedAppliers.IsCreated) _stunnedAppliers.Dispose();
         if (_bleedAppliers.IsCreated) _bleedAppliers.Dispose();
         if (_motionPolicies.IsCreated) _motionPolicies.Dispose();
+        if (_physicalDamages.IsCreated) _physicalDamages.Dispose();
+        if (_coldDamages.IsCreated) _coldDamages.Dispose();
+        if (_fireDamages.IsCreated) _fireDamages.Dispose();
+        if (_lightningDamages.IsCreated) _lightningDamages.Dispose();
+        if (_crits.IsCreated) _crits.Dispose();
+        if (_hitBoxes.IsCreated) _hitBoxes.Dispose();
+        if (_knockbacks.IsCreated) _knockbacks.Dispose();
     }
 
     private EntityId AllocateSlot()
@@ -383,6 +439,7 @@ public class AttackEntityManager
             _stunnedAppliers[index] = StunnedApplierRuntime.Default();
             _bleedAppliers[index] = BleedApplierRuntime.Default();
             _motionPolicies[index] = MotionPolicyRuntime.Default();
+            ResetStatSlots(index);
         }
         else
         {
@@ -401,9 +458,27 @@ public class AttackEntityManager
             _stunnedAppliers.Add(StunnedApplierRuntime.Default());
             _bleedAppliers.Add(BleedApplierRuntime.Default());
             _motionPolicies.Add(MotionPolicyRuntime.Default());
+            _physicalDamages.Add(PhysicalDamageRuntime.Default());
+            _coldDamages.Add(ColdDamageRuntime.Default());
+            _fireDamages.Add(FireDamageRuntime.Default());
+            _lightningDamages.Add(LightningDamageRuntime.Default());
+            _crits.Add(CritRuntime.Default());
+            _hitBoxes.Add(HitBoxRuntime.Default());
+            _knockbacks.Add(KnockbackRuntime.Default());
         }
 
         _aliveCount++;
         return new EntityId { Index = index, Generation = _generations[index] };
+    }
+
+    void ResetStatSlots(int index)
+    {
+        _physicalDamages[index] = PhysicalDamageRuntime.Default();
+        _coldDamages[index] = ColdDamageRuntime.Default();
+        _fireDamages[index] = FireDamageRuntime.Default();
+        _lightningDamages[index] = LightningDamageRuntime.Default();
+        _crits[index] = CritRuntime.Default();
+        _hitBoxes[index] = HitBoxRuntime.Default();
+        _knockbacks[index] = KnockbackRuntime.Default();
     }
 }

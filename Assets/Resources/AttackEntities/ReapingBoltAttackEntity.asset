@@ -12,25 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
   m_Name: ReapingBoltAttackEntity
   m_EditorClassIdentifier: 
-  physicalDamage: 80
-  coldDamage: 0
-  fireDamage: 0
-  lightningDamage: 0
-  critChance: 0.25
-  critDamageMultiplier: 2
   entityVelocity: {x: 0, y: 0}
-  hitBoxData:
-    isSphere: 1
-    isRect: 0
-    rectDimension: {x: 0, y: 0}
-    sphereRadius: 6
-    scaleGrowthRate: 0
   rehitCooldownSeconds: 100
   behaviors:
   - rid: 1000000000000000041
   - rid: 1000000000000000042
   - rid: 1000000000000000043
   - rid: 1000000000000000044
+  - rid: 9100000000000878590
+  - rid: 9100000000000878591
+  - rid: 9100000000000878592
   visual: {fileID: 0}
   references:
     version: 2
@@ -54,3 +45,27 @@ MonoBehaviour:
       type: {class: OnKillEffectBehavior, ns: , asm: Assembly-CSharp}
       data:
         config: {fileID: 11400000, guid: 469335601d0786d4ea6b11cc3dd255c1, type: 2}
+    - rid: 9100000000000878590
+      type: {class: PhysicalDamageBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        damageRange:
+          min: 80.0
+          max: 80.0
+    - rid: 9100000000000878591
+      type: {class: CritBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        critChanceRange:
+          min: 0.25
+          max: 0.25
+        critDamageMultiplierRange:
+          min: 2.0
+          max: 2.0
+    - rid: 9100000000000878592
+      type: {class: HitBoxBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        hitBoxData:
+          isSphere: 1
+          isRect: 0
+          rectDimension: {x: 0, y: 0}
+          sphereRadius: 6
+          scaleGrowthRate: 0

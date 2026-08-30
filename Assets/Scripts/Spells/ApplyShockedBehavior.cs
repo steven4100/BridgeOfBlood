@@ -4,7 +4,7 @@ using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 [Serializable]
-public class ApplyShockedBehavior : AttackEntityBehavior
+public class ApplyShockedBehavior : FixedAttackEntityBehavior
 {
     [Tooltip("When false, shocked application is skipped for this entity.")]
     public bool isActive = true;
@@ -25,7 +25,7 @@ public class ApplyShockedBehavior : AttackEntityBehavior
 
     public override AttackEntityBehavior Clone() => new ApplyShockedBehavior { isActive = isActive, applyChance = applyChance, incomingDamageTakenMultiplier = incomingDamageTakenMultiplier };
 
-    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask)
+    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
     {
         var arr = manager.GetShockedAppliers();
         arr[index] = ToRuntime();

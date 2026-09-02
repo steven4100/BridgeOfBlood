@@ -1,10 +1,10 @@
 #if UNITY_EDITOR
-using System;
-using System.Collections.Generic;
 using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Spells;
 using BridgeOfBlood.Effects;
 using EZServiceLocation;
+using System;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -12,9 +12,6 @@ namespace BridgeOfBlood.Editor
 {
 	/// <summary>
 	/// Live debug window for mutating the runtime <see cref="PlayerInventory"/>.
-	/// Lists every inventory payload asset (<see cref="Item"/> / <see cref="SpellAuthoringData"/>) on the left
-	/// and the rows currently held by the registered <see cref="IInventoryService"/> on the right.
-	/// Add and Remove buttons mutate the live inventory through public APIs (so listeners refresh).
 	/// </summary>
 	public class PlayerInventoryEditorWindow : EditorWindow
 	{
@@ -141,14 +138,12 @@ namespace BridgeOfBlood.Editor
 
 		void DrawCurrent(PlayerInventory inv)
 		{
-			IReadOnlyList<InventoryItem> rows = inv.StoredRows;
-
 			EditorGUILayout.BeginVertical(EditorStyles.helpBox, GUILayout.ExpandHeight(true), GUILayout.MinWidth(240));
 
 			EditorGUILayout.BeginHorizontal();
-			EditorGUILayout.LabelField($"Inventory ({rows.Count})", EditorStyles.boldLabel);
+			EditorGUILayout.LabelField("Inventory", EditorStyles.boldLabel);
 			GUILayout.FlexibleSpace();
-			using (new EditorGUI.DisabledScope(rows.Count == 0))
+			using (new EditorGUI.DisabledScope(inv.SpellCollection.Count == 0 && inv.Items.Count == 0 && inv.Stash.Placements.Count == 0))
 			{
 				if (GUILayout.Button("Clear All", GUILayout.Width(80)))
 					inv.Clear();
@@ -157,28 +152,65 @@ namespace BridgeOfBlood.Editor
 
 			_inventoryScroll = EditorGUILayout.BeginScrollView(_inventoryScroll);
 
-			InventoryItem toRemove = null;
-			for (int i = 0; i < rows.Count; i++)
+			DrawOccupantList("Loop", inv.SpellCollection.RuntimeSpells, spell =>
 			{
-				InventoryItem row = rows[i];
-
-				EditorGUILayout.BeginHorizontal();
-				GUILayout.Label(LabelForRow(row, i), GUILayout.Width(28));
-				if (row.Payload != null)
-					EditorGUILayout.ObjectField(row.Payload, row.Payload.GetType(), false);
-				else
-					EditorGUILayout.LabelField("<null>");
-
+				EditorGUILayout.ObjectField(spell.Definition, typeof(SpellAuthoringData), false);
 				if (GUILayout.Button("Remove", GUILayout.Width(64)))
-					toRemove = row;
+					inv.SpellCollection.TryRemove(spell);
+			});
+
+			DrawOccupantList("Jokers", inv.Items.Items, item =>
+			{
+				EditorGUILayout.ObjectField(item.Definition, typeof(Item), false);
+				if (GUILayout.Button("Remove", GUILayout.Width(64)))
+					inv.Items.TryRemove(item);
+			});
+
+			EditorGUILayout.LabelField($"Stash ({inv.Stash.Placements.Count})", EditorStyles.boldLabel);
+			for (int i = 0; i < inv.Stash.Placements.Count; i++)
+			{
+				StashPlacement placement = inv.Stash.Placements[i];
+				EditorGUILayout.BeginHorizontal();
+				GUILayout.Label($"{placement.Origin.x},{placement.Origin.y}", GUILayout.Width(40));
+				DrawOccupantField(placement.Occupant);
+				if (GUILayout.Button("Remove", GUILayout.Width(64)))
+					inv.Stash.TryRemove(placement.Occupant);
 				EditorGUILayout.EndHorizontal();
 			}
 
-			if (toRemove != null)
-				inv.RemoveRow(toRemove);
-
 			EditorGUILayout.EndScrollView();
 			EditorGUILayout.EndVertical();
+		}
+
+		void DrawOccupantList<T>(string title, IReadOnlyList<T> rows, Action<T> drawRow)
+		{
+			EditorGUILayout.LabelField($"{title} ({rows.Count})", EditorStyles.boldLabel);
+			for (int i = 0; i < rows.Count; i++)
+			{
+				EditorGUILayout.BeginHorizontal();
+				GUILayout.Label(i.ToString(), GUILayout.Width(28));
+				drawRow(rows[i]);
+				EditorGUILayout.EndHorizontal();
+			}
+		}
+
+		static void DrawOccupantField(IInventoryOccupant occupant)
+		{
+			switch (occupant)
+			{
+				case RuntimeSpell spell:
+					EditorGUILayout.ObjectField(spell.Definition, typeof(SpellAuthoringData), false);
+					break;
+				case RuntimeGem gem:
+					EditorGUILayout.ObjectField(gem.Definition, typeof(SpellItem), false);
+					break;
+				case RuntimeItem item:
+					EditorGUILayout.ObjectField(item.Definition, typeof(Item), false);
+					break;
+				default:
+					EditorGUILayout.LabelField(occupant?.GetType().Name ?? "<null>");
+					break;
+			}
 		}
 
 		bool MatchesTypeFilter(UnityEngine.Object asset)
@@ -191,19 +223,16 @@ namespace BridgeOfBlood.Editor
 			}
 		}
 
-		static string LabelForRow(InventoryItem row, int index)
-		{
-			if (row.Payload is SpellAuthoringData) return $"S{index}";
-			if (row.Payload is Item) return $"I{index}";
-			return index.ToString();
-		}
-
 		void AddAssetToInventory(PlayerInventory inv, UnityEngine.Object asset)
 		{
 			switch (asset)
 			{
 				case SpellAuthoringData spell:
 					inv.AddSpell(spell);
+					break;
+				case SpellItem gem:
+					if (inv.Stash.TryFindFirstFreeCell(out Vector2Int cell))
+						inv.Stash.TryPlace(new RuntimeGem(gem), cell);
 					break;
 				case Item item:
 					inv.AddItem(item);

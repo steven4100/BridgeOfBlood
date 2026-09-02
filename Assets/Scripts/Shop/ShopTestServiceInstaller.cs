@@ -79,7 +79,7 @@ public class ShopTestServiceInstaller : MonoBehaviour
             {
                 Item item = startingItemsMock[i];
                 if (item == null) continue;
-                mock.AddInventoryItem(new InventoryItem(item));
+                mock.AddItem(item);
             }
         }
 

@@ -4,24 +4,26 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Single tile in the item inventory strip. Carries the <see cref="InventoryItem"/> row so
-/// <see cref="ItemInventoryController"/> can read sibling order and commit a reorder.
+/// Single tile in the item inventory strip.
 /// </summary>
 public class RuntimeItemPresenter : MonoBehaviour
 {
     [SerializeField] Image iconImage;
 
-    public InventoryItem Row { get; private set; }
+    public RuntimeItem Item { get; private set; }
 
-    public void Bind(InventoryItem row)
+    public void Bind(RuntimeItem item, IItemReceptacle source, int index)
     {
-        Row = row;
-        var item = (Item)row.Payload;
-        string name = item.ShopItemDefinition != null ? item.ShopItemDefinition.DisplayName : item.name;
+        Item = item;
+        string name = item.Definition.ShopItemDefinition != null
+            ? item.Definition.ShopItemDefinition.DisplayName
+            : item.Definition.name;
         gameObject.name = $"Item_{name}";
 
         if (iconImage != null)
-            iconImage.sprite = null;
+            iconImage.sprite = item.GhostSprite;
+
+        InventoryDragHandle.Bind(gameObject, item, source, index, default);
     }
 
     public void SetVisible(bool visible)

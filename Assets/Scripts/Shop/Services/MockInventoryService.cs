@@ -1,4 +1,5 @@
 using BridgeOfBlood.Data.Inventory;
+using BridgeOfBlood.Effects;
 using System;
 using System.Collections.Generic;
 
@@ -7,31 +8,30 @@ using System.Collections.Generic;
 /// </summary>
 public class MockInventoryService : IInventoryService
 {
-    private readonly List<InventoryItem> _rows = new List<InventoryItem>();
-    private readonly List<InventoryItem> _passiveScratch = new List<InventoryItem>();
+    readonly ItemCollection _items = new ItemCollection();
+    readonly Stash _stash = new Stash(8, 4);
 
     public event Action ItemsUpdated;
 
-    public IReadOnlyList<InventoryItem> GetPassiveItemRows()
+    public ItemCollection Items => _items;
+    public Stash Stash => _stash;
+
+    public MockInventoryService()
     {
-        _passiveScratch.Clear();
-        for (int i = 0; i < _rows.Count; i++)
-        {
-            if (_rows[i].Payload != null)
-                _passiveScratch.Add(_rows[i]);
-        }
-        return _passiveScratch;
+        _items.ItemsUpdated += () => ItemsUpdated?.Invoke();
     }
 
-    public bool TrySetPassiveItemOrder(IReadOnlyList<InventoryItem> reorderedItemRows)
+    public IReadOnlyList<RuntimeItem> GetItems() => _items.Items;
+
+    public bool TrySetItemOrder(IReadOnlyList<RuntimeItem> reordered)
     {
-        return true;
+        return _items.TrySetOrder(reordered);
     }
 
-    public void AddInventoryItem(InventoryItem row)
+    public void AddItem(Item item)
     {
-        if (row == null) return;
-        _rows.Add(row);
-        ItemsUpdated?.Invoke();
+        if (item == null || item is SpellItem)
+            return;
+        _items.TryInsert(new RuntimeItem(item), _items.Count);
     }
 }

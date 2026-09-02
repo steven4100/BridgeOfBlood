@@ -201,6 +201,20 @@ Shop item definitions, weighted selection, and purchase flow.
 
 ---
 
+## Inventory transfer (receptacles + occupants)
+
+Runtime inventory is three typed collections plus a session stash, owned by `PlayerInventory` (cloned with the session `GameConfig`).
+
+- **Occupants** (`IInventoryOccupant`): `RuntimeSpell`, `RuntimeGem`, `RuntimeItem`. Occupancy (`OccupancyCount`, `TileSideLength`, `GhostSprite`) only — no drop dispatch.
+- **Collections**: typed bags. `SpellCollection.TryInsert` / `TryRemove` take spells; `ItemCollection` takes jokers; `RuntimeSpellGemCollection.TryInsert` enforces `CanApplyToSpell` + free socket; `Stash.TryPlace` is a type-blind grid (default 8×4).
+- **UI receptacles** (`IItemReceptacle` on controllers/presenters): `VisitSpell` / `VisitGem` / `VisitItem` own admission and pointer-to-slot. `SpellInventoryController` takes spells; `ItemInventoryController` takes jokers; `SpellGemPresenter` takes gems; `StashCellPresenter` takes any occupant. Dropping a spell on stash unpacks socketed gems, then places the spell.
+- **Transfer**: `InventoryTransferCoordinator` (ghost on cursor, drop preview). Protocol: preview `Accept(Commit: false)`, then extract from source and `Accept(Commit: true)`; restore to source if the commit fails.
+- **Shop**: gem click-to-target is unchanged. Untargeted gem purchases go to the Stash via `TryPlace`. Jokers go to `ItemCollection`. `InventoryItem` was removed.
+
+**Key types**: `IInventoryOccupant`, `IItemReceptacle`, `ReceptacleDropContext`, `Stash`, `ItemCollection`, `RuntimeSpellGemCollection`, `RuntimeItem`, `RuntimeGem`, `InventoryTransferCoordinator`.
+
+---
+
 ## Weighted selection (generic probability)
 
 Reusable probability primitives in `BridgeOfBlood.Data.Shared`.
@@ -224,5 +238,6 @@ Reusable probability primitives in `BridgeOfBlood.Data.Shared`.
 - `BridgeOfBlood.Data.Spells`: spell/modification types, applicator, SpellAuthoringData, ResolvedKeyframe, etc.
 - `BridgeOfBlood.Data.Shared`: enums, `GameConfig`, `RoundConfig`, GameContext, `CombatMetrics`, snapshot structs (`FrameSnapshot`, `SpellCastSnapshot`, etc.).
 - `BridgeOfBlood.Data.Enemies` / `BridgeOfBlood.Data.Idols`: runtime/authoring for enemies and idols.
+- `BridgeOfBlood.Data.Inventory`: `PlayerInventory`, `PlayerWallet`, `ItemCollection`, `Stash`, `IInventoryOccupant`.
 - `BridgeOfBlood.Data.Shop`: shop item definitions, config, repository, `IPurchasable`.
 - Top-level (no namespace): many systems, CombatEvents, AttackEntity*, DamageNumber*, SpellInvoker, LoopedSpellCaster, SpriteInstancedRenderer, SpriteInstanceBuilder, etc.

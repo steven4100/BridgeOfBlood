@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using System;
 using System.Collections.Generic;
+using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Spells;
 
 public enum ShopSpellHighlight
@@ -14,9 +15,7 @@ public enum ShopSpellHighlight
 }
 
 /// <summary>
-/// Single tile inside the spell inventory strip. Carries the runtime <see cref="SpellId"/> so the
-/// containing <see cref="SpellInventoryController"/> can read sibling order back as a list of ids
-/// after a drag-reorder.
+/// Single tile inside the spell inventory strip.
 /// </summary>
 public class RuntimeSpellPresenter : MonoBehaviour
 {
@@ -32,6 +31,7 @@ public class RuntimeSpellPresenter : MonoBehaviour
     [SerializeField] Button spellClickButton;
 
     public int SpellId { get; private set; }
+    public RuntimeSpell Spell { get; private set; }
 
     private List<SpellGemPresenter> gems = new List<SpellGemPresenter>();
     private Action<int> spellTileClickHandler;
@@ -88,13 +88,15 @@ public class RuntimeSpellPresenter : MonoBehaviour
         }
     }
 
-    public void Bind(RuntimeSpell spell)
+    public void Bind(RuntimeSpell spell, IItemReceptacle source, int index)
     {
+        Spell = spell;
         SpellId = spell.spellId;
         iconImage.sprite = spell.Definition.icon;
         gameObject.name = $"Spell_{spell.Definition.name}";
         shopHighlight = ShopSpellHighlight.None;
         iconImage.color = IconBaseColor;
+        InventoryDragHandle.Bind(gameObject, spell, source, index, default);
         PresentGems(spell);
     }
 
@@ -116,12 +118,11 @@ public class RuntimeSpellPresenter : MonoBehaviour
             Destroy(gem.gameObject);
         }
         gems.Clear();
-        for (int i = 0; i < spell.numGemSlots; i++)
+        for (int i = 0; i < spell.Gems.SlotCount; i++)
         {
             SpellGemPresenter gem = Instantiate(GemPf, GemLayoutRoot);
             gems.Add(gem);
-            if(i < spell.spellItems.Count)
-                gem.Present(spell.spellItems[i]);
+            gem.Bind(spell.Gems, i);
         }
     }
 }

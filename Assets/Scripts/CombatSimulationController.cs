@@ -219,9 +219,12 @@ public sealed class CombatSimulationController
                     _lastItemResults.Add(new ItemEvalResult { itemName = item.name, applied = applied });
             }
 
-            for (int g = 0; g < spell.spellItems.Count; g++)
+            for (int g = 0; g < spell.Gems.SlotCount; g++)
             {
-                SpellItem gem = spell.spellItems[g].spellItem;
+                RuntimeGem runtimeGem = spell.Gems.GetSlot(g);
+                if (runtimeGem == null)
+                    continue;
+                SpellItem gem = runtimeGem.Definition;
                 bool applied = gem.Apply(_effectContext);
                 if (slot == onDeckIndex)
                     _lastItemResults.Add(new ItemEvalResult { itemName = gem.name, applied = applied });

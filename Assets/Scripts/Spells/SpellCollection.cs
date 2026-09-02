@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Spells;
+using UnityEngine;
 
 /// <summary>
 /// Holds one ordered list of <see cref="RuntimeSpell"/> rows; each row has a unique <see cref="RuntimeSpell.spellId"/>.
@@ -18,15 +17,8 @@ public class SpellCollection : ISpellInventoryService
 
     event Action ISpellInventoryService.SpellsUpdated
     {
-        add
-        {
-            SpellsUpdated += value;
-        }
-
-        remove
-        {
-            SpellsUpdated -= value;
-        }   
+        add => SpellsUpdated += value;
+        remove => SpellsUpdated -= value;
     }
 
     public SpellCollection(IReadOnlyList<SpellAuthoringData> authoringList)
@@ -42,9 +34,34 @@ public class SpellCollection : ISpellInventoryService
         }
     }
 
-    public void AddSpell(SpellAuthoringData spell){
-        _runtimeSpells.Add(new RuntimeSpell(spell));
+    public void AddSpell(SpellAuthoringData spell)
+    {
+        TryInsert(new RuntimeSpell(spell), _runtimeSpells.Count);
+    }
+
+    public int IndexOf(RuntimeSpell spell)
+    {
+        for (int i = 0; i < _runtimeSpells.Count; i++)
+        {
+            if (ReferenceEquals(_runtimeSpells[i], spell) || _runtimeSpells[i].spellId == spell.spellId)
+                return i;
+        }
+        return -1;
+    }
+
+    public bool TryInsert(RuntimeSpell spell, int index)
+    {
+        if (spell == null)
+            return false;
+        if (IndexOf(spell) >= 0)
+            return false;
+
+        if (index < 0 || index > _runtimeSpells.Count)
+            index = _runtimeSpells.Count;
+        _runtimeSpells.Insert(index, spell);
+        spell.GemsChanged += NotifySpellsChanged;
         SpellsUpdated?.Invoke();
+        return true;
     }
 
     public bool RemoveSpell(SpellAuthoringData spell)
@@ -52,11 +69,7 @@ public class SpellCollection : ISpellInventoryService
         for (int i = 0; i < _runtimeSpells.Count; i++)
         {
             if (ReferenceEquals(_runtimeSpells[i].Definition, spell))
-            {
-                _runtimeSpells.RemoveAt(i);
-                SpellsUpdated?.Invoke();
-                return true;
-            }
+                return TryRemove(_runtimeSpells[i]);
         }
         return false;
     }
@@ -64,6 +77,8 @@ public class SpellCollection : ISpellInventoryService
     /// <summary>Clears all spells (e.g. before <see cref="BridgeOfBlood.Data.Inventory.PlayerInventory.RebuildFromStartingDefinition"/>).</summary>
     public void ClearSpells()
     {
+        for (int i = 0; i < _runtimeSpells.Count; i++)
+            _runtimeSpells[i].GemsChanged -= NotifySpellsChanged;
         _runtimeSpells.Clear();
         SpellsUpdated?.Invoke();
     }
@@ -77,7 +92,6 @@ public class SpellCollection : ISpellInventoryService
     IReadOnlyList<RuntimeSpell> ISpellInventoryService.GetSpells()
     {
         return _runtimeSpells;
-        //return _runtimeSpells.Select(s => new RuntimeSpellUiDTO(s.Definition.name, s.spellId, s.Definition.icon)).ToList();
     }
 
     bool ISpellInventoryService.TrySetSpellOrder(IReadOnlyList<int> spellIdOrder)
@@ -122,5 +136,29 @@ public class SpellCollection : ISpellInventoryService
     public void NotifySpellsChanged()
     {
         SpellsUpdated?.Invoke();
+    }
+
+    public bool OwnsPayload(ScriptableObject asset)
+    {
+        for (int i = 0; i < _runtimeSpells.Count; i++)
+        {
+            RuntimeSpell spell = _runtimeSpells[i];
+            if (ReferenceEquals(spell.Definition, asset))
+                return true;
+            if (spell.Gems.OwnsPayload(asset))
+                return true;
+        }
+        return false;
+    }
+
+    public bool TryRemove(RuntimeSpell spell)
+    {
+        int index = IndexOf(spell);
+        if (index < 0)
+            return false;
+        _runtimeSpells[index].GemsChanged -= NotifySpellsChanged;
+        _runtimeSpells.RemoveAt(index);
+        SpellsUpdated?.Invoke();
+        return true;
     }
 }

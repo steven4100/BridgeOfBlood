@@ -43,4 +43,4 @@ MonoBehaviour:
   attributeMask: 8
   castAudio: {fileID: 11400000, guid: a4e1c965eda5e764e8bc21a2637d5e25, type: 2}
   icon: {fileID: 21300000, guid: 1b042da6561ffed4fb214b105ebd6f3d, type: 3}
-  rendererPrefab: {fileID: 394401435466204655, guid: cdb6a7eee71de4528b26e6a88503de46, type: 3}
+  rendererPrefab: {fileID: 5128491029384756103, guid: c4a8e2b17f6d4e3a9c1b0d5e8a7f6c3b, type: 3}

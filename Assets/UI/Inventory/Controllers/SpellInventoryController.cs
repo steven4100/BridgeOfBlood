@@ -1,27 +1,49 @@
 using System;
 using System.Collections.Generic;
+using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
 using EZServiceLocation;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
-/// Renders the player's spell loop as a horizontal strip and commits drag-reorder to the
-/// owning <see cref="ISpellInventoryService"/> on release. Binds from <see cref="ServiceLocator.Current"/>
+/// Renders the player's spell loop as a horizontal strip. Binds from <see cref="ServiceLocator.Current"/>
 /// on <see cref="ServicesRegisteredEvent"/>; explicit <see cref="Initialize(ISpellInventoryService)"/> remains for tests.
 /// </summary>
 [DefaultExecutionOrder(50)]
-public class SpellInventoryController : MonoBehaviour
+public class SpellInventoryController : MonoBehaviour, IItemReceptacle
 {
     [SerializeField] private Transform LayoutGroupRoot;
     [SerializeField] private RuntimeSpellPresenter RuntimeSpellPresenterPrefab;
 
     private ISpellInventoryService _service;
-    private HorizontalLayoutReorderGroup _reorderGroup;
-
     private readonly List<RuntimeSpellPresenter> spellUiInstances = new List<RuntimeSpellPresenter>();
-    private readonly List<int> _orderScratch = new List<int>();
     private bool _poolSeeded;
+    Image _dropPreviewImage;
+    Color _dropPreviewBase = Color.white;
+
+    public void SetDropPreview(bool? valid)
+    {
+        InventoryDropPreview.Apply(_dropPreviewImage, ref _dropPreviewBase, valid);
+    }
+
+    public bool VisitSpell(RuntimeSpell spell, ref ReceptacleDropContext ctx)
+    {
+        ctx.InsertIndex = InventoryDropSite.StripInsertIndex((RectTransform)LayoutGroupRoot, ctx);
+        if (!ctx.Commit)
+            return true;
+        return _service.TryInsert(spell, ctx.InsertIndex);
+    }
+
+    public bool VisitGem(RuntimeGem gem, ref ReceptacleDropContext ctx) => false;
+
+    public bool VisitItem(RuntimeItem item, ref ReceptacleDropContext ctx) => false;
+
+    public bool TryRemove(IInventoryOccupant occupant)
+    {
+        return occupant is RuntimeSpell spell && _service.TryRemove(spell);
+    }
 
     /// <summary>Fired when a spell tile’s click button is used (<see cref="RuntimeSpellPresenter"/>).</summary>
     public event Action<int> SpellTileClicked;
@@ -41,22 +63,24 @@ public class SpellInventoryController : MonoBehaviour
             return;
 
         if (_service != null)
-        {
             _service.SpellsUpdated -= OnSpellsUpdated;
-            _reorderGroup.ReorderEndDrag -= CommitReorderedSpellOrder;
-        }
 
         _service = service;
 
         if (!_poolSeeded)
         {
-            _reorderGroup = LayoutGroupRoot.GetComponent<HorizontalLayoutReorderGroup>();
             SeedPoolFromExistingChildren();
             _poolSeeded = true;
+            var reorder = LayoutGroupRoot.GetComponent<HorizontalLayoutReorderGroup>();
+            if (reorder != null)
+                reorder.enabled = false;
+            InventoryDropPreview.EnsureRaycastGraphic(LayoutGroupRoot.gameObject);
+            _dropPreviewImage = LayoutGroupRoot.GetComponent<Image>();
+            if (_dropPreviewImage != null)
+                _dropPreviewBase = _dropPreviewImage.color;
         }
 
         _service.SpellsUpdated += OnSpellsUpdated;
-        _reorderGroup.ReorderEndDrag += CommitReorderedSpellOrder;
 
         OnSpellsUpdated();
     }
@@ -80,8 +104,6 @@ public class SpellInventoryController : MonoBehaviour
     {
         if (_service != null)
             _service.SpellsUpdated -= OnSpellsUpdated;
-        if (_reorderGroup != null)
-            _reorderGroup.ReorderEndDrag -= CommitReorderedSpellOrder;
     }
 
     private void OnSpellsUpdated()
@@ -89,19 +111,20 @@ public class SpellInventoryController : MonoBehaviour
         RenderSpells(_service.GetSpells());
     }
 
-    private void RenderSpells(IReadOnlyList<RuntimeSpell> runtimeSpellUiDTOs)
+    private void RenderSpells(IReadOnlyList<RuntimeSpell> runtimeSpells)
     {
-        EnsureEnoughRuntimeSpellInstances(runtimeSpellUiDTOs.Count);
+        EnsureEnoughRuntimeSpellInstances(runtimeSpells.Count);
 
-        for (int i = 0; i < runtimeSpellUiDTOs.Count; i++)
+        IItemReceptacle source = this;
+        for (int i = 0; i < runtimeSpells.Count; i++)
         {
             RuntimeSpellPresenter inst = spellUiInstances[i];
             inst.SetVisible(true);
-            inst.Bind(runtimeSpellUiDTOs[i]);
+            inst.Bind(runtimeSpells[i], source, i);
             inst.transform.SetSiblingIndex(i);
         }
 
-        for (int i = runtimeSpellUiDTOs.Count; i < spellUiInstances.Count; i++)
+        for (int i = runtimeSpells.Count; i < spellUiInstances.Count; i++)
             spellUiInstances[i].SetVisible(false);
 
         RefreshSpellClickHandlers();
@@ -149,24 +172,6 @@ public class SpellInventoryController : MonoBehaviour
         }
     }
 
-    private void CommitReorderedSpellOrder()
-    {
-        _orderScratch.Clear();
-        int childCount = LayoutGroupRoot.childCount;
-        for (int i = 0; i < childCount; i++)
-        {
-            Transform child = LayoutGroupRoot.GetChild(i);
-            if (!child.gameObject.activeSelf)
-                continue;
-            var presenter = child.GetComponent<RuntimeSpellPresenter>();
-            if (presenter == null)
-                continue;
-            _orderScratch.Add(presenter.SpellId);
-        }
-
-        _service.TrySetSpellOrder(_orderScratch);
-    }
-
     private void SeedPoolFromExistingChildren()
     {
         int childCount = LayoutGroupRoot.childCount;
@@ -180,11 +185,13 @@ public class SpellInventoryController : MonoBehaviour
     }
 }
 
-
-
 public interface ISpellInventoryService
 {
     void AddSpell(SpellAuthoringData spell);
+
+    bool TryInsert(RuntimeSpell spell, int index);
+
+    bool TryRemove(RuntimeSpell spell);
 
     IReadOnlyList<RuntimeSpell> GetSpells();
 

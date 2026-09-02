@@ -1,8 +1,6 @@
 using System.Collections.Generic;
-using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Shop;
-using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 namespace BridgeOfBlood.Effects
@@ -39,7 +37,7 @@ namespace BridgeOfBlood.Effects
 
 		public virtual void OnPurchase(PurchaseContext context)
 		{
-			context.Inventory.AddInventoryItem(new InventoryItem(this));
+			context.Inventory.AddItem(this);
 		}
 	}
 }

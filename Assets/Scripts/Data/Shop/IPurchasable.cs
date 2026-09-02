@@ -10,7 +10,7 @@ namespace BridgeOfBlood.Data.Shop
 		public ISpellInventoryService SpellInventory { get; }
 
 		/// <summary>
-		/// Set by <see cref="ShopPurchase.TryPurchase"/> around <see cref="IPurchasable.OnPurchase"/> so payloads can copy listing economy into <see cref="InventoryItem"/> or apply spell grants.
+		/// Set by <see cref="ShopPurchase.TryPurchase"/> around <see cref="IPurchasable.OnPurchase"/>.
 		/// </summary>
 		public ShopItemDefinition CurrentShopListing { get; set; }
 

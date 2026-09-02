@@ -60,7 +60,7 @@ public sealed class CombatPresentationLayer
 		SyncPlayerTransform(@event.playerPosition);
 		_spriteBuilder.Build(sim.EnemyBuffers, sim.AttackEntities, _effectSprites.GetEntities());
 		_spriteRenderer.Render(_spriteBuilder.Buffer, _spriteBuilder.Count, simulationZone, camera);
-		_attackDebugRenderer.Render(sim.AttackEntities, simulationZone, camera);
+		_attackDebugRenderer.Render(sim.AttackEntities, sim.AttackHitBoxes, simulationZone, camera);
 		_damageNumbers.Render(simulationZone, camera);
 	}
 

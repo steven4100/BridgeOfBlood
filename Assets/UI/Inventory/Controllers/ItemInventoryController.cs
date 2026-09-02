@@ -2,26 +2,49 @@ using System;
 using System.Collections.Generic;
 using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Data.Spells;
+using BridgeOfBlood.Effects;
 using EZServiceLocation;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
-/// Renders passive <see cref="Item"/> rows as a horizontal strip and commits drag-reorder to the
-/// owning <see cref="IInventoryService"/> on release. Binds from <see cref="ServiceLocator.Current"/>
+/// Renders passive jokers as a horizontal strip. Binds from <see cref="ServiceLocator.Current"/>
 /// on <see cref="ServicesRegisteredEvent"/>; explicit <see cref="Initialize(IInventoryService)"/> remains for tests.
 /// </summary>
 [DefaultExecutionOrder(50)]
-public class ItemInventoryController : MonoBehaviour
+public class ItemInventoryController : MonoBehaviour, IItemReceptacle
 {
     [SerializeField] private Transform LayoutGroupRoot;
     [SerializeField] private RuntimeItemPresenter RuntimeItemPresenterPrefab;
 
     private IInventoryService _service;
-    private HorizontalLayoutReorderGroup _reorderGroup;
-
     private readonly List<RuntimeItemPresenter> _itemUiInstances = new List<RuntimeItemPresenter>();
-    private readonly List<InventoryItem> _orderScratch = new List<InventoryItem>();
     private bool _poolSeeded;
+    Image _dropPreviewImage;
+    Color _dropPreviewBase = Color.white;
+
+    public void SetDropPreview(bool? valid)
+    {
+        InventoryDropPreview.Apply(_dropPreviewImage, ref _dropPreviewBase, valid);
+    }
+
+    public bool VisitSpell(RuntimeSpell spell, ref ReceptacleDropContext ctx) => false;
+
+    public bool VisitGem(RuntimeGem gem, ref ReceptacleDropContext ctx) => false;
+
+    public bool VisitItem(RuntimeItem item, ref ReceptacleDropContext ctx)
+    {
+        ctx.InsertIndex = InventoryDropSite.StripInsertIndex((RectTransform)LayoutGroupRoot, ctx);
+        if (!ctx.Commit)
+            return true;
+        return _service.Items.TryInsert(item, ctx.InsertIndex);
+    }
+
+    public bool TryRemove(IInventoryOccupant occupant)
+    {
+        return occupant is RuntimeItem item && _service.Items.TryRemove(item);
+    }
 
     /// <summary>Resolves <see cref="IInventoryService"/> from <see cref="ServiceLocator.Current"/>.</summary>
     public void Initialize()
@@ -35,22 +58,24 @@ public class ItemInventoryController : MonoBehaviour
             return;
 
         if (_service != null)
-        {
             _service.ItemsUpdated -= OnItemsUpdated;
-            _reorderGroup.ReorderEndDrag -= CommitReorderedItemOrder;
-        }
 
         _service = service;
 
         if (!_poolSeeded)
         {
-            _reorderGroup = LayoutGroupRoot.GetComponent<HorizontalLayoutReorderGroup>();
             SeedPoolFromExistingChildren();
             _poolSeeded = true;
+            var reorder = LayoutGroupRoot.GetComponent<HorizontalLayoutReorderGroup>();
+            if (reorder != null)
+                reorder.enabled = false;
+            InventoryDropPreview.EnsureRaycastGraphic(LayoutGroupRoot.gameObject);
+            _dropPreviewImage = LayoutGroupRoot.GetComponent<Image>();
+            if (_dropPreviewImage != null)
+                _dropPreviewBase = _dropPreviewImage.color;
         }
 
         _service.ItemsUpdated += OnItemsUpdated;
-        _reorderGroup.ReorderEndDrag += CommitReorderedItemOrder;
 
         OnItemsUpdated();
     }
@@ -74,17 +99,15 @@ public class ItemInventoryController : MonoBehaviour
     {
         if (_service != null)
             _service.ItemsUpdated -= OnItemsUpdated;
-        if (_reorderGroup != null)
-            _reorderGroup.ReorderEndDrag -= CommitReorderedItemOrder;
     }
 
     private void OnItemsUpdated()
     {
-        IReadOnlyList<InventoryItem> rows = _service.GetPassiveItemRows();
+        IReadOnlyList<RuntimeItem> rows = _service.GetItems();
         RenderItems(rows);
     }
 
-    private void RenderItems(IReadOnlyList<InventoryItem> rows)
+    private void RenderItems(IReadOnlyList<RuntimeItem> rows)
     {
         EnsureEnoughRuntimeItemInstances(rows.Count);
 
@@ -92,7 +115,7 @@ public class ItemInventoryController : MonoBehaviour
         {
             RuntimeItemPresenter inst = _itemUiInstances[i];
             inst.SetVisible(true);
-            inst.Bind(rows[i]);
+            inst.Bind(rows[i], this, i);
             inst.transform.SetSiblingIndex(i);
         }
 
@@ -107,24 +130,6 @@ public class ItemInventoryController : MonoBehaviour
             RuntimeItemPresenter inst = Instantiate(RuntimeItemPresenterPrefab, LayoutGroupRoot);
             _itemUiInstances.Add(inst);
         }
-    }
-
-    private void CommitReorderedItemOrder()
-    {
-        _orderScratch.Clear();
-        int childCount = LayoutGroupRoot.childCount;
-        for (int i = 0; i < childCount; i++)
-        {
-            Transform child = LayoutGroupRoot.GetChild(i);
-            if (!child.gameObject.activeSelf)
-                continue;
-            var presenter = child.GetComponent<RuntimeItemPresenter>();
-            if (presenter == null)
-                continue;
-            _orderScratch.Add(presenter.Row);
-        }
-
-        _service.TrySetPassiveItemOrder(_orderScratch);
     }
 
     private void SeedPoolFromExistingChildren()
@@ -142,9 +147,11 @@ public class ItemInventoryController : MonoBehaviour
 
 public interface IInventoryService
 {
-    public void AddInventoryItem(InventoryItem item);
-    IReadOnlyList<InventoryItem> GetPassiveItemRows();
-    bool TrySetPassiveItemOrder(IReadOnlyList<InventoryItem> reorderedItemRows);
+    void AddItem(Item item);
+    IReadOnlyList<RuntimeItem> GetItems();
+    bool TrySetItemOrder(IReadOnlyList<RuntimeItem> reordered);
+    ItemCollection Items { get; }
+    Stash Stash { get; }
     event Action ItemsUpdated;
 }
 

@@ -2,7 +2,7 @@ using BridgeOfBlood.Data.Enemies;
 using UnityEngine;
 
 /// <summary>
-/// Draws gizmo spheres at each enemy position. Implements IDebugDrawable for use in TestSceneManager.
+/// Draws gizmo spheres at each enemy position. Implements IDebugDrawable for use in GameManager.
 /// </summary>
 public class EnemyManagerGizmoDrawer : IDebugDrawable
 {

@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a815c06db81fa2749a462ef766fc76f1, type: 3}
+  m_Name: AoeGem
+  m_EditorClassIdentifier: Assembly-CSharp::BridgeOfBlood.Effects.SpellItem
+  shopItemDefinition:
+    displayName: Aoe
+    description: Aoe
+    sprite: {fileID: 0}
+    price: 1
+    resellValue: 0
+    isResellable: 1
+    rarity: 0
+    shopItemType: 0
+    weight: 1
+  effects:
+  - rid: 1399430006803791953
+  combatReactions: []
+  attributeMask:
+    attributeMask: 65535
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 1399430006803791953
+      type: {class: SpellModificationEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        modifier:
+          rid: 1399430006803791954
+    - rid: 1399430006803791954
+      type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
+      data:
+        property: 4
+        filter: 0
+        flatAdditive:
+          rid: -2
+        percentIncreased:
+          rid: 1399430006803791955
+        moreMultiplier:
+          rid: -2
+    - rid: 1399430006803791955
+      type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        value: 100

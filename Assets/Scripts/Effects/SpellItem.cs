@@ -6,7 +6,7 @@ using UnityEngine;
 namespace BridgeOfBlood.Effects
 {
     [CreateAssetMenu(fileName = "NewSpellItem", menuName = "Bridge of Blood/Items/Spell Item")]
-    public class SpellItem : Item, ISpellTargetPurchasable
+    public class Gem : Item, ISpellTargetPurchasable
     {
         public SpellAttributeMaskCondition attributeMask;
 
@@ -25,25 +25,9 @@ namespace BridgeOfBlood.Effects
             return true;
         }
 
-        public override void OnPurchase(PurchaseContext context)
+        protected override IInventoryOccupant CreatePurchasedStashOccupant()
         {
-            RuntimeGem gem = new RuntimeGem(this);
-            RuntimeSpell target = context.SpellGemTarget;
-            if (target != null)
-            {
-                int slot = target.Gems.FirstEmptySlot;
-                if (slot >= 0)
-                {
-                    target.Gems.TryInsert(gem, slot);
-                    context.SpellInventory.NotifySpellsChanged();
-                    return;
-                }
-            }
-
-            Stash stash = context.Inventory.Stash;
-            if (!stash.TryFindFirstFreeCell(out Vector2Int cell))
-                return;
-            stash.TryPlace(gem, cell);
+            return new RuntimeGem(this);
         }
     }
 }

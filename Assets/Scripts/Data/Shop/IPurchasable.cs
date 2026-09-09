@@ -14,12 +14,6 @@ namespace BridgeOfBlood.Data.Shop
 		/// </summary>
 		public ShopItemDefinition CurrentShopListing { get; set; }
 
-		/// <summary>
-		/// When purchasing a spell-target shop listing, set to the runtime spell that receives the gem before <see cref="ShopPurchase.TryPurchase"/>.
-		/// Cleared in <see cref="ShopPurchase.TryPurchase"/> finally.
-		/// </summary>
-		public RuntimeSpell SpellGemTarget { get; set; }
-
 		public PurchaseContext(IInventoryService inventory, IWalletService wallet, ISpellInventoryService spellInventory)
 		{
 			Inventory = inventory;
@@ -36,6 +30,12 @@ namespace BridgeOfBlood.Data.Shop
 		ShopItemDefinition ShopItemDefinition { get; }
 
 		void OnPurchase(PurchaseContext context);
+
+		/// <summary>
+		/// Whether <see cref="OnPurchase"/> can complete with this context (e.g. stash has a free cell).
+		/// Checked by <see cref="ShopPurchase.TryPurchase"/> before spending gold.
+		/// </summary>
+		bool CanPurchase(PurchaseContext context);
 	}
 
 	public interface ISpellTargetPurchasable : IPurchasable

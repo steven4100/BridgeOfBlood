@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Adapts ShopRepository to IShopService, splitting all purchasables into items and spell gems.
+/// Adapts ShopRepository to IShopService, splitting listings into items and spell gems for UI columns.
 /// </summary>
 public class RepositoryShopService : IShopService
 {

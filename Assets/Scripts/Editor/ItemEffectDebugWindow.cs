@@ -6,7 +6,7 @@ namespace BridgeOfBlood.Editor
 {
 	public class ItemEffectDebugWindow : EditorWindow
 	{
-		private TestSceneManager _sceneManager;
+		private GameManager _gameManager;
 		private Vector2 _scrollPos;
 
 		[MenuItem("Window/Bridge of Blood/Item Effect Debug")]
@@ -28,7 +28,7 @@ namespace BridgeOfBlood.Editor
 
 		void OnPlayModeStateChanged(PlayModeStateChange state)
 		{
-			_sceneManager = null;
+			_gameManager = null;
 		}
 
 		void Update()
@@ -45,16 +45,16 @@ namespace BridgeOfBlood.Editor
 				return;
 			}
 
-			if (_sceneManager == null)
-				_sceneManager = Object.FindObjectOfType<TestSceneManager>();
+			if (_gameManager == null)
+				_gameManager = Object.FindObjectOfType<GameManager>();
 
-			if (_sceneManager == null)
+			if (_gameManager == null)
 			{
-				EditorGUILayout.HelpBox("No TestSceneManager found in scene.", MessageType.Warning);
+				EditorGUILayout.HelpBox("No GameManager found in scene.", MessageType.Warning);
 				return;
 			}
 
-			var results = _sceneManager.LastItemResults;
+			var results = _gameManager.LastItemResults;
 			if (results == null || results.Count == 0)
 			{
 				EditorGUILayout.LabelField("No items configured.");

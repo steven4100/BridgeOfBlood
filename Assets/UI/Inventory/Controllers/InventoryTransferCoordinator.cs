@@ -11,6 +11,8 @@ public class InventoryTransferCoordinator : MonoBehaviour
 
 	readonly List<RaycastResult> _raycastHits = new List<RaycastResult>();
 
+	public float GhostIconScale = 1f;
+
 	InventoryDragHandle _handle;
 	IItemReceptacle _previewZone;
 	RectTransform _ghost;
@@ -172,7 +174,7 @@ public class InventoryTransferCoordinator : MonoBehaviour
 		var ghostGo = new GameObject("Ghost", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
 		_ghost = ghostGo.GetComponent<RectTransform>();
 		_ghost.SetParent(canvasGo.transform, false);
-		_ghost.sizeDelta = new Vector2(72f, 72f);
+		_ghost.sizeDelta = new Vector2(72f, 72f) * GhostIconScale;
 		_ghostImage = ghostGo.GetComponent<Image>();
 		_ghostImage.raycastTarget = false;
 		_ghostImage.preserveAspect = true;

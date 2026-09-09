@@ -131,7 +131,9 @@ public sealed class RoundController : SessionPhaseBase
 				RoundNumber);
 			RoundEndEvaluationResult resolution = _roundEndStrategy.Evaluate(in endInput);
 			QuotaMet = resolution.QuotaMet;
-			Phase = resolution.NextInternalPhase;
+			// Stay on RoundEnd after a win so the next Round enter advances; retry the same round on a miss.
+			Phase = QuotaMet ? GameLoopPhase.RoundEnd : GameLoopPhase.Playing;
+			controller.SetState(SessionState.Shop);
 		}
 	}
 

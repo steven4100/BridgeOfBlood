@@ -32,6 +32,13 @@ namespace BridgeOfBlood.Data.Spells
 			set => ((IRandomElement)shopItemDefinition).Weight = value;
 		}
 
+		public AttackEntityData AttackEntityData => SpellAnimation.keyFrames[0].attackEntityData;
+
+		public bool CanPurchase(PurchaseContext context)
+		{
+			return true;
+		}
+
 		public void OnPurchase(PurchaseContext context)
 		{
 			context.SpellInventory.AddSpell(this);

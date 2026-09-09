@@ -15,7 +15,7 @@ public class MockShopService : MonoBehaviour, IShopService
     public List<Item> items = new List<Item>();
 
     [Header("Spell Gem Items (ISpellTargetPurchasable)")]
-    public List<SpellItem> spellGems = new List<SpellItem>();
+    public List<Gem> spellGems = new List<Gem>();
 
     [Header("Spell Purchasables")]
     public List<SpellAuthoringData> spellPurchasables = new List<SpellAuthoringData>();

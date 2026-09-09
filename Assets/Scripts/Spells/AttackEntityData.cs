@@ -26,35 +26,7 @@ public class AttackEntityData : ScriptableObject, ISerializationCallbackReceiver
 	[Header("Audio")]
 	[Tooltip("Optional audio unit emitted when this attack deals damage.")]
 	public AudioUnit onDamageSound;
-
-	[SerializeField, HideInInspector, FormerlySerializedAs("physicalDamageRange")]
-	FloatRange legacyPhysicalDamageRange;
-	[SerializeField, HideInInspector, FormerlySerializedAs("coldDamageRange")]
-	FloatRange legacyColdDamageRange;
-	[SerializeField, HideInInspector, FormerlySerializedAs("fireDamageRange")]
-	FloatRange legacyFireDamageRange;
-	[SerializeField, HideInInspector, FormerlySerializedAs("lightningDamageRange")]
-	FloatRange legacyLightningDamageRange;
-	[SerializeField, HideInInspector, FormerlySerializedAs("critChanceRange")]
-	FloatRange legacyCritChanceRange;
-	[SerializeField, HideInInspector, FormerlySerializedAs("critDamageMultiplierRange")]
-	FloatRange legacyCritDamageMultiplierRange;
-	[SerializeField, HideInInspector, FormerlySerializedAs("knockbackStrength")]
-	float legacyKnockbackStrength;
-	[SerializeField, HideInInspector, FormerlySerializedAs("hitBoxData")]
-	HitBoxData legacyHitBoxData;
-	[SerializeField, HideInInspector, FormerlySerializedAs("physicalDamage")]
-	float legacyPhysicalDamage;
-	[SerializeField, HideInInspector, FormerlySerializedAs("coldDamage")]
-	float legacyColdDamage;
-	[SerializeField, HideInInspector, FormerlySerializedAs("fireDamage")]
-	float legacyFireDamage;
-	[SerializeField, HideInInspector, FormerlySerializedAs("lightningDamage")]
-	float legacyLightningDamage;
-	[SerializeField, HideInInspector, FormerlySerializedAs("critChance")]
-	float legacyCritChance;
-	[SerializeField, HideInInspector, FormerlySerializedAs("critDamageMultiplier")]
-	float legacyCritDamageMultiplier;
+	
 
 	public bool HasBehavior<T>() where T : AttackEntityBehavior => GetBehavior<T>() != null;
 
@@ -70,48 +42,21 @@ public class AttackEntityData : ScriptableObject, ISerializationCallbackReceiver
 		return null;
 	}
 
+	public IReadOnlyList<AttackEntityBehavior> GetAllBehaviors()
+	{
+		return behaviors;
+	}
+
 	public void OnBeforeSerialize() { }
 
 	public void OnAfterDeserialize()
 	{
 		behaviors ??= new List<AttackEntityBehavior>();
-		MigrateLegacyFields();
 	}
 
 	void OnValidate()
 	{
 		behaviors ??= new List<AttackEntityBehavior>();
-		MigrateLegacyFields();
-	}
-
-	void MigrateLegacyFields()
-	{
-		TryAddDamage<PhysicalDamageBehavior>(legacyPhysicalDamageRange, legacyPhysicalDamage);
-		TryAddDamage<ColdDamageBehavior>(legacyColdDamageRange, legacyColdDamage);
-		TryAddDamage<FireDamageBehavior>(legacyFireDamageRange, legacyFireDamage);
-		TryAddDamage<LightningDamageBehavior>(legacyLightningDamageRange, legacyLightningDamage);
-
-		bool hasCritRange = legacyCritChanceRange.min > 0f || legacyCritChanceRange.max > 0f
-			|| legacyCritDamageMultiplierRange.min > 1f || legacyCritDamageMultiplierRange.max > 1f;
-		bool hasCritScalar = legacyCritChance > 0f
-			|| (legacyCritDamageMultiplier > 1f);
-		if (!HasBehavior<CritBehavior>() && (hasCritRange || hasCritScalar))
-		{
-			FloatRange chance = hasCritRange ? legacyCritChanceRange : new FloatRange { min = legacyCritChance, max = legacyCritChance };
-			FloatRange mult = hasCritRange ? legacyCritDamageMultiplierRange : new FloatRange { min = legacyCritDamageMultiplier, max = legacyCritDamageMultiplier };
-			if (mult.min <= 0f && mult.max <= 0f)
-				mult = new FloatRange { min = 1f, max = 1f };
-			behaviors.Add(new CritBehavior { critChanceRange = chance, critDamageMultiplierRange = mult });
-		}
-
-		if (!HasBehavior<KnockbackBehavior>() && legacyKnockbackStrength > 0f)
-			behaviors.Add(new KnockbackBehavior { knockbackStrength = legacyKnockbackStrength });
-
-		bool hasHitBox = legacyHitBoxData.isSphere || legacyHitBoxData.isRect
-			|| legacyHitBoxData.sphereRadius > 0f
-			|| legacyHitBoxData.rectDimension.x > 0f || legacyHitBoxData.rectDimension.y > 0f;
-		if (!HasBehavior<HitBoxBehavior>() && hasHitBox)
-			behaviors.Add(new HitBoxBehavior { hitBoxData = legacyHitBoxData });
 	}
 
 	void TryAddDamage<T>(FloatRange range, float scalar) where T : DamageBehavior, new()

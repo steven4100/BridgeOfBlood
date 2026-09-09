@@ -28,7 +28,7 @@ public class PurchasableItemUI : MonoBehaviour
         ConfirmPurchaseButton.onClick.RemoveListener(OnConfirmPurchaseClicked);
     }
 
-    public void SetPurchasable(IPurchasable purchasable, PurchaseContext purchaseContext, ShopController shopController)
+    public virtual void InitializeShopItem(IPurchasable purchasable, PurchaseContext purchaseContext, ShopController shopController)
     {
         this.purchasable = purchasable;
         this.purchaseContext = purchaseContext;

@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1001 &9206925899207159918
+--- !u!1001 &4048725367550412691
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -10,7 +10,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2445588061669584186, guid: 2c6c11a2146a184478bb6e50764dda47, type: 3}
       propertyPath: m_Name
-      value: ShopPurshableItemUI
+      value: ShopPurshableItemGemUI
       objectReference: {fileID: 0}
     - target: {fileID: 6481228462380347767, guid: 2c6c11a2146a184478bb6e50764dda47, type: 3}
       propertyPath: m_Pivot.x
@@ -98,23 +98,12 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 2445588061669584186, guid: 2c6c11a2146a184478bb6e50764dda47, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 8206291629152232200}
+      addedObject: {fileID: 4881588393066819169}
   m_SourcePrefab: {fileID: 100100000, guid: 2c6c11a2146a184478bb6e50764dda47, type: 3}
---- !u!114 &3886915337664598295 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 5347051166684553593, guid: 2c6c11a2146a184478bb6e50764dda47, type: 3}
-  m_PrefabInstance: {fileID: 9206925899207159918}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!114 &5147982618620167321 stripped
+--- !u!114 &43675887486317412 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 4086133452064929015, guid: 2c6c11a2146a184478bb6e50764dda47, type: 3}
-  m_PrefabInstance: {fileID: 9206925899207159918}
+  m_PrefabInstance: {fileID: 4048725367550412691}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 0}
   m_Enabled: 1
@@ -122,34 +111,45 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!1 &6788590611924933972 stripped
+--- !u!1 &1864366171897522857 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 2445588061669584186, guid: 2c6c11a2146a184478bb6e50764dda47, type: 3}
-  m_PrefabInstance: {fileID: 9206925899207159918}
+  m_PrefabInstance: {fileID: 4048725367550412691}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &8206291629152232200
+--- !u!114 &4881588393066819169
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6788590611924933972}
+  m_GameObject: {fileID: 1864366171897522857}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1cd2909037895dd49b344ee6e9c7fc5d, type: 3}
+  m_Script: {fileID: 11500000, guid: a696b090099897d4ba7d2ae6c04f4ba4, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
-  PriceText: {fileID: 9024345027511129047}
-  ItemSelectedButton: {fileID: 3886915337664598295}
-  ConfirmPurchaseButton: {fileID: 5147982618620167321}
---- !u!114 &9024345027511129047 stripped
+  m_EditorClassIdentifier: Assembly-CSharp::PurchasableItemGemUI
+  PriceText: {fileID: 4239732140431877162}
+  ItemSelectedButton: {fileID: 8222302921503975146}
+  ConfirmPurchaseButton: {fileID: 43675887486317412}
+--- !u!114 &4239732140431877162 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 214338446155260857, guid: 2c6c11a2146a184478bb6e50764dda47, type: 3}
-  m_PrefabInstance: {fileID: 9206925899207159918}
+  m_PrefabInstance: {fileID: 4048725367550412691}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &8222302921503975146 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5347051166684553593, guid: 2c6c11a2146a184478bb6e50764dda47, type: 3}
+  m_PrefabInstance: {fileID: 4048725367550412691}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 

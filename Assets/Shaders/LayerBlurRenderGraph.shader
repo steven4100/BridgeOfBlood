@@ -125,11 +125,15 @@ Shader "LayerBlurRenderGraph"
                 }
                 else
                 {
-                    float nearPlane = _ProjectionParams.y;
-                    float farPlane = _ProjectionParams.z;
-                    float viewZ = lerp(farPlane, nearPlane, overlay01);
-                    float3 viewPos = float3(ndcXY.x / unity_OrthoParams.x, ndcXY.y / unity_OrthoParams.y, viewZ);
-                    output.positionCS = mul(UNITY_MATRIX_P, float4(viewPos, 1.0));
+                    // Ortho clip XY is already NDC (w = 1). Do not reconstruct XY through
+                    // UNITY_MATRIX_P — that shrinks the quad. View space looks down -Z.
+                    float viewZ = -lerp(_ProjectionParams.z, _ProjectionParams.y, overlay01);
+                    float clipZ = mul(UNITY_MATRIX_P, float4(0.0, 0.0, viewZ, 1.0)).z;
+                    output.positionCS = float4(ndcXY, clipZ, 1.0);
+                    // Blur RTs are D3D-style (UV origin at top). Mesh UV (0,0) is clip bottom-left.
+                    #if UNITY_UV_STARTS_AT_TOP
+                    output.uv.y = 1.0 - output.uv.y;
+                    #endif
                 }
 
                 return output;

@@ -48,3 +48,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9baacc4d8d3a4775b365cf7439d0763, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::InventoryTransferCoordinator
+  GhostIconScale: 0.25

@@ -81,7 +81,7 @@ namespace BridgeOfBlood.Data.Shared
 		[Tooltip("Template wallet (starting gold). Instantiate at session start — do not use the template reference at runtime.")]
 		public PlayerWallet playerWallet;
 
-		[Tooltip("Template inventory (starting spells/items). Instantiate and call RebuildFromStartingDefinition at session start.")]
+		[Tooltip("Template inventory (starting spells/items/stash). Instantiate and call RebuildFromStartingDefinition at session start.")]
 		public PlayerInventory playerInventory;
 
 		[Header("Shop")]

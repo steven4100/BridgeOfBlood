@@ -18,7 +18,7 @@ public class SimulationConfig
 
 /// <summary>
 /// Runs the core game simulation: enemies, attack entities, collision, damage, and spell casting.
-/// Owns all simulation systems and state. TestSceneManager (or another runner) drives Tick, rendering, and input.
+/// Owns all simulation systems and state. GameManager (or another runner) drives Tick, rendering, and input.
 /// Domain reads use <see cref="State"/>; subsystem handles use <see cref="EnemyManager"/> / <see cref="AttackEntityManager"/>.
 /// </summary>
 public partial class GameSimulation

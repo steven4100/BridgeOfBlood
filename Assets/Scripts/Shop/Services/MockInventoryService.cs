@@ -30,7 +30,7 @@ public class MockInventoryService : IInventoryService
 
     public void AddItem(Item item)
     {
-        if (item == null || item is SpellItem)
+        if (item == null || item is Gem)
             return;
         _items.TryInsert(new RuntimeItem(item), _items.Count);
     }

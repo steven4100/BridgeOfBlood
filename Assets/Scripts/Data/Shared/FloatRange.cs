@@ -26,6 +26,11 @@ namespace BridgeOfBlood.Data.Shared
 				return min;
 			return rng.NextFloat(min, max);
 		}
+
+		public override string ToString()
+		{
+			return $"{min} - {max}";
+		}
 	}
 
 	/// <summary>Deterministic seed for rolling attack entity stats once per keyframe.</summary>

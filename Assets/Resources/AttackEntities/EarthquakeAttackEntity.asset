@@ -23,11 +23,21 @@ MonoBehaviour:
   - rid: 9100000000000831368
   - rid: 9100000000000831369
   - rid: 9100000000000831370
+  - rid: 1399430006803791956
   visual: {fileID: 0}
   onDamageSound: {fileID: 11400000, guid: c8c9c7244ecabe24888b59279c10d0c9, type: 2}
   references:
     version: 2
     RefIds:
+    - rid: 1399430006803791956
+      type: {class: CritBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        critChanceRange:
+          min: 0.3
+          max: 0.3
+        critDamageMultiplierRange:
+          min: 100
+          max: 200
     - rid: 4044632107998511173
       type: {class: ApplyFrozenBehavior, ns: , asm: Assembly-CSharp}
       data:
@@ -57,8 +67,8 @@ MonoBehaviour:
       type: {class: PhysicalDamageBehavior, ns: , asm: Assembly-CSharp}
       data:
         damageRange:
-          min: 25.0
-          max: 40.0
+          min: 25
+          max: 40
     - rid: 9100000000000831369
       type: {class: HitBoxBehavior, ns: , asm: Assembly-CSharp}
       data:
@@ -71,4 +81,4 @@ MonoBehaviour:
     - rid: 9100000000000831370
       type: {class: KnockbackBehavior, ns: , asm: Assembly-CSharp}
       data:
-        knockbackStrength: 50.0
+        knockbackStrength: 50

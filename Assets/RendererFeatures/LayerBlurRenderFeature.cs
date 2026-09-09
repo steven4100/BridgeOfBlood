@@ -66,7 +66,7 @@ public sealed class LayerBlurRenderFeature : ScriptableRendererFeature
         });
 
         mesh.SetIndices(new[] { 0, 1, 2, 0, 2, 3 }, MeshTopology.Triangles, 0, false);
-        mesh.bounds = new Bounds(Vector3.zero, new Vector3(2f, 2f, 0f));
+        mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1e8f);
         mesh.UploadMeshData(false);
         return mesh;
     }

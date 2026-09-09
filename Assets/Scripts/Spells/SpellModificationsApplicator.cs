@@ -14,6 +14,23 @@ namespace BridgeOfBlood.Data.Spells
 		public float Multiplier => (1f + percentIncreased / 100f) * moreCombined;
 
 		public static readonly ResolvedModifier Identity = new() { moreCombined = 1f };
+
+		public FloatRange ResolveRange(FloatRange baseRange)
+		{
+			float mult = Multiplier;
+			var range = new FloatRange
+			{
+				min = (baseRange.min + flat) * mult,
+				max = (baseRange.max + flat) * mult
+			};
+			range.ClampOrder();
+			return range;
+		}
+
+		public float TotalIncrease()
+		{
+			return Multiplier;
+		}
 	}
 
 	public static class SpellModificationsApplicator

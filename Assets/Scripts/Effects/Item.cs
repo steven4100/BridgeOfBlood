@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Shop;
 using UnityEngine;
@@ -35,9 +36,22 @@ namespace BridgeOfBlood.Effects
 			return anyApplied;
 		}
 
+		public virtual bool CanPurchase(PurchaseContext context)
+		{
+			return context.Inventory.Stash.TryFindFirstFreeCell(out _);
+		}
+
 		public virtual void OnPurchase(PurchaseContext context)
 		{
-			context.Inventory.AddItem(this);
+			Stash stash = context.Inventory.Stash;
+			if (!stash.TryFindFirstFreeCell(out Vector2Int cell))
+				return;
+			stash.TryPlace(CreatePurchasedStashOccupant(), cell);
+		}
+
+		protected virtual IInventoryOccupant CreatePurchasedStashOccupant()
+		{
+			return new RuntimeItem(this);
 		}
 	}
 }

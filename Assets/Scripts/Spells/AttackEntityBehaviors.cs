@@ -44,3 +44,9 @@ public abstract class ModifiableAttackEntityBehavior : AttackEntityBehavior
 public abstract class FixedAttackEntityBehavior : AttackEntityBehavior
 {
 }
+
+
+public interface IPresentableSpellAttribute
+{
+    public string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask);
+}

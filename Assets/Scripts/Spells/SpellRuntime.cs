@@ -42,6 +42,8 @@ namespace BridgeOfBlood.Data.Spells
 		public int TileSideLength => 1;
 		public Sprite GhostSprite => Definition.icon;
 
+		public AttackEntityData AttackEntityData => Definition.SpellAnimation.keyFrames[0].attackEntityData;
+
 		public RuntimeSpell(SpellAuthoringData definition)
 		{
 			Definition = definition;

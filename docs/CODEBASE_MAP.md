@@ -9,7 +9,7 @@ Short reference for where systems live and how data flows. Update when adding ma
 | Folder / area | Purpose |
 |---------------|--------|
 | `Assets/Scripts/` | All C# (no sub-namespace by folder; some use `BridgeOfBlood.Data.Spells` etc.) |
-| `Assets/Scripts/Services/` | Session services registered on `ServiceLocator` (e.g. `ISimulationZoneService`) |
+| `Assets/Scripts/Services/` | Session services registered on `ServiceLocator` (e.g. `ISimulationZoneService`, `ISpellModificationService`) |
 | `Assets/Scripts/Spells/` | Spell authoring, cast flow, attack entities, modifications |
 | `Assets/Scripts/Systems/` | Combat pipeline: collision, hit resolve, chain, damage, pierce, expiration, damage numbers, telemetry aggregation |
 | `Assets/Scripts/Enemies/` | Enemy manager, movement, culling, spawner, grid, render |
@@ -45,8 +45,8 @@ Visual data flow: `SpriteEntityVisual.bakedFrameIndex` > `EnemyAuthoringData.Cre
 
 ## Spell cast flow
 
-1. **Entry**: `TestSceneManager` / lab bootstrap (`LabbingScene`) create `CombatSimulationController` and register session services (`ISimulationZoneService`, inventory/shop/wallet, `CombatSimulationController`) on `ServiceLocator`, then raise `ServicesRegisteredEvent`. Casting proceeds via `LoopedSpellCaster.AttemptToCastNextSpell(...)` → `SpellCastResult` (didCast, spellId, invocationCount, loopCompleted, loopCount). After timing, the caster evaluates prefix mana costs (`SpellModificationsApplicator.EvaluateLoopManaCosts`) against `GameConfig.totalMana`; if the next slot would exceed the budget, the loop completes and this attempt casts the first spell of the new loop (`loopCompleted = true`, `didCast = true` unless slot 0 is also over budget). When a cast occurs, the frame runner raises `SpellCastEvent` on `SharedGameEventBus.Bus` for presentation/audio subscribers. The caster owns cast timing, mana gating, and on-deck flags; it carries no `SpellModifications` of its own.
-2. **Mods injection**: each frame, after item evaluation, `ISpellEmissionHandler.SetFrameModifications(mods)` injects the frame's `SpellModifications` (built fresh by `RoundController` / lab cast mods, treated as immutable for the rest of the frame). There is **no** `SpellAuthoringData.Modify` clone — mods are applied at spawn, not on the authoring asset. The same `SpellModificationCollection` is also published on `SimulationCompleteEvent.frameModifications` for spell preview renderers.
+1. **Entry**: `GameManager` / lab bootstrap (`LabbingScene`) create `CombatSimulationController` and register session services (`ISimulationZoneService`, inventory/shop/wallet, `CombatSimulationController`, `ISpellModificationService`) on `ServiceLocator`, then raise `ServicesRegisteredEvent`. Casting proceeds via `LoopedSpellCaster.AttemptToCastNextSpell(...)` → `SpellCastResult` (didCast, spellId, invocationCount, loopCompleted, loopCount). After timing, the caster evaluates prefix mana costs (`SpellModificationsApplicator.EvaluateLoopManaCosts`) against `GameConfig.totalMana`; if the next slot would exceed the budget, the loop completes and this attempt casts the first spell of the new loop (`loopCompleted = true`, `didCast = true` unless slot 0 is also over budget). When a cast occurs, the frame runner raises `SpellCastEvent` on `SharedGameEventBus.Bus` for presentation/audio subscribers. The caster owns cast timing, mana gating, and on-deck flags; it carries no `SpellModifications` of its own.
+2. **Mods injection**: each frame, after item evaluation, `ISpellEmissionHandler.SetFrameModifications(mods)` injects the frame's `SpellModifications` (built fresh by `RoundController` / lab cast mods, treated as immutable for the rest of the frame). There is **no** `SpellAuthoringData.Modify` clone — mods are applied at spawn, not on the authoring asset. The same `SpellModificationCollection` is also published on `SimulationCompleteEvent.frameModifications` for spell preview renderers. UI (spell-tile hover) reads resolved mods via `ISpellModificationService.GetSpellModCollectionForSpell` (`CombatSimulationController` implements it as `ResolveFor(spell.spellId)`), fills `SpellDescriptionUI`, then `HoverTooltip` reparents that element onto an overlay canvas and clamps it to the screen.
 3. **Invoke**: `SpellInvoker.StartCast(runtime, origin, time, spellId, spellInvocationId)` stores an active cast playing `runtime.Definition` directly; each frame `Update(simulationTime, forward)` fires keyframes.
 4. **Emit**: On keyframe, `SpellEmissionHandler.OnKeyframeFired` builds an `AttackEntityBuildContext` (authoring `AttackEntityData` + spell provenance + frame mods snapshot + `attributeMask`), resolves the projectile-count mod for emit count, and queues pending contexts; transform (position/velocity) is filled at flush via `ctx.WithTransform`.
 5. **Spawn**: `AttackEntityManager.Spawn(in AttackEntityBuildContext)` rolls stats + applies parameter mods via `AttackEntityModificationApplicator.BuildRolledEntity`, appends default policies, then each authoring `AttackEntityBehavior.ApplyTo(manager, index, mods, mask)` writes its contribution (chain/pierce/expiration/appliers/effect scalars) directly into the parallel lists by index. Hit-conditional `AttackEntityModifier`s are snapshotted into a registry keyed by entity id.
@@ -152,11 +152,11 @@ Items use `ICondition` / `IEffect` / `IValue<float>` (all in `BridgeOfBlood.Effe
 
 ## Session state machine
 
-High-level session flow managed by `SessionStateMachine` (plain class); `TestSceneManager` reads the current state each frame and dispatches accordingly.
+High-level session flow managed by `SessionStateMachine` (plain class); `GameManager` reads the current state each frame and dispatches accordingly.
 
 - **States**: `Pregame` → `Round` → `Shop` or `Lose`. Pregame waits for Space/Return to start. Shop waits for N to begin next round. Lose waits for R to retry from round 1.
 - **Transitions**: `RequestStart()`, `OnRoundEnded(quotaMet)`, `RequestNextRound()`, `RequestRetry()`. Each returns `bool` for whether the transition occurred.
-- **Round controller**: `RoundController` (plain class) encapsulates one frame of round gameplay (player move, cast gating, items, casting, simulation steps, telemetry, damage/effect spawn, rendering, phase evaluation). Returns `RoundTickResult { roundEnded, quotaMet }`. `TestSceneManager` delegates to it when session state == Round.
+- **Round controller**: `RoundController` (plain class) encapsulates one frame of round gameplay (player move, cast gating, items, casting, simulation steps, telemetry, damage/effect spawn, rendering, phase evaluation). Returns `RoundTickResult { roundEnded, quotaMet }`. `GameManager` delegates to it when session state == Round.
 - **GameState**: `GameState.sessionState` carries the current `SessionState` so UI can display Pregame/Round/Shop/Lose.
 
 **Key types**: `SessionState` (enum), `SessionStateMachine`, `RoundController`, `RoundControllerConfig`, `RoundTickResult`.
@@ -182,7 +182,7 @@ Round-internal phase management by `RoundController`; session-level transitions 
 - **Spell loop cap**: `LoopedSpellCaster` reports `LoopCount`; `RoundController` compares against `SpellLoopsPerRound` (from `GameConfig.maxSpellLoopsPerRound`). Loop mana budget is `GameConfig.totalMana` on the session clone.
 - **Round reset**: `GameSimulation.ResetForNewRound()` clears enemies, attack entities, spawner, simulation time, event buffers. `LoopedSpellCaster.Reset()` + `ClearCastState()`. Player placed at right side of simulation zone.
 - **Lab**: `LabbingScene` IMGUI prev/next at the top of the screen iterates `roundConfigs`, applies the selected config, resets combat, and re-raises `ServicesRegisteredEvent` so brush spawners rebind.
-- **Session start / retry**: `TestSceneManager` replaces `_runtimeGameConfig` via `GameConfig.CreateRuntimeCopy`; `RoundController` receives the clone and uses `gameConfig.playerInventory` for items. Lose → Retry calls `RoundController.SetGameConfig` with the new clone.
+- **Session start / retry**: `GameManager` replaces `_runtimeGameConfig` via `GameConfig.CreateRuntimeCopy`; `RoundController` receives the clone and uses `gameConfig.playerInventory` for items. Lose → Retry calls `RoundController.SetGameConfig` with the new clone.
 - **Placeholders**: Shop = press N to start next round. Lose = press R to retry from round 1.
 
 **Key types**: `GameConfig`, `RoundConfig`, `GameLoopPhase` (enum).

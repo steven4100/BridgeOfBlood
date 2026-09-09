@@ -17,6 +17,9 @@ namespace BridgeOfBlood.Data.Inventory
 		public List<SpellAuthoringData> startingSpells = new List<SpellAuthoringData>();
 		public List<Item> startingItems = new List<Item>();
 
+		[Tooltip("Assets placed into the stash at session start. Supports SpellAuthoringData, SpellItem (gems), and Item (jokers).")]
+		public List<ScriptableObject> startingStash = new List<ScriptableObject>();
+
 		[SerializeField] int stashWidth = 8;
 		[SerializeField] int stashHeight = 4;
 
@@ -57,7 +60,7 @@ namespace BridgeOfBlood.Data.Inventory
 
 		public void AddItem(Item item)
 		{
-			if (item is SpellItem)
+			if (item is Gem)
 				return;
 			_itemCollection.TryInsert(new RuntimeItem(item), _itemCollection.Count);
 		}
@@ -96,7 +99,8 @@ namespace BridgeOfBlood.Data.Inventory
 		}
 
 		/// <summary>
-		/// Clears runtime occupants and repopulates from <see cref="startingSpells"/> / <see cref="startingItems"/> using <see cref="startingNumberOfSpells"/>.
+		/// Clears runtime occupants and repopulates from <see cref="startingSpells"/> / <see cref="startingItems"/> /
+		/// <see cref="startingStash"/> using <see cref="startingNumberOfSpells"/>.
 		/// </summary>
 		public void RebuildFromStartingDefinition()
 		{
@@ -126,13 +130,22 @@ namespace BridgeOfBlood.Data.Inventory
 					{
 						Item item = startingItems[i];
 						if (item == null) continue;
-						if (item is SpellItem spellItem)
+						if (item is Gem spellItem)
 						{
-							if (Stash.TryFindFirstFreeCell(out Vector2Int cell))
-								Stash.TryPlace(new RuntimeGem(spellItem), cell);
+							TryPlaceInStash(new RuntimeGem(spellItem));
 							continue;
 						}
 						AddItem(item);
+					}
+				}
+
+				if (startingStash != null)
+				{
+					for (int i = 0; i < startingStash.Count; i++)
+					{
+						ScriptableObject asset = startingStash[i];
+						if (asset == null) continue;
+						TryAddStartingStashAsset(asset);
 					}
 				}
 			}
@@ -141,6 +154,34 @@ namespace BridgeOfBlood.Data.Inventory
 				_suppressItemsUpdated = false;
 			}
 			_itemsUpdated?.Invoke();
+		}
+
+		void TryAddStartingStashAsset(ScriptableObject asset)
+		{
+			switch (asset)
+			{
+				case SpellAuthoringData spell:
+					TryPlaceInStash(new RuntimeSpell(spell));
+					break;
+				case Gem gem:
+					TryPlaceInStash(new RuntimeGem(gem));
+					break;
+				case Item item:
+					TryPlaceInStash(new RuntimeItem(item));
+					break;
+				default:
+					Debug.LogWarning(
+						$"[PlayerInventory] startingStash entry '{asset.name}' is not a spell, gem, or item; skipped.",
+						this);
+					break;
+			}
+		}
+
+		bool TryPlaceInStash(IInventoryOccupant occupant)
+		{
+			if (!Stash.TryFindFirstFreeCell(out Vector2Int cell))
+				return false;
+			return Stash.TryPlace(occupant, cell);
 		}
 
 		/// <summary>

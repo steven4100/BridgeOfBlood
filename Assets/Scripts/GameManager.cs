@@ -22,7 +22,7 @@ public struct ItemEvalResult
 }
 
 [DefaultExecutionOrder(-40)]
-public class TestSceneManager : MonoBehaviour
+public class GameManager : MonoBehaviour
 {
     public RectTransform simulationZone;
 
@@ -76,11 +76,11 @@ public class TestSceneManager : MonoBehaviour
             DebugController = debugController
         });
         ServiceLocator.Current.RegisterInstance(_combatSimulation);
+        ServiceLocator.Current.RegisterInstance<ISpellModificationService>(_combatSimulation);
         ServicesRegisteredEvent.Raise();
 
         var sessionContext = new SessionFlowContext(
            _runtimeGameConfig,
-           _roundController,
            inv.SpellCollection,
            simulationZone);
 
@@ -96,16 +96,7 @@ public class TestSceneManager : MonoBehaviour
             _sessionFlow);
 
         _sessionFlow.AddPhase(_roundController, SessionState.Round);
-        _sessionFlow.AddPhase(new PregameSessionPhase(_sessionFlow), SessionState.Pregame);
         _sessionFlow.AddPhase(new ShopSessionPhase(_sessionFlow), SessionState.Shop);
-        SessionFlow.AddPhase(new LoseSessionPhase(_sessionFlow, RecreateRuntimeGameConfigAndNotify), SessionState.Lose);
-    }
-
-    GameConfig RecreateRuntimeGameConfigAndNotify()
-    {
-        GameConfig config = CreateRuntimeGameConfigCopy();
-        ServicesRegisteredEvent.Raise();
-        return config;
     }
 
     void Update()

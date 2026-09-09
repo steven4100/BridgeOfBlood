@@ -54,6 +54,7 @@ public class ShopTestServiceInstaller : MonoBehaviour
         RegisterSpellInventoryService();
         RegisterWalletService();
         RegisterShopService();
+        RegisterSpellModificationService();
     }
 
     private void Start()
@@ -136,6 +137,14 @@ public class ShopTestServiceInstaller : MonoBehaviour
         {
             ServiceLocator.Current.RegisterInstance<IShopService>(new MockShopService());
         }
+    }
+
+    private void RegisterSpellModificationService()
+    {
+        if (ServiceAlreadyRegistered<ISpellModificationService>())
+            return;
+
+        ServiceLocator.Current.RegisterInstance<ISpellModificationService>(new EmptySpellModificationService());
     }
 
     private static bool ServiceAlreadyRegistered<TService>() where TService : class

@@ -15,7 +15,6 @@ public sealed class SessionFlowContext
 
 	public SessionFlowContext(
 		GameConfig runtimeGameConfig,
-		RoundController roundController,
 		SpellCollection spellCollection,
 		RectTransform simulationZone)
 	{

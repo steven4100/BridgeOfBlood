@@ -11,7 +11,7 @@ namespace BridgeOfBlood.Editor
 	public class EnemyInspectorWindow : EditorWindow
 	{
 		private EnemySelector _selector;
-		private TestSceneManager _sceneManager;
+		private GameManager _gameManager;
 		private Vector2 _scrollPos;
 
 		[MenuItem("Window/Bridge of Blood/Enemy Inspector")]
@@ -27,7 +27,7 @@ namespace BridgeOfBlood.Editor
 		void OnPlayModeChanged(PlayModeStateChange _)
 		{
 			_selector = null;
-			_sceneManager = null;
+			_gameManager = null;
 		}
 
 		void Update()
@@ -46,8 +46,8 @@ namespace BridgeOfBlood.Editor
 
 			if (_selector == null)
 				_selector = Object.FindObjectOfType<EnemySelector>();
-			if (_sceneManager == null)
-				_sceneManager = Object.FindObjectOfType<TestSceneManager>();
+			if (_gameManager == null)
+				_gameManager = Object.FindObjectOfType<GameManager>();
 
 			if (_selector == null)
 			{
@@ -55,9 +55,9 @@ namespace BridgeOfBlood.Editor
 				return;
 			}
 
-			if (_sceneManager == null || _sceneManager.Simulation == null)
+			if (_gameManager == null || _gameManager.Simulation == null)
 			{
-				EditorGUILayout.HelpBox("No TestSceneManager or simulation found.", MessageType.Warning);
+				EditorGUILayout.HelpBox("No GameManager or simulation found.", MessageType.Warning);
 				return;
 			}
 
@@ -68,7 +68,7 @@ namespace BridgeOfBlood.Editor
 				return;
 			}
 
-			var enemies = _sceneManager.Simulation.State.EnemyBuffers;
+			var enemies = _gameManager.Simulation.State.EnemyBuffers;
 			if (!enemies.Motion.IsCreated || enemies.Length == 0)
 			{
 				EditorGUILayout.LabelField("No enemies alive.");

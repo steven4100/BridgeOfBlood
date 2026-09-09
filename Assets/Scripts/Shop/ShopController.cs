@@ -5,6 +5,7 @@ using EZServiceLocation;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using BridgeOfBlood.Effects;
 
 [DefaultExecutionOrder(60)]
 public class ShopController : MonoBehaviour
@@ -12,25 +13,17 @@ public class ShopController : MonoBehaviour
     public Transform SpellTargetPurchasableRoot;
     public Transform ItemsPurchasableRoot;
 
-    public PurchasableItemUI PurchasableItemUIPF;
-    public PurchasableSpellTargetItemUI PurchasableSpellTargetItemUIPF;
+    public PurchasableItemSpellUI SpellUI;
+    public PurchasableItemJokerUI JokerUI;
+    public PurchasableItemGemUI GemUI;
 
-    [SerializeField]
-    [Tooltip("Required: spell strip for gem targeting highlights and spell-tile clicks.")]
-    SpellInventoryController spellInventoryController;
-
-    private List<PurchasableItemUI> ItemPurchasableInstances = new List<PurchasableItemUI>();
-    private List<PurchasableSpellTargetItemUI> SpellTargetPurchasableInstances = new List<PurchasableSpellTargetItemUI>();
+    private readonly List<PurchasableItemUI> _listingInstances = new List<PurchasableItemUI>();
 
     private IShopService shopService;
     private PurchaseContext purchaseContext;
 
-    private PurchasableSpellTargetItemUI focusedSpellTargetRow;
-
     private void OnEnable()
     {
-        spellInventoryController.SpellTileClicked += OnSpellTileClicked;
-        spellInventoryController.SpellStripRendered += OnSpellStripRendered;
         if (shopService != null)
             shopService.ShopRefreshed += OnShopRefreshed;
 
@@ -43,9 +36,6 @@ public class ShopController : MonoBehaviour
         ServicesRegisteredEvent.Unsubscribe(OnServicesRegistered);
         if (shopService != null)
             shopService.ShopRefreshed -= OnShopRefreshed;
-        spellInventoryController.SpellTileClicked -= OnSpellTileClicked;
-        spellInventoryController.SpellStripRendered -= OnSpellStripRendered;
-        ClearSpellTargetingUi();
     }
 
     void OnServicesRegistered(ref ServicesRegisteredEvent _)
@@ -64,12 +54,6 @@ public class ShopController : MonoBehaviour
         SpawnItems();
     }
 
-    private void OnSpellStripRendered()
-    {
-        if (focusedSpellTargetRow != null)
-            RefreshSpellHighlightsFor(focusedSpellTargetRow.SpellTargetPurchasable);
-    }
-
     private void OnShopRefreshed()
     {
         ClearItems();
@@ -78,57 +62,10 @@ public class ShopController : MonoBehaviour
 
     public void FocusRegularRow(PurchasableItemUI row)
     {
-        foreach (PurchasableItemUI item in ItemPurchasableInstances)
-            item.HideConfirmPurchaseButton();
-
-        focusedSpellTargetRow = null;
-        ClearSpellTargetingUi();
+        for (int i = 0; i < _listingInstances.Count; i++)
+            _listingInstances[i].HideConfirmPurchaseButton();
 
         row.ShowConfirmPurchaseButton();
-    }
-
-    public void FocusSpellTargetRow(PurchasableSpellTargetItemUI row)
-    {
-        foreach (PurchasableItemUI item in ItemPurchasableInstances)
-            item.HideConfirmPurchaseButton();
-
-        focusedSpellTargetRow = row;
-
-        RefreshSpellHighlightsFor(row.SpellTargetPurchasable);
-    }
-
-    private void OnSpellTileClicked(int spellId)
-    {
-        if (focusedSpellTargetRow == null)
-            return;
-
-        foreach (RuntimeSpell spell in purchaseContext.SpellInventory.GetSpells())
-        {
-            if (spell.spellId != spellId)
-                continue;
-
-            ISpellTargetPurchasable gem = focusedSpellTargetRow.SpellTargetPurchasable;
-            if (!gem.CanBeApplied(spell))
-                return;
-
-            purchaseContext.SpellGemTarget = spell;
-            bool ok = shopService.TryPurchase((IPurchasable)gem, purchaseContext);
-
-            if (ok)
-                ClearSpellTargetingUi();
-            return;
-        }
-    }
-
-    private void RefreshSpellHighlightsFor(ISpellTargetPurchasable gem)
-    {
-        spellInventoryController.ApplyShopHighlights(s =>
-            gem.CanBeApplied(s) ? ShopSpellHighlight.Applicable : ShopSpellHighlight.NotApplicable);
-    }
-
-    private void ClearSpellTargetingUi()
-    {
-        spellInventoryController.ClearShopHighlights();
     }
 
     public bool TryPurchase(IPurchasable purchasable)
@@ -140,29 +77,40 @@ public class ShopController : MonoBehaviour
     {
         foreach (IPurchasable purchasable in shopService.GetItemPurchasables())
         {
-            PurchasableItemUI item = Instantiate(PurchasableItemUIPF, ItemsPurchasableRoot);
-            ItemPurchasableInstances.Add(item);
-            item.SetPurchasable(purchasable, purchaseContext, this);
-        }
-        foreach (ISpellTargetPurchasable spellPurchasable in shopService.GetSpellGemPurchasables())
-        {
-            PurchasableSpellTargetItemUI item = Instantiate(PurchasableSpellTargetItemUIPF, SpellTargetPurchasableRoot);
-            SpellTargetPurchasableInstances.Add(item);
-            item.SetSpellPurchasable(spellPurchasable, purchaseContext, this);
+            PurchasableItemUI item = null;
+            switch (purchasable)
+            {
+                case SpellAuthoringData:
+                    PurchasableItemSpellUI spellUI = Instantiate(SpellUI, ItemsPurchasableRoot);
+                    spellUI.InitializeShopItem(purchasable, purchaseContext, this);
+                    spellUI.SetSpell(purchasable as SpellAuthoringData);
+                    item = spellUI;
+                    break;
+                case Gem:
+                    PurchasableItemGemUI gemUI = Instantiate(GemUI, ItemsPurchasableRoot);
+                    gemUI.InitializeShopItem(purchasable, purchaseContext, this);
+                    gemUI.SetGem(purchasable as Gem);
+                    item = gemUI;
+                    break;
+                case Item:
+                    PurchasableItemJokerUI itemUI = Instantiate(JokerUI, ItemsPurchasableRoot);
+                    itemUI.InitializeShopItem(purchasable, purchaseContext, this);
+                    itemUI.SetJoker(purchasable as Item);
+                    item = itemUI;
+                    break;
+            }
+            if(item == null) 
+                Debug.LogError($"Failed to spawn item for {purchasable}");
+            _listingInstances.Add(item);
+            item.InitializeShopItem(purchasable, purchaseContext, this);
         }
     }
 
     private void ClearItems()
     {
-        focusedSpellTargetRow = null;
-        ClearSpellTargetingUi();
-
-        foreach (PurchasableItemUI item in ItemPurchasableInstances)
-            Destroy(item.gameObject);
-        foreach (PurchasableSpellTargetItemUI item in SpellTargetPurchasableInstances)
-            Destroy(item.gameObject);
-        ItemPurchasableInstances.Clear();
-        SpellTargetPurchasableInstances.Clear();
+        for (int i = 0; i < _listingInstances.Count; i++)
+            Destroy(_listingInstances[i].gameObject);
+        _listingInstances.Clear();
     }
 }
 

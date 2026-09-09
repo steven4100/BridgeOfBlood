@@ -17,8 +17,8 @@ MonoBehaviour:
   _layerMask:
     serializedVersion: 2
     m_Bits: 64
-  _downsample: 2
-  _blurIterations: 4
+  _downsample: 1
+  _blurIterations: 8
   _renderPassEvent: 500
 --- !u!114 &11400000
 MonoBehaviour:

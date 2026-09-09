@@ -5,7 +5,7 @@ using UnityEngine;
 using Random = Unity.Mathematics.Random;
 
 [Serializable]
-public abstract class DamageBehavior : ModifiableAttackEntityBehavior
+public abstract class DamageBehavior : ModifiableAttackEntityBehavior, IPresentableSpellAttribute
 {
     public FloatRange damageRange;
 
@@ -24,6 +24,12 @@ public abstract class DamageBehavior : ModifiableAttackEntityBehavior
             damageRange, TypeScalingProperty, mods, mask);
         float rolled = Mathf.Max(0f, range.ResolveUniform(ref rng));
         WriteDamage(manager, index, rolled);
+    }
+
+    public string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
+    {
+        FloatRange range = AttackEntityModificationApplicator.ResolveDamageRange(damageRange, TypeScalingProperty, mods, mask);
+        return range.ToString();
     }
 }
 
@@ -92,7 +98,7 @@ public class LightningDamageBehavior : DamageBehavior
 }
 
 [Serializable]
-public class CritBehavior : ModifiableAttackEntityBehavior
+public class CritBehavior : ModifiableAttackEntityBehavior, IPresentableSpellAttribute
 {
     public FloatRange critChanceRange;
     public FloatRange critDamageMultiplierRange;
@@ -139,10 +145,32 @@ public class CritBehavior : ModifiableAttackEntityBehavior
             multiplier = Mathf.Max(1f, multR.ResolveUniform(ref rng))
         };
     }
+
+    public string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
+    {
+        FloatRange chanceR = critChanceRange;
+        FloatRange multR = critDamageMultiplierRange;
+        var critChance = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.CritChance, mask);
+        chanceR = new FloatRange
+        {
+            min = Mathf.Clamp01(critChanceRange.min * critChance.Multiplier + critChance.flat / 100f),
+            max = Mathf.Clamp01(critChanceRange.max * critChance.Multiplier + critChance.flat / 100f)
+        };
+        chanceR.ClampOrder();
+
+        var critMult = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.CritMult, mask);
+        multR = new FloatRange
+        {
+            min = Mathf.Max(1f, critDamageMultiplierRange.min * critMult.Multiplier + critMult.flat / 100f),
+            max = Mathf.Max(1f, critDamageMultiplierRange.max * critMult.Multiplier + critMult.flat / 100f)
+        };
+        multR.ClampOrder();
+        return $"Crit Chance : {chanceR} Mult : {multR}";
+    }
 }
 
 [Serializable]
-public class HitBoxBehavior : ModifiableAttackEntityBehavior
+public class HitBoxBehavior : ModifiableAttackEntityBehavior, IPresentableSpellAttribute
 {
     public HitBoxData hitBoxData;
 
@@ -162,6 +190,12 @@ public class HitBoxBehavior : ModifiableAttackEntityBehavior
             hitBox = AttackEntityModificationApplicator.ResolveHitBox(hitBoxData, mods, mask),
             currentScale = 1f
         };
+    }
+
+    public string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
+    {
+        ResolvedModifier mod = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.AreaOfEffect, mask);
+        return $"Aoe : {mod.TotalIncrease().ToString()}";
     }
 }
 

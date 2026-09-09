@@ -7,7 +7,7 @@ using EntityId = BridgeOfBlood.Data.Shared.EntityId;
 
 /// <summary>
 /// Right-click in the game view to select the nearest enemy.
-/// Reads enemies from a GameSimulation found via TestSceneManager.
+/// Reads enemies from a GameSimulation found via GameManager.
 /// </summary>
 public class EnemySelector : MonoBehaviour
 {
@@ -26,10 +26,10 @@ public class EnemySelector : MonoBehaviour
 				simulationZone, Input.mousePosition, cam, out Vector2 localPoint))
 			return;
 
-		var sceneManager = GetComponentInParent<TestSceneManager>();
-		if (sceneManager == null || sceneManager.Simulation == null) return;
+		var gameManager = GetComponentInParent<GameManager>();
+		if (gameManager == null || gameManager.Simulation == null) return;
 
-		var enemies = sceneManager.Simulation.State.EnemyBuffers;
+		var enemies = gameManager.Simulation.State.EnemyBuffers;
 		if (!enemies.Motion.IsCreated || enemies.AliveCount == 0) return;
 
 		float bestDist = float.MaxValue;

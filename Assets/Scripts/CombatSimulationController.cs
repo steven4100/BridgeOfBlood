@@ -20,7 +20,7 @@ public sealed class CombatSimulationControllerConfig
 /// and frame-complete events. Presentation is owned by <see cref="CombatPresentationDriver"/> via the event bus.
 /// Callers own cast-request gating and pass <c>spellLoopsPerRound</c> into <see cref="Tick"/>.
 /// </summary>
-public sealed class CombatSimulationController
+public sealed class CombatSimulationController : ISpellModificationService
 {
     static readonly float2 CastForward = new float2(-1f, 0f);
 
@@ -40,6 +40,11 @@ public sealed class CombatSimulationController
     public TelemetryAggregator TelemetryAggregator => _telemetryAggregator;
     public LoopedSpellCaster LoopedSpellCaster => _loopedSpellCaster;
     public IReadOnlyList<ItemEvalResult> LastItemResults => _lastItemResults;
+
+    public SpellModifications GetSpellModCollectionForSpell(RuntimeSpell spell)
+    {
+        return _frameModifications.ResolveFor(spell.spellId);
+    }
 
     public CombatSimulationController(CombatSimulationControllerConfig config)
     {
@@ -224,7 +229,7 @@ public sealed class CombatSimulationController
                 RuntimeGem runtimeGem = spell.Gems.GetSlot(g);
                 if (runtimeGem == null)
                     continue;
-                SpellItem gem = runtimeGem.Definition;
+                Gem gem = runtimeGem.Definition;
                 bool applied = gem.Apply(_effectContext);
                 if (slot == onDeckIndex)
                     _lastItemResults.Add(new ItemEvalResult { itemName = gem.name, applied = applied });

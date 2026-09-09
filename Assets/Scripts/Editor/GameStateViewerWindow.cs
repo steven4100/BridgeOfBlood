@@ -8,7 +8,7 @@ namespace BridgeOfBlood.Editor
 {
 	public class GameStateViewerWindow : EditorWindow
 	{
-		private TestSceneManager _sceneManager;
+		private GameManager _gameManager;
 		private Vector2 _scrollPos;
 
 		[MenuItem("Window/Bridge of Blood/Game State")]
@@ -30,19 +30,19 @@ namespace BridgeOfBlood.Editor
 
 		void OnPlayModeStateChanged(PlayModeStateChange state)
 		{
-			_sceneManager = null;
+			_gameManager = null;
 			Repaint();
 		}
 
 		void Update()
 		{
-			if (Application.isPlaying && _sceneManager == null)
+			if (Application.isPlaying && _gameManager == null)
 			{
-				_sceneManager = Object.FindObjectOfType<TestSceneManager>();
-				if (_sceneManager != null)
+				_gameManager = Object.FindObjectOfType<GameManager>();
+				if (_gameManager != null)
 					Repaint();
 			}
-			if (Application.isPlaying && _sceneManager != null)
+			if (Application.isPlaying && _gameManager != null)
 				Repaint();
 		}
 
@@ -57,18 +57,18 @@ namespace BridgeOfBlood.Editor
 				return;
 			}
 
-			if (_sceneManager == null)
+			if (_gameManager == null)
 			{
-				_sceneManager = Object.FindObjectOfType<TestSceneManager>();
-				if (_sceneManager == null)
+				_gameManager = Object.FindObjectOfType<GameManager>();
+				if (_gameManager == null)
 				{
-					EditorGUILayout.HelpBox("No TestSceneManager in scene.", MessageType.Warning);
+					EditorGUILayout.HelpBox("No GameManager in scene.", MessageType.Warning);
 					EditorGUILayout.EndScrollView();
 					return;
 				}
 			}
 
-			GameState gs = _sceneManager.CurrentGameState;
+			GameState gs = _gameManager.CurrentGameState;
 
 			foreach (FieldInfo field in typeof(GameState).GetFields(BindingFlags.Public | BindingFlags.Instance))
 			{

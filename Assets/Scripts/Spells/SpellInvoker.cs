@@ -24,7 +24,7 @@ public interface ISpellEmissionHandler
 }
 
 /// <summary>
-/// Manages casting only: tracks active casts and advances them by keyframe time.
+/// Manages casting only: tracks active casts and advances them by keyframe time.\
 /// When a keyframe is due, calls the emission handler. Does not spawn entities or hold AttackEntityManager.
 /// </summary>
 public class SpellInvoker

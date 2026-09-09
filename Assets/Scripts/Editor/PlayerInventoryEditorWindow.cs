@@ -76,7 +76,7 @@ namespace BridgeOfBlood.Editor
 			{
 				EditorGUILayout.HelpBox(
 					"No PlayerInventory registered in the ServiceLocator yet. " +
-					"Wait for TestSceneManager.Start() to run, or load a scene that registers IInventoryService.",
+					"Wait for GameManager.Start() to run, or load a scene that registers IInventoryService.",
 					MessageType.Warning);
 				return;
 			}
@@ -202,7 +202,7 @@ namespace BridgeOfBlood.Editor
 					EditorGUILayout.ObjectField(spell.Definition, typeof(SpellAuthoringData), false);
 					break;
 				case RuntimeGem gem:
-					EditorGUILayout.ObjectField(gem.Definition, typeof(SpellItem), false);
+					EditorGUILayout.ObjectField(gem.Definition, typeof(Gem), false);
 					break;
 				case RuntimeItem item:
 					EditorGUILayout.ObjectField(item.Definition, typeof(Item), false);
@@ -230,7 +230,7 @@ namespace BridgeOfBlood.Editor
 				case SpellAuthoringData spell:
 					inv.AddSpell(spell);
 					break;
-				case SpellItem gem:
+				case Gem gem:
 					if (inv.Stash.TryFindFirstFreeCell(out Vector2Int cell))
 						inv.Stash.TryPlace(new RuntimeGem(gem), cell);
 					break;

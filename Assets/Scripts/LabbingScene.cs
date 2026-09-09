@@ -155,6 +155,7 @@ public class LabbingScene : MonoBehaviour
         ServiceLocator.Current.RegisterInstance<ISimulationZoneService>(
             new SimulationZoneService(simulationZone, renderCamera));
         ServiceLocator.Current.RegisterInstance(_combatSimulation);
+        ServiceLocator.Current.RegisterInstance<ISpellModificationService>(_combatSimulation);
         ServicesRegisteredEvent.Raise();
     }
 

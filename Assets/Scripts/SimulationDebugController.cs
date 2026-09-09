@@ -3,7 +3,7 @@ using UnityEngine;
 /// <summary>
 /// Debug controller for simulation time flow.
 /// Supports play, pause, step-frame (all phases at once), and step-into (one phase at a time).
-/// Attach alongside TestSceneManager. When no controller is present, simulation runs normally.
+/// Attach alongside GameManager. When no controller is present, simulation runs normally.
 /// </summary>
 public class SimulationDebugController : MonoBehaviour
 {

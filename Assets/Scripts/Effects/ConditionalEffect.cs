@@ -1,4 +1,5 @@
 using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Telemetry;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -27,6 +28,32 @@ namespace BridgeOfBlood.Effects
 					anyApplied |= effect.Apply(context);
 
 			return anyApplied;
+		}
+
+		public string GetDescription()
+		{
+			string then = EffectDescription.JoinThen(effects);
+			string when = EffectDescription.JoinAnd(conditions);
+			if (string.IsNullOrEmpty(when))
+				return then;
+			if (string.IsNullOrEmpty(then))
+				return $"If {when}";
+			return $"If {when}, then {then}";
+		}
+
+		public void CollectTelemetrySubscriptions(List<TelemetryStatArgs> destination)
+		{
+			if (conditions != null)
+			{
+				for (int i = 0; i < conditions.Count; i++)
+					conditions[i].CollectTelemetrySubscriptions(destination);
+			}
+
+			if (effects != null)
+			{
+				for (int i = 0; i < effects.Count; i++)
+					effects[i].CollectTelemetrySubscriptions(destination);
+			}
 		}
 	}
 }

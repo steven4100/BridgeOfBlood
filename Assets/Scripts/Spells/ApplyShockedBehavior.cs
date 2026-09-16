@@ -4,7 +4,7 @@ using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 [Serializable]
-public class ApplyShockedBehavior : FixedAttackEntityBehavior
+public class ApplyShockedBehavior : FixedAttackEntityBehavior, IPresentableSpellAttribute
 {
     [Tooltip("When false, shocked application is skipped for this entity.")]
     public bool isActive = true;
@@ -29,6 +29,16 @@ public class ApplyShockedBehavior : FixedAttackEntityBehavior
     {
         var arr = manager.GetShockedAppliers();
         arr[index] = ToRuntime();
+    }
+
+    public string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
+    {
+        string applied = SpellAttributeDisplay.ChanceToApply(isActive, applyChance, "Shocked");
+        if (string.IsNullOrEmpty(applied))
+            return string.Empty;
+        if (Mathf.Approximately(incomingDamageTakenMultiplier, 1f))
+            return applied;
+        return $"{applied} ({incomingDamageTakenMultiplier:0.##}x damage taken)";
     }
 }
 

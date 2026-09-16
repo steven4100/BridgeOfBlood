@@ -1,43 +1,45 @@
-using System;
-using System.Collections.Generic;
-using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
+using BridgeOfBlood.Telemetry;
 
 namespace BridgeOfBlood.Effects
 {
+	public interface ITelemetryStatLookup
+	{
+		float GetTelemetry(MetricsScope scope, string key);
+		float GetTelemetryForSpell(MetricsScope scope, string key, int spellId);
+	}
+
 	public class EffectContext
 	{
-		public CombatMetrics frameMetrics;
-		/// <summary>
-		/// Per-loop-slot metrics for the current spell loop, aligned with <see cref="SpellInvocationContext.spells"/>.
-		/// Indexed by simulated <c>spellSlotNumber</c> for <see cref="MetricsScope.SpellCast"/>.
-		/// </summary>
-		public List<CombatMetrics> spellCastMetrics = new List<CombatMetrics>();
-
-		public CombatMetrics spellLoopMetrics;
-		public CombatMetrics roundMetrics;
-		public CombatMetrics gameMetrics;
+		public ITelemetryStatLookup telemetry;
 		public SpellModificationCollection spellModificationCollection;
 		/// <summary>Per-evaluation write sink; set to <see cref="SpellModificationCollection.ForSpell"/> for the target slot.</summary>
 		public SpellModifications spellModifications;
 		public SpellInvocationContext spellInvocation;
 
-		public CombatMetrics GetMetrics(MetricsScope scope) => scope switch
+		public float GetTelemetry(MetricsScope scope, string key)
 		{
-			MetricsScope.Frame => frameMetrics,
-			MetricsScope.SpellCast => GetSpellCastMetricsForSimulatedSlot(),
-			MetricsScope.SpellLoop => spellLoopMetrics,
-			MetricsScope.Round => roundMetrics,
-			MetricsScope.Game => gameMetrics,
-			_ => throw new ArgumentOutOfRangeException(nameof(scope), scope, null)
-		};
+			if (scope == MetricsScope.SpellCast)
+				return GetSpellCastTelemetry(key);
+			return telemetry.GetTelemetry(scope, key);
+		}
 
-		CombatMetrics GetSpellCastMetricsForSimulatedSlot()
+		public float GetTelemetryDps(MetricsScope scope)
+		{
+			float duration = GetTelemetry(scope, TelemetryCoreStats.DurationKey);
+			if (duration <= 0f)
+				return 0f;
+			return GetTelemetry(scope, TelemetryCoreStats.TotalDamageKey) / duration;
+		}
+
+		float GetSpellCastTelemetry(string key)
 		{
 			int oneBasedSlot = spellInvocation.spellSlotNumber;
-			if (oneBasedSlot <= 1 || oneBasedSlot > spellCastMetrics.Count)
-				return default;
-			return spellCastMetrics[oneBasedSlot - 2];
+			var spells = spellInvocation.spells;
+			if (spells == null || oneBasedSlot <= 1 || oneBasedSlot - 1 > spells.Count)
+				return 0f;
+			int spellId = spells[oneBasedSlot - 2].spellId;
+			return telemetry.GetTelemetryForSpell(MetricsScope.SpellLoop, key, spellId);
 		}
 	}
 }

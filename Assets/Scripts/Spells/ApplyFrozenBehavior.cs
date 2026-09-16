@@ -4,7 +4,7 @@ using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 [Serializable]
-public class ApplyFrozenBehavior : FixedAttackEntityBehavior
+public class ApplyFrozenBehavior : FixedAttackEntityBehavior, IPresentableSpellAttribute
 {
     [Tooltip("When false, frozen application is skipped for this entity.")]
     public bool isActive = true;
@@ -22,6 +22,9 @@ public class ApplyFrozenBehavior : FixedAttackEntityBehavior
         var arr = manager.GetFrozenAppliers();
         arr[index] = ToRuntime();
     }
+
+    public string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask) =>
+        SpellAttributeDisplay.ChanceToApply(isActive, applyChance, "Frozen");
 }
 
 [Serializable]

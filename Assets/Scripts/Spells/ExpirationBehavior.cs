@@ -4,7 +4,7 @@ using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 [Serializable]
-public class ExpirationBehavior : FixedAttackEntityBehavior
+public class ExpirationBehavior : FixedAttackEntityBehavior, IPresentableSpellAttribute
 {
     [Tooltip("When false, expiration logic is skipped (no time/distance removal).")]
     public bool isActive = true;
@@ -35,6 +35,19 @@ public class ExpirationBehavior : FixedAttackEntityBehavior
     {
         var arr = manager.GetExpirationPolicies();
         arr[index] = ToRuntime();
+    }
+
+    public string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
+    {
+        if (!isActive)
+            return string.Empty;
+        if (maxTimeAlive > 0f && maxDistanceTravelled > 0f)
+            return $"Duration : {maxTimeAlive:0.##}s Range : {maxDistanceTravelled:0.##}";
+        if (maxTimeAlive > 0f)
+            return $"Duration : {maxTimeAlive:0.##}s";
+        if (maxDistanceTravelled > 0f)
+            return $"Range : {maxDistanceTravelled:0.##}";
+        return string.Empty;
     }
 }
 

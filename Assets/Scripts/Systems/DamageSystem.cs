@@ -141,7 +141,8 @@ public class DamageSystem
                     bloodExtracted = totalDamage + overkill,
                     onDamageSound = atk.onDamageSound,
                     onHitEffectForVfx = atk.onHitEffect,
-                    onKillEffectForVfx = atk.onKillEffect
+                    onKillEffectForVfx = atk.onKillEffect,
+                    enemyStatusAilments = status
                 });
             }
 

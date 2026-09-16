@@ -10,6 +10,8 @@ namespace BridgeOfBlood.Effects
 			this.runtimeSpell = runtimeSpell;
 		}
 		public RuntimeSpell Resolve(EffectContext context) => this.runtimeSpell;
+
+		public string GetDescription() => EffectDescription.SpellName(runtimeSpell);
 	}
 
     public class RuntimeSpellCondition : ICondition
@@ -24,5 +26,7 @@ namespace BridgeOfBlood.Effects
         {
 			return context.spellInvocation.spells[context.spellInvocation.spellLoopNumber] == spellToTarget;
         }
+
+		public string GetDescription() => EffectDescription.SpellName(spellToTarget);
     }
 }

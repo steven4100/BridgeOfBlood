@@ -4,7 +4,7 @@ using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 [Serializable]
-public class ApplyPoisonedBehavior : FixedAttackEntityBehavior
+public class ApplyPoisonedBehavior : FixedAttackEntityBehavior, IPresentableSpellAttribute
 {
     [Tooltip("When false, poisoned application is skipped for this entity.")]
     public bool isActive = true;
@@ -22,6 +22,9 @@ public class ApplyPoisonedBehavior : FixedAttackEntityBehavior
         var arr = manager.GetPoisonedAppliers();
         arr[index] = ToRuntime();
     }
+
+    public string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask) =>
+        SpellAttributeDisplay.ChanceToApply(isActive, applyChance, "Poisoned");
 }
 
 [Serializable]

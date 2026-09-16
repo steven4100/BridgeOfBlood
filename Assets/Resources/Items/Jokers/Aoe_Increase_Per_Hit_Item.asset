@@ -36,11 +36,12 @@ MonoBehaviour:
         modifier:
           rid: 4044631623268302850
     - rid: 4044631623268302849
-      type: {class: CombatMetricValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      type: {class: TelemetryStatValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
         coefficient: 2
         scope: 1
-        property: 0
+        args:
+          rid: 4044631623268302851
     - rid: 4044631623268302850
       type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
       data:
@@ -52,3 +53,8 @@ MonoBehaviour:
           rid: 4044631623268302849
         moreMultiplier:
           rid: -2
+    - rid: 4044631623268302851
+      type: {class: EventCountTelemetryStatArgs, ns: BridgeOfBlood.Telemetry, asm: Assembly-CSharp}
+      data:
+        kind: 0
+        requiredEnemyAilments: 0

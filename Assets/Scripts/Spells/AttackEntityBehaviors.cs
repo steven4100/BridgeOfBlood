@@ -31,10 +31,12 @@ public abstract class AttackEntityBehavior
 
 /// <summary>
 /// Behavior that may apply <see cref="SpellModifications"/> in <see cref="AttackEntityBehavior.ApplyTo"/>.
+/// Player-facing stats are described via <see cref="IPresentableSpellAttribute"/>.
 /// </summary>
 [Serializable]
-public abstract class ModifiableAttackEntityBehavior : AttackEntityBehavior
+public abstract class ModifiableAttackEntityBehavior : AttackEntityBehavior, IPresentableSpellAttribute
 {
+    public abstract string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask);
 }
 
 /// <summary>
@@ -45,8 +47,19 @@ public abstract class FixedAttackEntityBehavior : AttackEntityBehavior
 {
 }
 
-
 public interface IPresentableSpellAttribute
 {
-    public string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask);
+    string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask);
+}
+
+public static class SpellAttributeDisplay
+{
+    public static string ChanceToApply(bool isActive, float applyChance, string ailment)
+    {
+        if (!isActive || applyChance <= 0f)
+            return string.Empty;
+        if (applyChance >= 1f)
+            return $"Applies {ailment}";
+        return $"{applyChance * 100f:0.##}% chance to apply {ailment}";
+    }
 }

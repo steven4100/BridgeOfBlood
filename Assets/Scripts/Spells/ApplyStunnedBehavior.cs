@@ -4,7 +4,7 @@ using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 [Serializable]
-public class ApplyStunnedBehavior : FixedAttackEntityBehavior
+public class ApplyStunnedBehavior : FixedAttackEntityBehavior, IPresentableSpellAttribute
 {
     [Tooltip("When false, stunned application is skipped for this entity.")]
     public bool isActive = true;
@@ -22,6 +22,9 @@ public class ApplyStunnedBehavior : FixedAttackEntityBehavior
         var arr = manager.GetStunnedAppliers();
         arr[index] = ToRuntime();
     }
+
+    public string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask) =>
+        SpellAttributeDisplay.ChanceToApply(isActive, applyChance, "Stunned");
 }
 
 [Serializable]

@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
+using BridgeOfBlood.Telemetry;
 using UnityEngine;
 
 namespace BridgeOfBlood.Effects
@@ -17,6 +19,15 @@ namespace BridgeOfBlood.Effects
 		{
 			context.spellModifications.Add(Bake(modifier, context));
 			return true;
+		}
+
+		public string GetDescription() => EffectDescription.Describe(modifier);
+
+		public void CollectTelemetrySubscriptions(List<TelemetryStatArgs> destination)
+		{
+			modifier.flatAdditive?.CollectTelemetrySubscriptions(destination);
+			modifier.percentIncreased?.CollectTelemetrySubscriptions(destination);
+			modifier.moreMultiplier?.CollectTelemetrySubscriptions(destination);
 		}
 
 		public static ParameterModifier Bake(ParameterModifier source, EffectContext context)

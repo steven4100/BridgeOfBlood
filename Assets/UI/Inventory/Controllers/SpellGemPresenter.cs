@@ -1,11 +1,13 @@
 using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Spells;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class SpellGemPresenter : MonoBehaviour, IItemReceptacle
+public class SpellGemPresenter : MonoBehaviour, IItemReceptacle, IPointerEnterHandler, IPointerExitHandler
 {
     [SerializeField] Image iconImage;
+    [SerializeField] EffectDescriptionTooltip effectDescriptionTooltip;
 
     RuntimeSpellGemCollection _collection;
     int _slotIndex;
@@ -59,5 +61,26 @@ public class SpellGemPresenter : MonoBehaviour, IItemReceptacle
     public bool TryRemove(IInventoryOccupant occupant)
     {
         return occupant is RuntimeGem gem && _collection.TryRemove(gem);
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        RuntimeGem gem = _collection.GetSlot(_slotIndex);
+        if (gem == null)
+            return;
+        effectDescriptionTooltip.DisplayEffectDescription(gem.Definition);
+        HoverTooltip.Current.Show(this, (RectTransform)effectDescriptionTooltip.transform, (RectTransform)transform);
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        HoverTooltip.Current.Hide(this);
+    }
+
+    void OnDisable()
+    {
+        HoverTooltip tooltip = HoverTooltip.Current;
+        if (tooltip != null)
+            tooltip.Hide(this);
     }
 }

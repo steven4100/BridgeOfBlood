@@ -5,7 +5,7 @@ using UnityEngine;
 using Random = Unity.Mathematics.Random;
 
 [Serializable]
-public abstract class DamageBehavior : ModifiableAttackEntityBehavior, IPresentableSpellAttribute
+public abstract class DamageBehavior : ModifiableAttackEntityBehavior
 {
     public FloatRange damageRange;
 
@@ -26,10 +26,18 @@ public abstract class DamageBehavior : ModifiableAttackEntityBehavior, IPresenta
         WriteDamage(manager, index, rolled);
     }
 
-    public string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
+    public override string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
     {
         FloatRange range = AttackEntityModificationApplicator.ResolveDamageRange(damageRange, TypeScalingProperty, mods, mask);
-        return range.ToString();
+        string label = TypeScalingProperty switch
+        {
+            SpellModificationProperty.PhysicalDamageScaling => "Physical Damage",
+            SpellModificationProperty.ColdDamageScaling => "Cold Damage",
+            SpellModificationProperty.FireDamageScaling => "Fire Damage",
+            SpellModificationProperty.LightningDamageScaling => "Lightning Damage",
+            _ => "Damage"
+        };
+        return $"{label} : {range}";
     }
 }
 
@@ -98,7 +106,7 @@ public class LightningDamageBehavior : DamageBehavior
 }
 
 [Serializable]
-public class CritBehavior : ModifiableAttackEntityBehavior, IPresentableSpellAttribute
+public class CritBehavior : ModifiableAttackEntityBehavior
 {
     public FloatRange critChanceRange;
     public FloatRange critDamageMultiplierRange;
@@ -146,7 +154,7 @@ public class CritBehavior : ModifiableAttackEntityBehavior, IPresentableSpellAtt
         };
     }
 
-    public string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
+    public override string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
     {
         FloatRange chanceR = critChanceRange;
         FloatRange multR = critDamageMultiplierRange;
@@ -170,7 +178,7 @@ public class CritBehavior : ModifiableAttackEntityBehavior, IPresentableSpellAtt
 }
 
 [Serializable]
-public class HitBoxBehavior : ModifiableAttackEntityBehavior, IPresentableSpellAttribute
+public class HitBoxBehavior : ModifiableAttackEntityBehavior
 {
     public HitBoxData hitBoxData;
 
@@ -192,7 +200,7 @@ public class HitBoxBehavior : ModifiableAttackEntityBehavior, IPresentableSpellA
         };
     }
 
-    public string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
+    public override string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
     {
         ResolvedModifier mod = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.AreaOfEffect, mask);
         return $"Aoe : {mod.TotalIncrease().ToString()}";
@@ -214,15 +222,22 @@ public class KnockbackBehavior : ModifiableAttackEntityBehavior
         SpellAttributeMask mask,
         ref Random rng)
     {
-        float knockback = Mathf.Max(0f, knockbackStrength);
-        if (mods != null)
-        {
-            var knock = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.KnockbackStrength, mask);
-            knockback = Mathf.Max(0f, knockbackStrength * knock.Multiplier + knock.flat);
-        }
-
         var arr = manager.GetKnockbacks();
-        arr[index] = new KnockbackRuntime { isActive = true, strength = knockback };
+        arr[index] = new KnockbackRuntime { isActive = true, strength = ResolveKnockback(mods, mask) };
+    }
+
+    public override string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
+    {
+        return $"Knockback : {ResolveKnockback(mods, mask)}";
+    }
+
+    float ResolveKnockback(SpellModifications mods, SpellAttributeMask mask)
+    {
+        float knockback = Mathf.Max(0f, knockbackStrength);
+        if (mods == null)
+            return knockback;
+        var knock = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.KnockbackStrength, mask);
+        return Mathf.Max(0f, knockbackStrength * knock.Multiplier + knock.flat);
     }
 }
 

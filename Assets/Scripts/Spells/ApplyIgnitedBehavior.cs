@@ -4,7 +4,7 @@ using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 [Serializable]
-public class ApplyIgnitedBehavior : FixedAttackEntityBehavior
+public class ApplyIgnitedBehavior : FixedAttackEntityBehavior, IPresentableSpellAttribute
 {
     [Tooltip("When false, ignited application is skipped for this entity.")]
     public bool isActive = true;
@@ -22,6 +22,9 @@ public class ApplyIgnitedBehavior : FixedAttackEntityBehavior
         var arr = manager.GetIgnitedAppliers();
         arr[index] = ToRuntime();
     }
+
+    public string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask) =>
+        SpellAttributeDisplay.ChanceToApply(isActive, applyChance, "Ignited");
 }
 
 [Serializable]

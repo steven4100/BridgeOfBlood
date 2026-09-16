@@ -36,9 +36,6 @@ namespace BridgeOfBlood.Data.Shared
 		/// <summary>Number of complete spell loops completed so far this round.</summary>
 		public int loopsCompleted;
 
-		/// <summary>Combat metrics accumulated this round (hits, kills, damage, blood, etc.).</summary>
-		public CombatMetrics roundMetrics;
-
 		/// <summary>Current simulation time in seconds.</summary>
 		public float simulationTime;
 

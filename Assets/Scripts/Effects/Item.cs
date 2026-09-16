@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Shop;
+using BridgeOfBlood.Telemetry;
 using UnityEngine;
 
 namespace BridgeOfBlood.Effects
@@ -34,6 +35,16 @@ namespace BridgeOfBlood.Effects
 				anyApplied |= effect.Apply(context);
 
 			return anyApplied;
+		}
+
+		public virtual string GetDescription() => EffectDescription.JoinLines(effects);
+
+		public void CollectTelemetrySubscriptions(List<TelemetryStatArgs> destination)
+		{
+			if (effects == null)
+				return;
+			for (int i = 0; i < effects.Count; i++)
+				effects[i].CollectTelemetrySubscriptions(destination);
 		}
 
 		public virtual bool CanPurchase(PurchaseContext context)

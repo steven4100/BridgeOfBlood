@@ -21,15 +21,24 @@ public class PierceBehavior : ModifiableAttackEntityBehavior
 
     public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
     {
-        int maxHit = maxEnemiesHit;
-        if (mods != null)
-        {
-            var resolved = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.Pierce, mask);
-            maxHit = Mathf.Max(0, (int)(maxEnemiesHit * resolved.Multiplier) + (int)resolved.flat);
-        }
-
         var arr = manager.GetPiercePolicies();
-        arr[index] = new PiercePolicyRuntime { isActive = isActive, maxEnemiesHit = maxHit };
+        arr[index] = new PiercePolicyRuntime { isActive = isActive, maxEnemiesHit = ResolveMaxEnemiesHit(mods, mask) };
+    }
+
+    public override string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
+    {
+        if (!isActive)
+            return string.Empty;
+        int maxHit = ResolveMaxEnemiesHit(mods, mask);
+        return maxHit == 0 ? "Pierce : Unlimited" : $"Pierce : {maxHit}";
+    }
+
+    int ResolveMaxEnemiesHit(SpellModifications mods, SpellAttributeMask mask)
+    {
+        if (mods == null)
+            return maxEnemiesHit;
+        var resolved = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.Pierce, mask);
+        return Mathf.Max(0, (int)(maxEnemiesHit * resolved.Multiplier) + (int)resolved.flat);
     }
 }
 

@@ -45,7 +45,7 @@ MonoBehaviour:
     killQuotaPercent: 50
     enemyMoveSpeedMultiplier: 2.25
     enemyHealthMultiplier: 8
-    simulationSize: {x: 1600, y: 1200}
+    simulationSize: {x: 3200, y: 2000}
   maxSpellLoopsPerRound: 4
   totalMana: 100
   playerStartMoveSpeed: 300
@@ -62,14 +62,14 @@ MonoBehaviour:
         spawnTable: {fileID: 11400000, guid: 4b19a709f1f50f044988ec7136bd03db, type: 2}
         centerOffsetNormalized: {x: 0, y: 0}
         cellSize: 20
-        threshold: 0.65
+        threshold: 0.6
         seed: 1
         layers:
         - enabled: 1
           type: 0
           blend: 0
           weight: 1
-          frequency: 18.36
+          frequency: 20
           offset: {x: 0, y: 0}
           invert: 0
     - rid: 451927353652150340
@@ -85,7 +85,7 @@ MonoBehaviour:
           type: 0
           blend: 0
           weight: 1
-          frequency: 10
+          frequency: 20
           offset: {x: 0, y: 0}
           invert: 0
     - rid: 451927353652150341
@@ -94,14 +94,14 @@ MonoBehaviour:
         spawnTable: {fileID: 11400000, guid: 4b19a709f1f50f044988ec7136bd03db, type: 2}
         centerOffsetNormalized: {x: 0, y: 0}
         cellSize: 20
-        threshold: 0.55
+        threshold: 0.6
         seed: 1
         layers:
         - enabled: 1
           type: 0
           blend: 0
           weight: 1
-          frequency: 10
+          frequency: 20
           offset: {x: 0, y: 0}
           invert: 0
     - rid: 451927353652150342
@@ -110,14 +110,14 @@ MonoBehaviour:
         spawnTable: {fileID: 11400000, guid: 4b19a709f1f50f044988ec7136bd03db, type: 2}
         centerOffsetNormalized: {x: 0, y: 0}
         cellSize: 20
-        threshold: 0.45
+        threshold: 0.6
         seed: 1
         layers:
         - enabled: 1
           type: 0
           blend: 0
           weight: 1
-          frequency: 10
+          frequency: 20
           offset: {x: 0, y: 0}
           invert: 0
     - rid: 451927353652150343
@@ -126,13 +126,13 @@ MonoBehaviour:
         spawnTable: {fileID: 11400000, guid: 4b19a709f1f50f044988ec7136bd03db, type: 2}
         centerOffsetNormalized: {x: 0, y: 0}
         cellSize: 20
-        threshold: 0.4
+        threshold: 0.6
         seed: 1
         layers:
         - enabled: 1
           type: 0
           blend: 0
           weight: 1
-          frequency: 10
+          frequency: 20
           offset: {x: 0, y: 0}
           invert: 0

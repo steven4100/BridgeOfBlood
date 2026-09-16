@@ -15,6 +15,18 @@ namespace BridgeOfBlood.Effects
             return attributeMask.Evaluate(spell);
         }
 
+        public override string GetDescription()
+        {
+            string body = base.GetDescription();
+            if (EffectDescription.IsAllAttributes(attributeMask.attributeMask))
+                return body;
+
+            string applies = $"Applies to {EffectDescription.AttributeAdjectives(attributeMask.attributeMask)} spells.";
+            if (string.IsNullOrEmpty(body))
+                return applies;
+            return applies + "\n" + body;
+        }
+
         bool ISpellTargetPurchasable.CanBeApplied(RuntimeSpell spell)
         {
             return CanApplyToSpell(spell);

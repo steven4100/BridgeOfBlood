@@ -193,6 +193,7 @@ public partial class GameSimulation
         _damageEvents.Clear();
         _tickDamageEvents.Clear();
         _statusAilmentAppliedEvents.Clear();
+        _attackRemovalEvents.Clear();
     }
 
     /// <summary>
@@ -448,6 +449,7 @@ public partial class GameSimulation
 
     private void StepAttackExpire()
     {
+        _attackRemovalEvents.Clear();
         if (_attackEntityManager.EntityCount == 0) return;
 
         _attackEntityManager.ValidateParallelLists();
@@ -458,7 +460,6 @@ public partial class GameSimulation
         _expirationSystem.CollectRemovals(entities, alive, _attackEntityManager.GetExpirationPolicies(), _attackRemovalEvents);
         _chainSystem.CollectRemovals(entities, alive, _attackEntityManager.GetChainPolicies(), _attackRemovalEvents);
         _attackEntityManager.ApplyRemovals(_attackRemovalEvents);
-        _attackRemovalEvents.Clear();
     }
 
     private void StepCombatReactions()

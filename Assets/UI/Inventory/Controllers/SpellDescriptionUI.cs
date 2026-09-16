@@ -18,6 +18,7 @@ public class SpellDescriptionUI : MonoBehaviour
         {
             if (behavior is not IPresentableSpellAttribute presentableSpellAttribute) continue;
             string description = presentableSpellAttribute.GetDisplayDescription(spellModifications, spell.attributeMask);
+            if (string.IsNullOrEmpty(description)) continue;
             SpellDescriptionElementUI element = Instantiate(spellDescriptionElementPF, root);
             element.RenderSpellDescription(description);
             elements.Add(element);

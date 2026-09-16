@@ -60,6 +60,7 @@ public class HitConditionalEvaluationSystem
 public abstract class AttackPredicateDataBaker
 {
     public abstract AttackPredicate Bake();
+    public abstract string GetDescription();
 }
 
 public class HasAilmentAttackPredicateBaker : AttackPredicateDataBaker
@@ -74,6 +75,9 @@ public class HasAilmentAttackPredicateBaker : AttackPredicateDataBaker
             param0 = (int)ailmentFlag,
         };
     }
+
+    public override string GetDescription() =>
+        $"the enemy is {EffectDescription.AilmentNames(ailmentFlag)}";
 }
 
 public class HealthPercentagePredicateBaker : AttackPredicateDataBaker
@@ -106,6 +110,14 @@ public class HealthPercentagePredicateBaker : AttackPredicateDataBaker
             };
         }
     }
+
+    public override string GetDescription()
+    {
+        string pct = EffectDescription.FormatNumber(healthPercentage * 100f);
+        return thresholdType == ThresholdType.Under
+            ? $"the enemy is below {pct}% health"
+            : $"the enemy is above {pct}% health";
+    }
 }
 
 public class AttackPredicateEffect : IEffect
@@ -127,6 +139,15 @@ public class AttackPredicateEffect : IEffect
         });
 
         return true;
+    }
+
+    public string GetDescription()
+    {
+        string then = EffectDescription.Describe(resolvedModifier, property);
+        string when = attackPredicateDataBaker.GetDescription();
+        if (string.IsNullOrEmpty(then))
+            return $"If {when}";
+        return $"If {when}, then {then}";
     }
 }
 

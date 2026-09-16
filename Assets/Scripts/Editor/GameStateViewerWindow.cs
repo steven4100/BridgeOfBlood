@@ -72,8 +72,6 @@ namespace BridgeOfBlood.Editor
 
 			foreach (FieldInfo field in typeof(GameState).GetFields(BindingFlags.Public | BindingFlags.Instance))
 			{
-				if (field.Name == "roundMetrics")
-					continue;
 				object value = field.GetValue(gs);
 				string label = FormatFieldName(field.Name);
 				string valueStr = FormatValue(value, field.FieldType);

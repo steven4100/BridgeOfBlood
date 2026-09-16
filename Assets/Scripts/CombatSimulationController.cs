@@ -3,6 +3,7 @@ using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
 using BridgeOfBlood.Effects;
+using BridgeOfBlood.Telemetry;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -34,6 +35,9 @@ public sealed class CombatSimulationController : ISpellModificationService
     readonly EffectContext _effectContext = new EffectContext();
     readonly SpellModificationCollection _frameModifications = new SpellModificationCollection();
     readonly List<ItemEvalResult> _lastItemResults = new List<ItemEvalResult>();
+    readonly List<TelemetryStatArgs> _telemetrySubscriptionScratch = new List<TelemetryStatArgs>();
+    IInventoryService _boundInventory;
+    ISpellInventoryService _boundSpells;
 
     public GameConfig RuntimeGameConfig => _config.RuntimeGameConfig;
     public GameSimulation Simulation => _simulation;
@@ -66,6 +70,7 @@ public sealed class CombatSimulationController : ISpellModificationService
 
         int initialSpellCount = Mathf.Max(8, inventory.SpellCollection.Count);
         _telemetryAggregator = new TelemetryAggregator(initialSpellCount);
+        BindTelemetrySources(inventory);
 
         if (config.DebugController != null)
             config.DebugController.Initialize(_simulation.StepCount);
@@ -77,6 +82,7 @@ public sealed class CombatSimulationController : ISpellModificationService
     public void SetRuntimeGameConfig(GameConfig runtime)
     {
         _config.RuntimeGameConfig = runtime;
+        BindTelemetrySources(runtime.playerInventory);
     }
 
     /// <summary>
@@ -182,12 +188,7 @@ public sealed class CombatSimulationController : ISpellModificationService
 
     void EvaluateItems(SpellModificationCollection collection, int spellLoopsPerRound)
     {
-        _effectContext.frameMetrics = _telemetryAggregator.CurrentFrame.aggregate;
-        _telemetryAggregator.FillSpellLoopMetricsByLoopSlot(
-            _loopedSpellCaster.Spells, _effectContext.spellCastMetrics);
-        _effectContext.spellLoopMetrics = _telemetryAggregator.CurrentSpellLoop.aggregate;
-        _effectContext.roundMetrics = _telemetryAggregator.CurrentRound.aggregate;
-        _effectContext.gameMetrics = _telemetryAggregator.Game.aggregate;
+        _effectContext.telemetry = _telemetryAggregator;
         _effectContext.spellModificationCollection = collection;
 
         IReadOnlyList<RuntimeSpell> spells = _loopedSpellCaster.Spells;
@@ -249,8 +250,39 @@ public sealed class CombatSimulationController : ISpellModificationService
 
     public void Dispose()
     {
+        UnbindTelemetrySources();
         _telemetryAggregator?.Dispose();
         _emissionTargetProvider?.Dispose();
         _simulation?.Dispose();
+    }
+
+    void BindTelemetrySources(PlayerInventory inventory)
+    {
+        UnbindTelemetrySources();
+        _boundInventory = inventory;
+        _boundSpells = inventory.SpellCollection;
+        _boundInventory.ItemsUpdated += RebuildTelemetrySubscriptions;
+        _boundSpells.SpellsUpdated += RebuildTelemetrySubscriptions;
+        RebuildTelemetrySubscriptions();
+    }
+
+    void UnbindTelemetrySources()
+    {
+        if (_boundInventory != null)
+            _boundInventory.ItemsUpdated -= RebuildTelemetrySubscriptions;
+        if (_boundSpells != null)
+            _boundSpells.SpellsUpdated -= RebuildTelemetrySubscriptions;
+        _boundInventory = null;
+        _boundSpells = null;
+    }
+
+    void RebuildTelemetrySubscriptions()
+    {
+        PlayerInventory inventory = _config.RuntimeGameConfig.playerInventory;
+        TelemetryStatSubscriptionCollector.CollectFromInventory(
+            inventory.GetPassiveItems(),
+            _loopedSpellCaster.Spells,
+            _telemetrySubscriptionScratch);
+        _telemetryAggregator.SetSubscriptions(_telemetrySubscriptionScratch);
     }
 }

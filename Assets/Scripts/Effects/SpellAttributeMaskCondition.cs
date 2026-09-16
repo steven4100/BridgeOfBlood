@@ -17,5 +17,8 @@ namespace BridgeOfBlood.Effects
 		{
 			return (context.spellInvocation.spells[context.spellInvocation.spellSlotNumber].Definition.attributeMask & attributeMask) != 0;
 		}
+
+		public string GetDescription() =>
+			$"the current spell is {EffectDescription.AttributeAdjectives(attributeMask)}";
 	}
 }

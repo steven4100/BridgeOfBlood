@@ -127,7 +127,6 @@ public class GameManager : MonoBehaviour
 
     GameState BuildGameState()
     {
-        var round = _combatSimulation.TelemetryAggregator.CurrentRound;
         var sim = _combatSimulation.Simulation.State;
         return new GameState
         {
@@ -141,7 +140,6 @@ public class GameManager : MonoBehaviour
             quotaMet = _roundController.QuotaMet,
             spellLoopsPerRound = _roundController.SpellLoopsPerRound,
             loopsCompleted = _combatSimulation.LoopedSpellCaster.LoopCount,
-            roundMetrics = round.aggregate,
             simulationTime = sim.SimulationTime,
             enemyCount = sim.EnemyCount,
             attackEntityCount = sim.AttackEntityCount

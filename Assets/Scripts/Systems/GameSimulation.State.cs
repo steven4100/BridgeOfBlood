@@ -48,6 +48,13 @@ public partial class GameSimulation
         public NativeArray<StatusAilmentAppliedEvent> StatusAilmentAppliedEvents =>
             _owner._statusAilmentAppliedEvents.AsArray();
 
+        /// <summary>
+        /// Attack-entity removals from the last AttackExpire step. Valid until
+        /// <see cref="GameSimulation.ClearFrameCombatEvents"/>.
+        /// </summary>
+        public NativeArray<AttackEntityRemovalEvent> AttackEntityRemovalEvents =>
+            _owner._attackRemovalEvents.AsArray();
+
         public int EnemyCount => _owner._enemyManager.EnemyCount;
 
         public int EnemiesSpawnedThisRound => _owner._enemyManager.SpawnedThisRound;

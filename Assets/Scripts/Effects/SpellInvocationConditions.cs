@@ -9,5 +9,7 @@ namespace BridgeOfBlood.Effects
 		public T value;
 
 		public T Resolve(EffectContext context) => value;
+
+		public string GetDescription() => value.name;
 	}
 }

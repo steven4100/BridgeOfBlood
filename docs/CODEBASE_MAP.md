@@ -87,13 +87,15 @@ After the step loop, `CombatSimulationController` raises `SimulationCompleteEven
 
 Hierarchical aggregation at five time scales: Frame > Spell Cast > Spell Loop > Round > Game.
 
-- **Source**: `DamageEvent` is the single source of truth — enriched with damage-by-type, `spellId`, `spellInvocationId`, `wasKill`, `overkillDamage`.
-- **Aggregator**: `TelemetryAggregator` (plain class) subscribes to `SimulationCompleteEvent`, iterates `DamageEvent` lists each frame, builds `FrameSnapshot`, and accumulates into `CombatMetrics` at each level.
-- **Boundaries**: `SpellCastResult` (from `LoopedSpellCaster`) drives spell cast resets and loop completion resets. Round boundary via `EndRound()` (not yet wired).
-- **Consumers**: UI reads `CurrentFrame`, `CurrentSpellCast`, `CurrentSpellLoop`, `CurrentRound`, `Game` snapshot properties.
-- **Per-spell**: Each level maintains per-spell `CombatMetrics` via `Dictionary<int, CombatMetrics>`, exposed as `SpellCombatMetrics[]` on snapshot structs.
+- **Source**: Frame combat events (`DamageEvent`, `TickDamageEvent`, `StatusAilmentAppliedEvent`, `AttackEntityRemovalEvent`). Hits snapshot `enemyStatusAilments` at event time so intersection queries (e.g. crits on Frozen) are possible. Removals stay until `ClearFrameCombatEvents` (after `SimulationCompleteEvent`).
+- **Queries**: `TelemetryStatArgs` define a query; `GetKey()` is its identity (no special keys per permutation). `TelemetryStatBase<float, TArgs>` evaluators live in `Assets/Telemetry/TelemetryStatBase.cs`.
+- **Aggregator**: `TelemetryAggregator` subscribes to `SimulationCompleteEvent`, runs **subscribed** additive queries once per frame (plus per-spell when `FoldPerSpell`), and stores sparse `key → float` maps at each time scale. Always-on core args (hits, kills, damage-by-type, blood, ailments, duration, …) keep round flow and the debug viewer working. Extra keys come from equipped jokers/gems (`TelemetryStatValue`) rebuilt on `ItemsUpdated` / `SpellsUpdated`.
+- **Derived**: DPS is not accumulated; it is `total_damage / duration` at read time.
+- **Item values**: `TelemetryStatValue` serializes polymorphic `TelemetryStatArgs` and looks up `GetKey()` via `EffectContext.GetTelemetry`.
+- **Boundaries**: `SpellCastResult` drives loop reset. Round boundary via `EndRound()`.
+- **Consumers**: Items and `RoundController` (round blood / kills) read sparse lookup. Snapshots carry window metadata (`FrameSnapshot`, …); values are keyed lookups. Telemetry Viewer dumps all subscribed keys.
 
-**Key types**: `CombatMetrics`, `SpellCombatMetrics`, `FrameSnapshot`, `SpellCastSnapshot`, `SpellLoopSnapshot`, `RoundSnapshot`, `GameSnapshot`, `TelemetryAggregator` (see `CombatTelemetry.cs`, `TelemetryAggregator.cs`).
+**Key types**: `TelemetryStatArgs`, `TelemetryStatValue`, `TelemetryAggregator`, snapshot structs in `CombatTelemetry.cs`.
 
 ---
 
@@ -128,12 +130,12 @@ Hierarchical aggregation at five time scales: Frame > Spell Cast > Spell Loop > 
 Items use `ICondition` / `IEffect` / `IValue<float>` (all in `BridgeOfBlood.Effects`). Composable building blocks:
 
 - **Generic condition**: `ValueCondition` (`IValue<float>` lhs + `Comparison` + `IValue<float>` rhs). Replaces all domain-specific condition classes.
-- **Combat metric values**: `CombatMetricValue` (scope + property + coefficient). Reads `CombatMetrics` from `EffectContext` at frame/cast/loop/round/game scopes.
+- **Combat telemetry values**: `TelemetryStatValue` (scope + polymorphic `TelemetryStatArgs` + coefficient). Reads sparse aggregator keys at frame/cast/loop/round/game scopes.
 - **Spell invocation values**: `SpellInvocationValue` (property + coefficient) for scalar loop counters. `SpellSlotCountValue` (attributeFilter + coefficient) counts slots matching an attribute. `SpellCastCountByAttributeValue` (attributeFilter) counts casts of spells matching an attribute. `SlotAttributeCheckValue` (slot reference + attributeFilter) returns 1/0 for whether previous/current slot matches.
 - **Spell invocation context**: `SpellInvocationContext` carries scalar counters plus `IReadOnlyList<RuntimeSpell> spells` (the full spell loop inventory). Populated each frame by `RoundController.EvaluateItems()` from `LoopedSpellCaster` state. Slot numbers are 1-based.
-- **Shared**: `ConstantValue` (literal float), `ConditionalEffect` (AND conditions, then run effects), `ConditionEvaluator.Compare` for numeric comparisons.
+- **Shared**: `ConstantValue` (literal float), `ConditionalEffect` (AND conditions, then run effects), `ConditionEvaluator.Compare` for numeric comparisons. Composite nodes implement `GetDescription()` for player-facing sentences (`ConditionalEffect`: "If {conditions}, then {effects}").
 
-**Key types**: `ValueCondition`, `SpellInvocationContext`, `SpellInvocationProperty`, `SpellInvocationResolver`, `SpellInvocationValue`, `SpellSlotCountValue`, `SpellCastCountByAttributeValue`, `SlotAttributeCheckValue`, `CombatMetricValue` (see `Effect.cs`, `Value.cs`).
+**Key types**: `ValueCondition`, `SpellInvocationContext`, `SpellInvocationProperty`, `SpellInvocationResolver`, `SpellInvocationValue`, `SpellSlotCountValue`, `SpellCastCountByAttributeValue`, `SlotAttributeCheckValue`, `TelemetryStatValue` (see `Value.cs`, `Assets/Telemetry/TelemetryStatBase.cs`).
 
 ---
 
@@ -175,9 +177,9 @@ Round-internal phase management by `RoundController`; session-level transitions 
 
 - **Config**: `GameConfig` (ScriptableObject): authoring asset holds `roundConfigs` + wallet/inventory **templates** (no materials/presentation). Combat visuals serialize on scene/prefab `CombatPresentationDriver`. At session start (and Lose → Retry), `GameConfig.CreateRuntimeCopy` **`Instantiate`s** the whole config plus unique wallet/inventory clones; gameplay reads **`runtimeGameConfig.playerWallet`**, **`playerInventory`**, and round fields from that **one** session clone (`GameConfig.DestroyRuntimeCopy` on teardown / rebuild). `SimulationConfig` on the asset holds gizmos/spawn-rate knobs only — playfield size lives on each `RoundConfig`.
 - **RoundConfig**: each entry (`class`) has `spawner`, `killQuotaPercent`, `enemyMoveSpeedMultiplier`, `enemyHealthMultiplier`, and `simulationSize` (`Vector2` width/height). `ResolvePlayfield()` builds sim space as x = 0..width, y = ±height/2. `GameConfig.GetRoundConfig(roundNumber)` is 1-based and clamps to the last list entry. `RoundController` / lab apply it through `CombatSimulationController.ApplyRoundConfig` before `ResetForNewRound`, which sets `GameSimulation` playfield and rebuilds the enemy spatial grid. `GameConfigEditor` duplicates rounds by cloning the spawner object (Unity aliases `[SerializeReference]` when this type is a struct).
-- **Per-round quota**: `RoundController` resolves `MinEnemiesKilled` as `ceil(spawnedThisRound × killQuotaPercent / 100)` from `EnemyManager.SpawnedThisRound`. Round success is `CurrentRound.aggregate.kills >= MinEnemiesKilled` (`QuotaBasedRoundEndStrategy`).
+- **Per-round quota**: `RoundController` resolves `MinEnemiesKilled` as `ceil(spawnedThisRound × killQuotaPercent / 100)` from `EnemyManager.SpawnedThisRound`. Round success is round `event_count:Kills` >= `MinEnemiesKilled` (`QuotaBasedRoundEndStrategy`).
 - **Phase flow**: `Playing` → (loops exhausted) → `AwaitingDespawn` → (no active casts, no pending spawns, no attack entities) → `RoundEnd` → session state machine transitions to `Shop` or `Lose`.
-- **Blood tracking**: `DamageEvent.bloodExtracted` (currently `damageDealt + overkillDamage`). Aggregated through `CombatMetrics.bloodExtracted` at all telemetry levels (display/items; not the round-win check).
+- **Blood tracking**: `DamageEvent.bloodExtracted` (currently `damageDealt + overkillDamage`). Aggregated through the `blood_extracted` telemetry key at all scopes (display/items; not the round-win check).
 - **Round end**: `TelemetryAggregator.EndRound()` is called on RoundEnd, then `IRoundEndStrategy.Evaluate` compares round kills to the resolved kill quota.
 - **Spell loop cap**: `LoopedSpellCaster` reports `LoopCount`; `RoundController` compares against `SpellLoopsPerRound` (from `GameConfig.maxSpellLoopsPerRound`). Loop mana budget is `GameConfig.totalMana` on the session clone.
 - **Round reset**: `GameSimulation.ResetForNewRound()` clears enemies, attack entities, spawner, simulation time, event buffers. `LoopedSpellCaster.Reset()` + `ClearCastState()`. Player placed at right side of simulation zone.
@@ -228,7 +230,7 @@ Reusable probability primitives in `BridgeOfBlood.Data.Shared`.
 ## Key data splits
 
 - **Authoring (ScriptableObject)**: `GameConfig`, `PlayerWallet`, `PlayerInventory`, `SpellAuthoringData`, `AttackEntityData`, `EnemyAuthoringData`, `EnemySpawnTable`, `SpawnPattern`, `IdolAuthoringData`, `SpellModificationsTestData`, `SpriteEntityVisual`, `SpriteRenderDatabase`, `ShopItemDefinition`, `ShopConfig`. Lives in project; session uses **`Instantiate`** copies of wallet/inventory templates so templates stay read-only on disk.
-- **Runtime (structs / NativeList)**: `AttackEntity`, `Enemy`, `HitEvent`, `DamageEvent`, `DamageNumber`, chain/pierce/expiration/rehit policy structs, `EntityVisual`, `SpriteFrame`, `SpriteInstanceData`, `CombatMetrics`, `SpellCastResult`. Simulation-only, no MonoBehaviours in hot path.
+- **Runtime (structs / NativeList)**: `AttackEntity`, `Enemy`, `HitEvent`, `DamageEvent`, `DamageNumber`, chain/pierce/expiration/rehit policy structs, `EntityVisual`, `SpriteFrame`, `SpriteInstanceData`, `SpellCastResult`. Simulation-only, no MonoBehaviours in hot path.
 - **Enums / shared**: `DamageType`, `SpellAttributeMask`, `Rarity`, `CurrencyType`, `ShopItemType` in `Data/Shared/Enums.cs`. `IRandomElement`, `WeightedSelection` in `Data/Shared/`.
 
 ---
@@ -236,7 +238,7 @@ Reusable probability primitives in `BridgeOfBlood.Data.Shared`.
 ## Namespaces
 
 - `BridgeOfBlood.Data.Spells`: spell/modification types, applicator, SpellAuthoringData, ResolvedKeyframe, etc.
-- `BridgeOfBlood.Data.Shared`: enums, `GameConfig`, `RoundConfig`, GameContext, `CombatMetrics`, snapshot structs (`FrameSnapshot`, `SpellCastSnapshot`, etc.).
+- `BridgeOfBlood.Data.Shared`: enums, `GameConfig`, `RoundConfig`, GameContext, snapshot structs (`FrameSnapshot`, `SpellCastSnapshot`, etc.).
 - `BridgeOfBlood.Data.Enemies` / `BridgeOfBlood.Data.Idols`: runtime/authoring for enemies and idols.
 - `BridgeOfBlood.Data.Inventory`: `PlayerInventory`, `PlayerWallet`, `ItemCollection`, `Stash`, `IInventoryOccupant`.
 - `BridgeOfBlood.Data.Shop`: shop item definitions, config, repository, `IPurchasable`.

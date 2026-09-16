@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Effects;
+using BridgeOfBlood.Telemetry;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
@@ -107,8 +109,9 @@ public sealed class RoundController : SessionPhaseBase
 
 		_combatSimulation.Tick(deltaTime, castRequested, SpellLoopsPerRound);
 
-		BloodExtractedThisRound = _combatSimulation.TelemetryAggregator.CurrentRound.aggregate.bloodExtracted;
-		KillsThisRound = _combatSimulation.TelemetryAggregator.CurrentRound.aggregate.kills;
+		TelemetryAggregator telemetry = _combatSimulation.TelemetryAggregator;
+		BloodExtractedThisRound = telemetry.GetTelemetry(MetricsScope.Round, TelemetryCoreStats.BloodExtractedKey);
+		KillsThisRound = (int)telemetry.GetTelemetry(MetricsScope.Round, TelemetryCoreStats.KillsKey);
 		var sim = _combatSimulation.Simulation.State;
 		int spawned = sim.EnemiesSpawnedThisRound;
 		MinEnemiesKilled = _combatSimulation.RuntimeGameConfig.GetRoundConfig(RoundNumber)

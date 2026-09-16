@@ -73,6 +73,8 @@ public struct DamageEvent
     public EffectSpriteConfigRuntime onHitEffectForVfx;
     /// <summary>Snapshotted at hit time; use with <see cref="wasKill"/>.</summary>
     public EffectSpriteConfigRuntime onKillEffectForVfx;
+    /// <summary>Enemy ailments at hit time (before this hit's application pass).</summary>
+    public StatusAilmentFlag enemyStatusAilments;
 }
 
 /// <summary>
@@ -117,4 +119,6 @@ public struct TickDamageEvent
     public float coldDamage;
     public float lightningDamage;
     public TickDamageSource source;
+    /// <summary>Enemy ailments at tick time.</summary>
+    public StatusAilmentFlag enemyStatusAilments;
 }

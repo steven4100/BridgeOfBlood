@@ -2,12 +2,17 @@ using System;
 using System.Collections.Generic;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
+using BridgeOfBlood.Telemetry;
+using UnityEngine;
 
 namespace BridgeOfBlood.Effects
 {
 	public interface IValue<out T>
 	{
 		T Resolve(EffectContext context);
+		string GetDescription();
+
+		void CollectTelemetrySubscriptions(List<TelemetryStatArgs> destination) { }
 	}
 
 	[Serializable]
@@ -16,19 +21,38 @@ namespace BridgeOfBlood.Effects
 		public float value;
 
 		public float Resolve(EffectContext context) => value;
+
+		public string GetDescription() => EffectDescription.FormatNumber(value);
 	}
 
 	[Serializable, MenuPath("Combat")]
-	public class CombatMetricValue : IValue<float>
+	public class TelemetryStatValue : IValue<float>
 	{
 		public float coefficient = 1f;
 		public MetricsScope scope;
-		public CombatMetricProperty property;
+
+		[SerializeReference, SerializeInterface]
+		public TelemetryStatArgs args;
 
 		public float Resolve(EffectContext context)
 		{
-			var metrics = context.GetMetrics(scope);
-			return coefficient * CombatMetricResolver.GetValue(property, in metrics);
+			if (args is DpsTelemetryStatArgs)
+				return coefficient * context.GetTelemetryDps(scope);
+			return coefficient * context.GetTelemetry(scope, args.GetKey());
+		}
+
+		public string GetDescription()
+		{
+			if (args == null)
+				return string.Empty;
+			return EffectDescription.Scale(coefficient, EffectDescription.TelemetryStatPhrase(args, scope));
+		}
+
+		public void CollectTelemetrySubscriptions(List<TelemetryStatArgs> destination)
+		{
+			if (args == null || !args.RequiresEventSubscription)
+				return;
+			destination.Add(args);
 		}
 	}
 
@@ -100,6 +124,9 @@ namespace BridgeOfBlood.Effects
 		{
 			return coefficient * SpellInvocationResolver.GetValue(property, in context.spellInvocation);
 		}
+
+		public string GetDescription() =>
+			EffectDescription.Scale(coefficient, EffectDescription.InvocationPhrase(property));
 	}
 
 	[Serializable, MenuPath("Spell")]
@@ -112,6 +139,14 @@ namespace BridgeOfBlood.Effects
 			return SpellInvocationResolver.CountSlotsWithAttribute(
 				context.spellInvocation.spells, attributeFilter);
 		}
+
+		public string GetDescription()
+		{
+			string adjectives = EffectDescription.AttributeAdjectives(attributeFilter);
+			return string.IsNullOrEmpty(adjectives)
+				? "the number of spells in the loop"
+				: $"the number of {adjectives} spells in the loop";
+		}
 	}
 
 	[Serializable, MenuPath("Spell")]
@@ -123,6 +158,14 @@ namespace BridgeOfBlood.Effects
 		{
 			return SpellInvocationResolver.CountCastsWithAttribute(
 				context.spellInvocation.spells, attributeFilter);
+		}
+
+		public string GetDescription()
+		{
+			string adjectives = EffectDescription.AttributeAdjectives(attributeFilter);
+			return string.IsNullOrEmpty(adjectives)
+				? "spells cast"
+				: $"{adjectives} spells cast";
 		}
 	}
 
@@ -150,5 +193,8 @@ namespace BridgeOfBlood.Effects
 			var attributes = SpellInvocationResolver.GetSlotAttributes(in inv, oneBasedSlot);
 			return (attributes & attributeFilter) != 0 ? 1f : 0f;
 		}
+
+		public string GetDescription() =>
+			EffectDescription.SlotAttributeCheck(slot, attributeFilter, negated: false);
 	}
 }

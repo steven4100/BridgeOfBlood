@@ -157,6 +157,7 @@ public static class TickDamagePipeline
         else
             phys = d;
 
+        StatusAilmentFlag status = enemies.Status[enemyIndex];
         outEvents.Add(new TickDamageEvent
         {
             position = position,
@@ -171,13 +172,13 @@ public static class TickDamagePipeline
             fireDamage = fireD,
             coldDamage = cold,
             lightningDamage = light,
-            source = source
+            source = source,
+            enemyStatusAilments = status
         });
 
         if (killed && outKillEvents.IsCreated)
         {
             EnemyPresentation pres = enemies.Presentation[enemyIndex];
-            StatusAilmentFlag status = enemies.Status[enemyIndex];
             outKillEvents.Add(new EnemyKilledEvent
             {
                 enemyEntityId = enemyId,

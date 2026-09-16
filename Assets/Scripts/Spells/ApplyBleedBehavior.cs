@@ -4,7 +4,7 @@ using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 [Serializable]
-public class ApplyBleedBehavior : FixedAttackEntityBehavior
+public class ApplyBleedBehavior : FixedAttackEntityBehavior, IPresentableSpellAttribute
 {
     [Tooltip("When false, bleed application is skipped for this entity.")]
     public bool isActive = true;
@@ -22,6 +22,9 @@ public class ApplyBleedBehavior : FixedAttackEntityBehavior
         var arr = manager.GetBleedAppliers();
         arr[index] = ToRuntime();
     }
+
+    public string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask) =>
+        SpellAttributeDisplay.ChanceToApply(isActive, applyChance, "Bleed");
 }
 
 [Serializable]

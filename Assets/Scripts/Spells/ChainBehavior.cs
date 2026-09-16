@@ -38,19 +38,31 @@ public class ChainBehavior : ModifiableAttackEntityBehavior
 
     public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
     {
-        int count = chainCount;
-        if (mods != null)
-        {
-            var resolved = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.Chains, mask);
-            count = Mathf.Max(0, (int)(chainCount * resolved.Multiplier) + (int)resolved.flat);
-        }
-
+        int count = ResolveChainCount(mods, mask);
         var policy = ToRuntime();
         policy.chainCount = count;
         policy.enabled = mode == ChainMode.Enabled && count > 0 && chainRange > 0f;
 
         var arr = manager.GetChainPolicies();
         arr[index] = policy;
+    }
+
+    public override string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
+    {
+        if (!isActive || mode != ChainMode.Enabled)
+            return string.Empty;
+        int count = ResolveChainCount(mods, mask);
+        if (count <= 0)
+            return string.Empty;
+        return $"Chains : {count}";
+    }
+
+    int ResolveChainCount(SpellModifications mods, SpellAttributeMask mask)
+    {
+        if (mods == null)
+            return chainCount;
+        var resolved = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.Chains, mask);
+        return Mathf.Max(0, (int)(chainCount * resolved.Multiplier) + (int)resolved.flat);
     }
 }
 

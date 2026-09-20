@@ -25,13 +25,13 @@ public class ApplyShockedBehavior : FixedAttackEntityBehavior, IPresentableSpell
 
     public override AttackEntityBehavior Clone() => new ApplyShockedBehavior { isActive = isActive, applyChance = applyChance, incomingDamageTakenMultiplier = incomingDamageTakenMultiplier };
 
-    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
+    public override void ApplyTo(AttackEntityManager manager, int index, ModificationSet mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
     {
         var arr = manager.GetShockedAppliers();
         arr[index] = ToRuntime();
     }
 
-    public string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
+    public string GetDisplayDescription(ModificationSet mods, SpellAttributeMask mask)
     {
         string applied = SpellAttributeDisplay.ChanceToApply(isActive, applyChance, "Shocked");
         if (string.IsNullOrEmpty(applied))

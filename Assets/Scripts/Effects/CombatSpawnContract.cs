@@ -17,7 +17,7 @@ namespace BridgeOfBlood.Effects
 		public AttackEntityData attackData;
 
 		/// <summary>Frame spell modifications; resolved per event spell id at spawn.</summary>
-		public SpellModificationCollection modificationCollection;
+		public ModificationCatalog modificationCollection;
 
 		/// <summary>
 		/// When <see cref="CombatAttackSpawnReactionRuntime.spellDefinitionInstanceIdFilter"/> is set: true if the spell loop had a matching slot (see <see cref="definitionFilterSpellId"/>); false means no slot matched.
@@ -36,7 +36,7 @@ namespace BridgeOfBlood.Effects
 		public AttackEntityBuildContext BuildContext(int spellId, int spellInvocationId, float2 position, float eventScaledDamage)
 		{
 			float2 velocity = new float2(attackData.entityVelocity.x, attackData.entityVelocity.y);
-			SpellModifications mods = modificationCollection != null
+			ModificationSet mods = modificationCollection != null
 				? modificationCollection.ResolveFor(spellId)
 				: null;
 			return new AttackEntityBuildContext(

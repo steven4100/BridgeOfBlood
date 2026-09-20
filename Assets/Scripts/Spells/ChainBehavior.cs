@@ -36,7 +36,7 @@ public class ChainBehavior : ModifiableAttackEntityBehavior
         chainRange = chainRange, targetSelect = targetSelect, excludePreviouslyHit = excludePreviouslyHit
     };
 
-    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
+    public override void ApplyTo(AttackEntityManager manager, int index, ModificationSet mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
     {
         int count = ResolveChainCount(mods, mask);
         var policy = ToRuntime();
@@ -47,7 +47,7 @@ public class ChainBehavior : ModifiableAttackEntityBehavior
         arr[index] = policy;
     }
 
-    public override string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
+    public override string GetDisplayDescription(ModificationSet mods, SpellAttributeMask mask)
     {
         if (!isActive || mode != ChainMode.Enabled)
             return string.Empty;
@@ -57,11 +57,15 @@ public class ChainBehavior : ModifiableAttackEntityBehavior
         return $"Chains : {count}";
     }
 
-    int ResolveChainCount(SpellModifications mods, SpellAttributeMask mask)
+    int ResolveChainCount(ModificationSet mods, SpellAttributeMask mask)
     {
         if (mods == null)
             return chainCount;
-        var resolved = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.Chains, mask);
+        var resolved = ParameterModificationMerger.Merge(
+            mods.Get<ChainModificationData>(),
+            modification => modification.parameters,
+            modification => modification.filter,
+            mask);
         return Mathf.Max(0, (int)(chainCount * resolved.Multiplier) + (int)resolved.flat);
     }
 }

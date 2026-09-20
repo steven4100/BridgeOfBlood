@@ -92,10 +92,10 @@ namespace BridgeOfBlood.Editor
 				EditorGUILayout.LabelField("Simulation Time", f.simulationTime.ToString("F2"));
 			}, ref _foldFrame);
 
-			DrawSection("Last Cast (loop totals)", _foldSpellCast, () =>
+			DrawSection("Last Cast", _foldSpellCast, () =>
 			{
 				var s = agg.CurrentSpellCast;
-				DrawValuesForSpell(agg, MetricsScope.SpellLoop, s.spellId);
+				DrawValues(agg, MetricsScope.SpellCast);
 				EditorGUILayout.LabelField("Spell Id", s.spellId.ToString());
 				EditorGUILayout.LabelField("Invocation Id", s.invocationId.ToString());
 			}, ref _foldSpellCast);

@@ -19,7 +19,7 @@ public readonly struct AttackEntityBuildContext
     public readonly int keyframeIndex;
 
     /// <summary>Frame modifications applied at spawn. May be null (no mods).</summary>
-    public readonly SpellModifications modifications;
+    public readonly ModificationSet modifications;
 
     /// <summary>Attribute mask of the originating spell, used to filter modifiers.</summary>
     public readonly SpellAttributeMask attributeMask;
@@ -35,7 +35,7 @@ public readonly struct AttackEntityBuildContext
         int spellId,
         int spellInvocationId,
         int keyframeIndex,
-        SpellModifications modifications,
+        ModificationSet modifications,
         SpellAttributeMask attributeMask,
         float2 position,
         float2 velocity,

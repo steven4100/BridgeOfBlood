@@ -17,13 +17,13 @@ public class ApplyBleedBehavior : FixedAttackEntityBehavior, IPresentableSpellAt
 
     public override AttackEntityBehavior Clone() => new ApplyBleedBehavior { isActive = isActive, applyChance = applyChance };
 
-    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
+    public override void ApplyTo(AttackEntityManager manager, int index, ModificationSet mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
     {
         var arr = manager.GetBleedAppliers();
         arr[index] = ToRuntime();
     }
 
-    public string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask) =>
+    public string GetDisplayDescription(ModificationSet mods, SpellAttributeMask mask) =>
         SpellAttributeDisplay.ChanceToApply(isActive, applyChance, "Bleed");
 }
 

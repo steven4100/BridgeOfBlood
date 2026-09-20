@@ -1,0 +1,76 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c85a995e0cf59fd4183f0ccfc5b81b66, type: 3}
+  m_Name: RepeatFirstSpell
+  m_EditorClassIdentifier: Assembly-CSharp::BridgeOfBlood.Effects.Item
+  shopItemDefinition:
+    displayName: Double Recast
+    description: 
+    sprite: {fileID: 0}
+    price: 10
+    resellValue: 4
+    isResellable: 1
+    rarity: 2
+    shopItemType: 0
+    weight: 1
+  effects:
+  - rid: 1399430219147247680
+  combatReactions: []
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 1399430219147247680
+      type: {class: ConditionalEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        conditions:
+        - rid: 1399430219147247684
+        effects:
+        - rid: 1399430219147247687
+    - rid: 1399430219147247684
+      type: {class: ValueCondition, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        lhs:
+          rid: 1399430219147247685
+        comparison: 2
+        rhs:
+          rid: 1399430219147247686
+    - rid: 1399430219147247685
+      type: {class: SpellInvocationValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        coefficient: 1
+        property: 2
+    - rid: 1399430219147247686
+      type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        value: 1
+    - rid: 1399430219147247687
+      type: {class: SpellModificationEffect, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        modifier:
+          rid: 1399430219147247688
+    - rid: 1399430219147247688
+      type: {class: MulticastModificationData, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
+      data:
+        filter: 65535
+        parameters:
+          flatAdditive:
+            rid: 1399430219147247689
+          percentIncreased:
+            rid: -2
+          moreMultiplier:
+            rid: -2
+    - rid: 1399430219147247689
+      type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
+      data:
+        value: 2

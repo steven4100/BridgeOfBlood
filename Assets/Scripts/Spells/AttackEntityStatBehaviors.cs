@@ -9,43 +9,39 @@ public abstract class DamageBehavior : ModifiableAttackEntityBehavior
 {
     public FloatRange damageRange;
 
-    protected abstract SpellModificationProperty TypeScalingProperty { get; }
-
+    protected abstract string DamageLabel { get; }
+    protected abstract FloatRange ResolveModifiedRange(ModificationSet mods, SpellAttributeMask mask);
     protected abstract void WriteDamage(AttackEntityManager manager, int index, float rolled);
 
     public override void ApplyTo(
         AttackEntityManager manager,
         int index,
-        SpellModifications mods,
+        ModificationSet mods,
         SpellAttributeMask mask,
         ref Random rng)
     {
-        FloatRange range = AttackEntityModificationApplicator.ResolveDamageRange(
-            damageRange, TypeScalingProperty, mods, mask);
+        FloatRange range = ResolveModifiedRange(mods, mask);
         float rolled = Mathf.Max(0f, range.ResolveUniform(ref rng));
         WriteDamage(manager, index, rolled);
     }
 
-    public override string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
+    public override string GetDisplayDescription(ModificationSet mods, SpellAttributeMask mask)
     {
-        FloatRange range = AttackEntityModificationApplicator.ResolveDamageRange(damageRange, TypeScalingProperty, mods, mask);
-        string label = TypeScalingProperty switch
-        {
-            SpellModificationProperty.PhysicalDamageScaling => "Physical Damage",
-            SpellModificationProperty.ColdDamageScaling => "Cold Damage",
-            SpellModificationProperty.FireDamageScaling => "Fire Damage",
-            SpellModificationProperty.LightningDamageScaling => "Lightning Damage",
-            _ => "Damage"
-        };
-        return $"{label} : {range}";
+        FloatRange range = ResolveModifiedRange(mods, mask);
+        return $"{DamageLabel} : {range}";
     }
 }
 
 [Serializable]
 public class PhysicalDamageBehavior : DamageBehavior
 {
-    protected override SpellModificationProperty TypeScalingProperty =>
-        SpellModificationProperty.PhysicalDamageScaling;
+    protected override string DamageLabel => "Physical Damage";
+
+    protected override FloatRange ResolveModifiedRange(ModificationSet mods, SpellAttributeMask mask) =>
+        AttackEntityModificationApplicator.ResolveDamageRange<PhysicalDamageScalingModificationData>(
+            damageRange, mods, mask,
+            modification => modification.parameters,
+            modification => modification.filter);
 
     protected override void WriteDamage(AttackEntityManager manager, int index, float rolled)
     {
@@ -60,8 +56,13 @@ public class PhysicalDamageBehavior : DamageBehavior
 [Serializable]
 public class ColdDamageBehavior : DamageBehavior
 {
-    protected override SpellModificationProperty TypeScalingProperty =>
-        SpellModificationProperty.ColdDamageScaling;
+    protected override string DamageLabel => "Cold Damage";
+
+    protected override FloatRange ResolveModifiedRange(ModificationSet mods, SpellAttributeMask mask) =>
+        AttackEntityModificationApplicator.ResolveDamageRange<ColdDamageScalingModificationData>(
+            damageRange, mods, mask,
+            modification => modification.parameters,
+            modification => modification.filter);
 
     protected override void WriteDamage(AttackEntityManager manager, int index, float rolled)
     {
@@ -76,8 +77,13 @@ public class ColdDamageBehavior : DamageBehavior
 [Serializable]
 public class FireDamageBehavior : DamageBehavior
 {
-    protected override SpellModificationProperty TypeScalingProperty =>
-        SpellModificationProperty.FireDamageScaling;
+    protected override string DamageLabel => "Fire Damage";
+
+    protected override FloatRange ResolveModifiedRange(ModificationSet mods, SpellAttributeMask mask) =>
+        AttackEntityModificationApplicator.ResolveDamageRange<FireDamageScalingModificationData>(
+            damageRange, mods, mask,
+            modification => modification.parameters,
+            modification => modification.filter);
 
     protected override void WriteDamage(AttackEntityManager manager, int index, float rolled)
     {
@@ -92,8 +98,13 @@ public class FireDamageBehavior : DamageBehavior
 [Serializable]
 public class LightningDamageBehavior : DamageBehavior
 {
-    protected override SpellModificationProperty TypeScalingProperty =>
-        SpellModificationProperty.LightningDamageScaling;
+    protected override string DamageLabel => "Lightning Damage";
+
+    protected override FloatRange ResolveModifiedRange(ModificationSet mods, SpellAttributeMask mask) =>
+        AttackEntityModificationApplicator.ResolveDamageRange<LightningDamageScalingModificationData>(
+            damageRange, mods, mask,
+            modification => modification.parameters,
+            modification => modification.filter);
 
     protected override void WriteDamage(AttackEntityManager manager, int index, float rolled)
     {
@@ -120,7 +131,7 @@ public class CritBehavior : ModifiableAttackEntityBehavior
     public override void ApplyTo(
         AttackEntityManager manager,
         int index,
-        SpellModifications mods,
+        ModificationSet mods,
         SpellAttributeMask mask,
         ref Random rng)
     {
@@ -128,7 +139,11 @@ public class CritBehavior : ModifiableAttackEntityBehavior
         FloatRange multR = critDamageMultiplierRange;
         if (mods != null)
         {
-            var critChance = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.CritChance, mask);
+            var critChance = ParameterModificationMerger.Merge(
+                mods.Get<CritChanceModificationData>(),
+                modification => modification.parameters,
+                modification => modification.filter,
+                mask);
             chanceR = new FloatRange
             {
                 min = Mathf.Clamp01(critChanceRange.min * critChance.Multiplier + critChance.flat / 100f),
@@ -136,7 +151,11 @@ public class CritBehavior : ModifiableAttackEntityBehavior
             };
             chanceR.ClampOrder();
 
-            var critMult = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.CritMult, mask);
+            var critMult = ParameterModificationMerger.Merge(
+                mods.Get<CritMultiplierModificationData>(),
+                modification => modification.parameters,
+                modification => modification.filter,
+                mask);
             multR = new FloatRange
             {
                 min = Mathf.Max(1f, critDamageMultiplierRange.min * critMult.Multiplier + critMult.flat / 100f),
@@ -154,11 +173,17 @@ public class CritBehavior : ModifiableAttackEntityBehavior
         };
     }
 
-    public override string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
+    public override string GetDisplayDescription(ModificationSet mods, SpellAttributeMask mask)
     {
         FloatRange chanceR = critChanceRange;
         FloatRange multR = critDamageMultiplierRange;
-        var critChance = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.CritChance, mask);
+        var critChance = mods == null
+            ? ResolvedModifier.Identity
+            : ParameterModificationMerger.Merge(
+                mods.Get<CritChanceModificationData>(),
+                modification => modification.parameters,
+                modification => modification.filter,
+                mask);
         chanceR = new FloatRange
         {
             min = Mathf.Clamp01(critChanceRange.min * critChance.Multiplier + critChance.flat / 100f),
@@ -166,7 +191,13 @@ public class CritBehavior : ModifiableAttackEntityBehavior
         };
         chanceR.ClampOrder();
 
-        var critMult = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.CritMult, mask);
+        var critMult = mods == null
+            ? ResolvedModifier.Identity
+            : ParameterModificationMerger.Merge(
+                mods.Get<CritMultiplierModificationData>(),
+                modification => modification.parameters,
+                modification => modification.filter,
+                mask);
         multR = new FloatRange
         {
             min = Mathf.Max(1f, critDamageMultiplierRange.min * critMult.Multiplier + critMult.flat / 100f),
@@ -187,7 +218,7 @@ public class HitBoxBehavior : ModifiableAttackEntityBehavior
     public override void ApplyTo(
         AttackEntityManager manager,
         int index,
-        SpellModifications mods,
+        ModificationSet mods,
         SpellAttributeMask mask,
         ref Random rng)
     {
@@ -200,9 +231,15 @@ public class HitBoxBehavior : ModifiableAttackEntityBehavior
         };
     }
 
-    public override string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
+    public override string GetDisplayDescription(ModificationSet mods, SpellAttributeMask mask)
     {
-        ResolvedModifier mod = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.AreaOfEffect, mask);
+        ResolvedModifier mod = mods == null
+            ? ResolvedModifier.Identity
+            : ParameterModificationMerger.Merge(
+                mods.Get<AreaOfEffectModificationData>(),
+                modification => modification.parameters,
+                modification => modification.filter,
+                mask);
         return $"Aoe : {mod.TotalIncrease().ToString()}";
     }
 }
@@ -218,7 +255,7 @@ public class KnockbackBehavior : ModifiableAttackEntityBehavior
     public override void ApplyTo(
         AttackEntityManager manager,
         int index,
-        SpellModifications mods,
+        ModificationSet mods,
         SpellAttributeMask mask,
         ref Random rng)
     {
@@ -226,17 +263,21 @@ public class KnockbackBehavior : ModifiableAttackEntityBehavior
         arr[index] = new KnockbackRuntime { isActive = true, strength = ResolveKnockback(mods, mask) };
     }
 
-    public override string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
+    public override string GetDisplayDescription(ModificationSet mods, SpellAttributeMask mask)
     {
         return $"Knockback : {ResolveKnockback(mods, mask)}";
     }
 
-    float ResolveKnockback(SpellModifications mods, SpellAttributeMask mask)
+    float ResolveKnockback(ModificationSet mods, SpellAttributeMask mask)
     {
         float knockback = Mathf.Max(0f, knockbackStrength);
         if (mods == null)
             return knockback;
-        var knock = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.KnockbackStrength, mask);
+        var knock = ParameterModificationMerger.Merge(
+            mods.Get<KnockbackStrengthModificationData>(),
+            modification => modification.parameters,
+            modification => modification.filter,
+            mask);
         return Mathf.Max(0f, knockbackStrength * knock.Multiplier + knock.flat);
     }
 }

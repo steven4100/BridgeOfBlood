@@ -6,7 +6,7 @@ using BridgeOfBlood.Data.Spells;
 /// </summary>
 public interface ISpellModificationService
 {
-    SpellModifications GetSpellModCollectionForSpell(RuntimeSpell spell);
+    ModificationSet GetSpellModCollectionForSpell(RuntimeSpell spell);
 }
 
 /// <summary>
@@ -14,9 +14,9 @@ public interface ISpellModificationService
 /// </summary>
 public sealed class EmptySpellModificationService : ISpellModificationService
 {
-    readonly SpellModifications _empty = new SpellModifications();
+    readonly ModificationSet _empty = new ModificationSet();
 
-    public SpellModifications GetSpellModCollectionForSpell(RuntimeSpell spell)
+    public ModificationSet GetSpellModCollectionForSpell(RuntimeSpell spell)
     {
         return _empty;
     }

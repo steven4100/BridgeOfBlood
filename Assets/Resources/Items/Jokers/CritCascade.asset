@@ -32,16 +32,16 @@ MonoBehaviour:
         modifier:
           rid: 3000000000000000062
     - rid: 3000000000000000062
-      type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
+      type: {class: CritChanceModificationData, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
       data:
-        property: 0
         filter: 0
-        flatAdditive:
-          rid: 3000000000000000063
-        percentIncreased:
-          rid: 0
-        moreMultiplier:
-          rid: 0
+        parameters:
+          flatAdditive:
+            rid: 3000000000000000063
+          percentIncreased:
+            rid: 0
+          moreMultiplier:
+            rid: 0
     - rid: 3000000000000000063
       type: {class: SpellInvocationValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:

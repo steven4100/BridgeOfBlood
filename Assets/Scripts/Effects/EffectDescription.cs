@@ -154,23 +154,22 @@ namespace BridgeOfBlood.Effects
 			return Join(effects, e => e.GetDescription(), "\n");
 		}
 
-		public static string Describe(ParameterModifier modifier)
+		public static string Describe(
+			ParameterModification modification,
+			string stat,
+			SpellAttributeMask filter)
 		{
-			if (modifier == null)
-				return string.Empty;
-
-			string stat = StatName(modifier.property);
 			var parts = new List<string>();
-			AppendModifierPart(parts, modifier.flatAdditive, ModifierKind.Flat, stat);
-			AppendModifierPart(parts, modifier.percentIncreased, ModifierKind.Increased, stat);
-			AppendModifierPart(parts, modifier.moreMultiplier, ModifierKind.More, stat);
+			AppendModifierPart(parts, modification.flatAdditive, ModifierKind.Flat, stat);
+			AppendModifierPart(parts, modification.percentIncreased, ModifierKind.Increased, stat);
+			AppendModifierPart(parts, modification.moreMultiplier, ModifierKind.More, stat);
 			if (parts.Count == 0)
 				return string.Empty;
 
 			string text = string.Join(" and ", parts);
-			if (modifier.filter == SpellAttributeMask.None)
+			if (filter == SpellAttributeMask.None)
 				return text;
-			return $"{text} for {AttributeAdjectives(modifier.filter)} spells";
+			return $"{text} for {AttributeAdjectives(filter)} spells";
 		}
 
 		public static string Describe(ResolvedModifier modifier, SpellModificationProperty property)

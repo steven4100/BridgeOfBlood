@@ -182,7 +182,7 @@ public class TangentialWaveMotionBehavior : FixedAttackEntityBehavior
         return clone;
     }
 
-    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
+    public override void ApplyTo(AttackEntityManager manager, int index, ModificationSet mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
     {
         AttackEntity entity = manager.GetEntities()[index];
         var arr = manager.GetMotionPolicies();

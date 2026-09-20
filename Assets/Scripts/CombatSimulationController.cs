@@ -33,7 +33,7 @@ public sealed class CombatSimulationController : ISpellModificationService
     readonly TelemetryAggregator _telemetryAggregator;
     readonly EnemyEmissionTargetProvider _emissionTargetProvider;
     readonly EffectContext _effectContext = new EffectContext();
-    readonly SpellModificationCollection _frameModifications = new SpellModificationCollection();
+    readonly ModificationCatalog _frameModifications = new ModificationCatalog();
     readonly List<ItemEvalResult> _lastItemResults = new List<ItemEvalResult>();
     readonly List<TelemetryStatArgs> _telemetrySubscriptionScratch = new List<TelemetryStatArgs>();
     IInventoryService _boundInventory;
@@ -45,7 +45,7 @@ public sealed class CombatSimulationController : ISpellModificationService
     public LoopedSpellCaster LoopedSpellCaster => _loopedSpellCaster;
     public IReadOnlyList<ItemEvalResult> LastItemResults => _lastItemResults;
 
-    public SpellModifications GetSpellModCollectionForSpell(RuntimeSpell spell)
+    public ModificationSet GetSpellModCollectionForSpell(RuntimeSpell spell)
     {
         return _frameModifications.ResolveFor(spell.spellId);
     }
@@ -109,10 +109,10 @@ public sealed class CombatSimulationController : ISpellModificationService
     /// </summary>
     public void Tick(float deltaTime, bool castRequested, int spellLoopsPerRound)
     {
-        SpellModificationCollection mods = _frameModifications;
+        ModificationCatalog mods = _frameModifications;
         mods.ResetForFrame();
         if (_config.RuntimeGameConfig.castModifications != null)
-            mods.global.MergeFrom(_config.RuntimeGameConfig.castModifications.GetModifications());
+            mods.Global.MergeFrom(_config.RuntimeGameConfig.castModifications.GetModifications());
 
         EvaluateItems(mods, spellLoopsPerRound);
         mods.FinalizeResolution(_loopedSpellCaster.Spells);
@@ -186,7 +186,7 @@ public sealed class CombatSimulationController : ISpellModificationService
             debugCtrl.NotifyFrameComplete();
     }
 
-    void EvaluateItems(SpellModificationCollection collection, int spellLoopsPerRound)
+    void EvaluateItems(ModificationCatalog collection, int spellLoopsPerRound)
     {
         _effectContext.telemetry = _telemetryAggregator;
         _effectContext.spellModificationCollection = collection;
@@ -210,7 +210,7 @@ public sealed class CombatSimulationController : ISpellModificationService
         for (int slot = 0; slot < spells.Count; slot++)
         {
             RuntimeSpell spell = spells[slot];
-            SpellModifications writeTarget = collection.ForSpell(spell.spellId);
+            ModificationSet writeTarget = collection.ForSpell(spell.spellId);
             writeTarget.Clear();
 
             invocation.spellSlotNumber = slot + 1;

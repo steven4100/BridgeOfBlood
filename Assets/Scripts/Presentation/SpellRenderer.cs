@@ -23,7 +23,7 @@ public abstract class SpellRenderer : MonoBehaviour
 	bool _previewDirty = true;
 
 	/// <summary>Resolved modifications for the current simulation frame.</summary>
-	protected SpellModifications FrameMods { get; private set; }
+	protected ModificationSet FrameMods { get; private set; }
 
 	protected SpellKeyFrame PrimaryKeyFrame => Spell.Definition.SpellAnimation.keyFrames[0];
 
@@ -50,7 +50,7 @@ public abstract class SpellRenderer : MonoBehaviour
 	/// Pushes frame modifications and refreshes the preview when resolved values change.
 	/// Called each simulation frame by <see cref="SpellRenderManager"/> for bound renderers only.
 	/// </summary>
-	public void SyncFrame(SpellModifications mods)
+	public void SyncFrame(ModificationSet mods)
 	{
 		FrameMods = mods;
 		ApplyOrigin();

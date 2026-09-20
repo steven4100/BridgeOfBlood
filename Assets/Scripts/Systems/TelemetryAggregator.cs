@@ -6,8 +6,10 @@ using BridgeOfBlood.Telemetry;
 using Unity.Collections;
 
 /// <summary>
-/// Aggregates subscribed telemetry stats at nested time scales: Frame, Spell Loop, Round, Game.
+/// Aggregates subscribed telemetry stats at nested time scales: Frame, Spell Cast, Spell Loop, Round, Game.
 /// Only authored (plus always-on core) queries are materialized.
+/// Spell-cast windows open on a paid slot press and keep accumulating through that slot's recasts
+/// (recasts do not open a new window).
 /// </summary>
 public class TelemetryAggregator : ITelemetryStatLookup
 {
@@ -76,6 +78,7 @@ public class TelemetryAggregator : ITelemetryStatLookup
     readonly HashSet<int> _frameSpellIds;
 
     readonly SparseStore _frame;
+    readonly SparseStore _spellCast;
     readonly SparseStore _loop;
     readonly SparseStore _round;
     readonly SparseStore _game;
@@ -87,6 +90,7 @@ public class TelemetryAggregator : ITelemetryStatLookup
     int _currentRoundNumber;
     int _roundLoopsCompleted;
     int _gameRoundsCompleted;
+    bool _spellCastActive;
 
     readonly Dictionary<int, int> _spellLoopInvocations;
     readonly Dictionary<int, int> _roundInvocations;
@@ -130,6 +134,7 @@ public class TelemetryAggregator : ITelemetryStatLookup
         _frameSpellIds = new HashSet<int>();
 
         _frame = new SparseStore(cap);
+        _spellCast = new SparseStore(cap);
         _loop = new SparseStore(cap);
         _round = new SparseStore(cap);
         _game = new SparseStore(cap);
@@ -281,6 +286,8 @@ public class TelemetryAggregator : ITelemetryStatLookup
 
     void AccumulateFrameIntoHigherLevels()
     {
+        if (_spellCastActive)
+            MergeStore(_spellCast, _frame);
         MergeStore(_loop, _frame);
         MergeStore(_round, _frame);
         MergeStore(_game, _frame);
@@ -309,13 +316,16 @@ public class TelemetryAggregator : ITelemetryStatLookup
             _spellLoopInvocations.Clear();
         }
 
-        if (!castResult.didCast)
+        // Recasts stay in the open paid-slot window; only a new paid press resets it.
+        if (!castResult.didCast || castResult.isRecast)
             return;
 
         TrackInvocation(_spellLoopInvocations, castResult.spellId);
         TrackInvocation(_roundInvocations, castResult.spellId);
         TrackInvocation(_gameInvocations, castResult.spellId);
 
+        _spellCast.Reset();
+        _spellCastActive = true;
         _currentSpellCastId = castResult.spellId;
         _currentSpellCastInvocation = castResult.invocationCount;
     }
@@ -327,6 +337,10 @@ public class TelemetryAggregator : ITelemetryStatLookup
         _round.Reset();
         _roundInvocations.Clear();
         _roundLoopsCompleted = 0;
+        _spellCast.Reset();
+        _spellCastActive = false;
+        _currentSpellCastId = 0;
+        _currentSpellCastInvocation = 0;
     }
 
     public float GetTelemetry(MetricsScope scope, string key)
@@ -379,7 +393,7 @@ public class TelemetryAggregator : ITelemetryStatLookup
     SparseStore Store(MetricsScope scope) => scope switch
     {
         MetricsScope.Frame => _frame,
-        MetricsScope.SpellCast => _loop,
+        MetricsScope.SpellCast => _spellCast,
         MetricsScope.SpellLoop => _loop,
         MetricsScope.Round => _round,
         MetricsScope.Game => _game,

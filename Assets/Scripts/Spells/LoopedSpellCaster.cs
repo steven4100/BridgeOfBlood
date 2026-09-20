@@ -15,13 +15,16 @@ public struct SpellCastResult
     public int invocationCount;
     public bool loopCompleted;
     public int loopCount;
+    /// <summary>True when this invocation is an automatic multicast recast of the current paid slot.</summary>
+    public bool isRecast;
 
     public static readonly SpellCastResult None = default;
 }
 
 /// <summary>
-/// Drives a fixed loop of N spells. Enforces cast-completion timing: the next spell in the loop
-/// may only be cast after the current spell's castCompletionDuration has elapsed.
+/// Drives a fixed loop of N spells. A slot may automatically invoke multiple times, spaced by its
+/// recastCooldown, at most once per frame. The next slot may only be cast after the final invocation's
+/// castCompletionDuration.
 /// When it's time to cast, uses its SpellInvoker to run the spell animation.
 /// Plain class — call AttemptToCastNextSpell each frame; call Update each frame to advance invoked casts.
 ///
@@ -30,6 +33,14 @@ public struct SpellCastResult
 /// </summary>
 public class LoopedSpellCaster
 {
+    private struct PendingMulticast
+    {
+        public RuntimeSpell spell;
+        public int remainingInvocations;
+        public double nextFireTime;
+        public double cooldown;
+    }
+
     private readonly SpellCollection _spellCollection;
     private readonly SpellInvoker _spellInvoker;
     private readonly ISpellEmissionHandler _emissionHandler;
@@ -37,6 +48,7 @@ public class LoopedSpellCaster
     private double _timeOfLastCast;
     private int _loopCount;
     private readonly List<float> _loopManaCosts = new List<float>();
+    private PendingMulticast _pendingMulticast;
 
     public IReadOnlyList<RuntimeSpell> Spells => _spellCollection.RuntimeSpells;
 
@@ -54,7 +66,7 @@ public class LoopedSpellCaster
     /// Mana left in the current loop: <paramref name="totalMana"/> minus prefix cost through the last cast slot.
     /// After the last slot is cast, the next loop has not spent yet, so this returns <paramref name="totalMana"/>.
     /// </summary>
-    public float GetRemainingMana(float totalMana, SpellModificationCollection modifications)
+    public float GetRemainingMana(float totalMana, ModificationCatalog modifications)
     {
         IReadOnlyList<RuntimeSpell> spells = _spellCollection.RuntimeSpells;
         if (spells.Count == 0 || _indexOfLastCast < 0)
@@ -79,7 +91,9 @@ public class LoopedSpellCaster
         }
     }
 
-    public bool HasActiveCasts => _spellInvoker != null && _spellInvoker.HasActiveCasts;
+    public bool HasActiveCasts =>
+        _pendingMulticast.remainingInvocations > 0
+        || (_spellInvoker != null && _spellInvoker.HasActiveCasts);
 
     public bool HasPendingSpawns => _emissionHandler != null && _emissionHandler.HasPendingSpawns;
 
@@ -112,11 +126,16 @@ public class LoopedSpellCaster
         double roundTime,
         float2 origin,
         bool castRequestedThisFrame,
-        SpellModificationCollection modifications,
+        ModificationCatalog modifications,
         float totalMana)
     {
+        SpellCastResult recastResult = TryFlushDueMulticast(roundTime, origin);
+        if (recastResult.didCast)
+            return recastResult;
+
         if (!castRequestedThisFrame)
             return SpellCastResult.None;
+
         IReadOnlyList<RuntimeSpell> spells = _spellCollection.RuntimeSpells;
         if (spells.Count == 0)
             return SpellCastResult.None;
@@ -131,8 +150,18 @@ public class LoopedSpellCaster
         else
         {
             RuntimeSpell last = spells[_indexOfLastCast];
-            double requiredElapsed = last.Definition != null ? last.Definition.castCompletionDuration : 0;
-            canCastNext = (roundTime - _timeOfLastCast) >= requiredElapsed;
+            SpellAuthoringData definition = last.Definition;
+            float baseDuration = definition != null ? definition.castCompletionDuration : 0f;
+            SpellAttributeMask mask = definition != null
+                ? definition.attributeMask
+                : SpellAttributeMask.None;
+            ModificationSet lastModifications = modifications != null
+                ? modifications.ResolveFor(last.spellId)
+                : null;
+            double requiredElapsed = SpellModificationsApplicator.ResolveCastCompletionDuration(
+                lastModifications, baseDuration, mask);
+            canCastNext = _pendingMulticast.remainingInvocations == 0
+                && (roundTime - _timeOfLastCast) >= requiredElapsed;
         }
 
         if (!canCastNext)
@@ -167,23 +196,77 @@ public class LoopedSpellCaster
         if (next.Definition == null)
             return SpellCastResult.None;
 
-        next.RecordCast(roundTime);
-
         _indexOfLastCast = nextIndex;
-        _timeOfLastCast = roundTime;
-
         UpdateOnDeckFlags(spells);
 
-        _spellInvoker.StartCast(next, origin, (float)roundTime, next.spellId, next.InvocationCount);
+        SpellCastResult pressResult = StartInvocation(next, origin, roundTime, loopCompleted, isRecast: false);
+
+        SpellAuthoringData nextDefinition = next.Definition;
+        ModificationSet nextModifications = modifications != null
+            ? modifications.ResolveFor(next.spellId)
+            : null;
+        int multicastCount = SpellModificationsApplicator.ResolveMulticastCount(
+            nextModifications,
+            nextDefinition.attributeMask);
+        if (multicastCount > 1)
+        {
+            double cooldown = System.Math.Max(0.0, nextDefinition.recastCooldown);
+            _pendingMulticast = new PendingMulticast
+            {
+                spell = next,
+                remainingInvocations = multicastCount - 1,
+                nextFireTime = roundTime + cooldown,
+                cooldown = cooldown
+            };
+        }
+
+        return pressResult;
+    }
+
+    SpellCastResult StartInvocation(
+        RuntimeSpell spell,
+        float2 origin,
+        double fireTime,
+        bool loopCompleted,
+        bool isRecast)
+    {
+        spell.RecordCast(fireTime);
+        _timeOfLastCast = fireTime;
+        _spellInvoker.StartCast(
+            spell,
+            origin,
+            (float)fireTime,
+            spell.spellId,
+            spell.InvocationCount);
 
         return new SpellCastResult
         {
             didCast = true,
-            spellId = next.spellId,
-            invocationCount = next.InvocationCount,
+            spellId = spell.spellId,
+            invocationCount = spell.InvocationCount,
             loopCompleted = loopCompleted,
-            loopCount = _loopCount
+            loopCount = _loopCount,
+            isRecast = isRecast
         };
+    }
+
+    SpellCastResult TryFlushDueMulticast(double roundTime, float2 origin)
+    {
+        if (_pendingMulticast.remainingInvocations <= 0
+            || roundTime < _pendingMulticast.nextFireTime)
+            return SpellCastResult.None;
+
+        SpellCastResult result = StartInvocation(
+            _pendingMulticast.spell,
+            origin,
+            roundTime,
+            loopCompleted: false,
+            isRecast: true);
+        _pendingMulticast.remainingInvocations--;
+        _pendingMulticast.nextFireTime = roundTime + _pendingMulticast.cooldown;
+        if (_pendingMulticast.remainingInvocations == 0)
+            _pendingMulticast = default;
+        return result;
     }
 
     void UpdateOnDeckFlags(IReadOnlyList<RuntimeSpell> spells)
@@ -204,11 +287,13 @@ public class LoopedSpellCaster
         _indexOfLastCast = -1;
         _timeOfLastCast = -1000.0;
         _loopCount = 0;
+        _pendingMulticast = default;
         UpdateOnDeckFlags(_spellCollection.RuntimeSpells);
     }
 
     public void ClearCastState()
     {
+        _pendingMulticast = default;
         _spellInvoker?.ClearActiveCasts();
         _emissionHandler?.ClearPendingSpawns();
     }

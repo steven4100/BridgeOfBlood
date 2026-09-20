@@ -30,9 +30,9 @@ public class SubEmitterBehavior : FixedAttackEntityBehavior, IPresentableSpellAt
     [Min(0f)]
     public float startDelay = 0f;
 
-    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng) { }
+    public override void ApplyTo(AttackEntityManager manager, int index, ModificationSet mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng) { }
 
-    public string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
+    public string GetDisplayDescription(ModificationSet mods, SpellAttributeMask mask)
     {
         return $"Sub-emits every {emitInterval:0.##}s";
     }

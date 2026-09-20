@@ -12,7 +12,7 @@ namespace BridgeOfBlood.Effects
 	{
 		public static void Build(
 			PlayerInventory inventory,
-			SpellModificationCollection modifications,
+			ModificationCatalog modifications,
 			IReadOnlyList<RuntimeSpell> spells,
 			out List<CombatSpawnContract> contracts)
 		{

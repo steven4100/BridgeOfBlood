@@ -68,27 +68,27 @@ MonoBehaviour:
         modifier:
           rid: 4884261816470863935
     - rid: 4884261816470863934
-      type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
+      type: {class: ChainModificationData, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
       data:
-        property: 2
         filter: 0
-        flatAdditive:
-          rid: 9019951980704956477
-        percentIncreased:
-          rid: -2
-        moreMultiplier:
-          rid: -2
+        parameters:
+          flatAdditive:
+            rid: 9019951980704956477
+          percentIncreased:
+            rid: -2
+          moreMultiplier:
+            rid: -2
     - rid: 4884261816470863935
-      type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
+      type: {class: ProjectileModificationData, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
       data:
-        property: 7
         filter: 0
-        flatAdditive:
-          rid: 9019951980704956476
-        percentIncreased:
-          rid: -2
-        moreMultiplier:
-          rid: -2
+        parameters:
+          flatAdditive:
+            rid: 9019951980704956476
+          percentIncreased:
+            rid: -2
+          moreMultiplier:
+            rid: -2
     - rid: 9019951980704956476
       type: {class: TelemetryStatValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:

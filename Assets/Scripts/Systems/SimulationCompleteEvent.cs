@@ -12,9 +12,10 @@ public struct SimulationCompleteEvent : IEvent
     public float deltaTime;
     public float simulationTime;
     public bool simulationAdvanced;
+    /// <summary>The paid slot press, an automatic multicast recast, or a loop-boundary with no invocation.</summary>
     public SpellCastResult spellCastResult;
     /// <summary>Player position in simulation-local space for presentation sync.</summary>
     public float2 playerPosition;
     /// <summary>Resolved spell modifications for this frame. Valid only during the event callback.</summary>
-    public SpellModificationCollection frameModifications;
+    public ModificationCatalog frameModifications;
 }

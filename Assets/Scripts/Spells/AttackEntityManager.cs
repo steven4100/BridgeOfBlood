@@ -64,7 +64,7 @@ public class AttackEntityManager
     private int _aliveCount;
 
     /// <summary>
-    /// Hit-conditional modifier sets, keyed by entity id. Snapshotted from <see cref="SpellModifications.attackEntityModifiers"/>
+    /// Hit-conditional modifier sets, keyed by entity id. Snapshotted from <see cref="ModificationSet.attackEntityModifiers"/>
     /// at spawn so live entities carry the conditionals that were active when they were created. Read by
     /// <see cref="DamageSystem"/> via <see cref="HitModifierSets"/> at hit time.
     /// </summary>
@@ -146,7 +146,7 @@ public class AttackEntityManager
 
         var hitModifiers = ctx.modifications?.attackEntityModifiers;
         if (hitModifiers != null && hitModifiers.Count > 0)
-            _hitModifierSets[id] = hitModifiers;
+            _hitModifierSets[id] = new List<AttackEntityModifier>(hitModifiers);
 
         return id;
     }

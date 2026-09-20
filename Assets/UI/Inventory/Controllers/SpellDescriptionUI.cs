@@ -10,7 +10,7 @@ public class SpellDescriptionUI : MonoBehaviour
 
     List<SpellDescriptionElementUI> elements = new List<SpellDescriptionElementUI>();
     
-    public void RenderSpell(SpellAuthoringData spell, SpellModifications spellModifications)
+    public void RenderSpell(SpellAuthoringData spell, ModificationSet spellModifications)
     {
         Clear();
         AttackEntityData attackEntityData = spell.AttackEntityData;

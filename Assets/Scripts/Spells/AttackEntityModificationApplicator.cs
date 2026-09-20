@@ -1,3 +1,4 @@
+using System;
 using BridgeOfBlood.Data.Shared;
 using Unity.Mathematics;
 using UnityEngine;
@@ -111,17 +112,24 @@ namespace BridgeOfBlood.Data.Spells
 			}
 		}
 
-		public static FloatRange ResolveDamageRange(
+		public static FloatRange ResolveDamageRange<TModification>(
 			FloatRange source,
-			SpellModificationProperty typeProperty,
-			SpellModifications mods,
-			SpellAttributeMask mask)
+			ModificationSet mods,
+			SpellAttributeMask mask,
+			Func<TModification, ParameterModification> getParameters,
+			Func<TModification, SpellAttributeMask> getFilter)
+			where TModification : IModificationData
 		{
 			if (mods == null)
 				return source;
 
-			var dmgScaling = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.DamageScaling, mask);
-			var typeMod = SpellModificationsApplicator.Resolve(mods, typeProperty, mask);
+			var dmgScaling = ParameterModificationMerger.Merge(
+				mods.Get<DamageScalingModificationData>(),
+				modification => modification.parameters,
+				modification => modification.filter,
+				mask);
+			var typeMod = ParameterModificationMerger.Merge(
+				mods.Get<TModification>(), getParameters, getFilter, mask);
 			return ApplyDamageRange(source, typeMod, dmgScaling);
 		}
 
@@ -131,47 +139,59 @@ namespace BridgeOfBlood.Data.Spells
 		/// </summary>
 		public static void ResolveDamageRanges(
 			AttackEntityData data,
-			SpellModifications mods,
+			ModificationSet mods,
 			SpellAttributeMask mask,
 			out FloatRange physical,
 			out FloatRange cold,
 			out FloatRange fire,
 			out FloatRange lightning)
 		{
-			physical = ResolveBehaviorDamage<PhysicalDamageBehavior>(data, SpellModificationProperty.PhysicalDamageScaling, mods, mask);
-			cold = ResolveBehaviorDamage<ColdDamageBehavior>(data, SpellModificationProperty.ColdDamageScaling, mods, mask);
-			fire = ResolveBehaviorDamage<FireDamageBehavior>(data, SpellModificationProperty.FireDamageScaling, mods, mask);
-			lightning = ResolveBehaviorDamage<LightningDamageBehavior>(data, SpellModificationProperty.LightningDamageScaling, mods, mask);
+			physical = ResolveBehaviorDamage<PhysicalDamageBehavior, PhysicalDamageScalingModificationData>(
+				data, mods, mask, modification => modification.parameters, modification => modification.filter);
+			cold = ResolveBehaviorDamage<ColdDamageBehavior, ColdDamageScalingModificationData>(
+				data, mods, mask, modification => modification.parameters, modification => modification.filter);
+			fire = ResolveBehaviorDamage<FireDamageBehavior, FireDamageScalingModificationData>(
+				data, mods, mask, modification => modification.parameters, modification => modification.filter);
+			lightning = ResolveBehaviorDamage<LightningDamageBehavior, LightningDamageScalingModificationData>(
+				data, mods, mask, modification => modification.parameters, modification => modification.filter);
 		}
 
-		static FloatRange ResolveBehaviorDamage<T>(
+		static FloatRange ResolveBehaviorDamage<TBehavior, TModification>(
 			AttackEntityData data,
-			SpellModificationProperty typeProperty,
-			SpellModifications mods,
-			SpellAttributeMask mask) where T : DamageBehavior
+			ModificationSet mods,
+			SpellAttributeMask mask,
+			Func<TModification, ParameterModification> getParameters,
+			Func<TModification, SpellAttributeMask> getFilter)
+			where TBehavior : DamageBehavior
+			where TModification : IModificationData
 		{
-			T behavior = data.GetBehavior<T>();
+			TBehavior behavior = data.GetBehavior<TBehavior>();
 			if (behavior == null)
 				return default;
-			return ResolveDamageRange(behavior.damageRange, typeProperty, mods, mask);
+			return ResolveDamageRange(
+				behavior.damageRange, mods, mask, getParameters, getFilter);
 		}
 
 		/// <summary>
 		/// Applies AreaOfEffect modifications to an authoring hitbox. Shared by spawn-time entity building and
 		/// by spell preview renderers so AoE previews match the hitbox the simulation will use.
 		/// </summary>
-		public static HitBoxData ResolveHitBox(HitBoxData hitBox, SpellModifications mods, SpellAttributeMask mask)
+		public static HitBoxData ResolveHitBox(HitBoxData hitBox, ModificationSet mods, SpellAttributeMask mask)
 		{
 			if (mods == null)
 				return hitBox;
 
-			var aoe = SpellModificationsApplicator.Resolve(mods, SpellModificationProperty.AreaOfEffect, mask);
+			var aoe = ParameterModificationMerger.Merge(
+				mods.Get<AreaOfEffectModificationData>(),
+				modification => modification.parameters,
+				modification => modification.filter,
+				mask);
 			if (hitBox.isSphere) hitBox.sphereRadius = hitBox.sphereRadius * aoe.Multiplier + aoe.flat;
 			if (hitBox.isRect) hitBox.rectDimension = hitBox.rectDimension * aoe.Multiplier + new Vector2(aoe.flat, aoe.flat);
 			return hitBox;
 		}
 
-		public static HitBoxData ResolveHitBox(AttackEntityData data, SpellModifications mods, SpellAttributeMask mask)
+		public static HitBoxData ResolveHitBox(AttackEntityData data, ModificationSet mods, SpellAttributeMask mask)
 		{
 			if (data == null)
 				return default;

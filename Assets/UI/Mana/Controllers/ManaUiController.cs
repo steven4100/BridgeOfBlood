@@ -40,7 +40,7 @@ public class ManaUiController : MonoBehaviour
 		Refresh(@event.frameModifications);
 	}
 
-	void Refresh(SpellModificationCollection modifications)
+	void Refresh(ModificationCatalog modifications)
 	{
 		if (_combat == null)
 			return;

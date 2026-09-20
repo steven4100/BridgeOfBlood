@@ -32,16 +32,16 @@ MonoBehaviour:
         modifier:
           rid: 2000000000000000012
     - rid: 2000000000000000012
-      type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
+      type: {class: FireDamageScalingModificationData, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
       data:
-        property: 12
         filter: 0
-        flatAdditive:
-          rid: 0
-        percentIncreased:
-          rid: 2000000000000000013
-        moreMultiplier:
-          rid: 0
+        parameters:
+          flatAdditive:
+            rid: 0
+          percentIncreased:
+            rid: 2000000000000000013
+          moreMultiplier:
+            rid: 0
     - rid: 2000000000000000013
       type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:

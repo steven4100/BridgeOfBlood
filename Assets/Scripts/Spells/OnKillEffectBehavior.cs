@@ -11,7 +11,7 @@ public class OnKillEffectBehavior : FixedAttackEntityBehavior
 
     public override AttackEntityBehavior Clone() => new OnKillEffectBehavior { config = config };
 
-    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
+    public override void ApplyTo(AttackEntityManager manager, int index, ModificationSet mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
     {
         if (config == null) return;
         var entities = manager.GetEntities();

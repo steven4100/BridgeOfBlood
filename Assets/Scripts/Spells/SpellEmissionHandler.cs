@@ -20,9 +20,9 @@ public class SpellEmissionHandler : ISpellEmissionHandler
     private readonly IEmissionTargetProvider _targetProvider;
 
     /// <summary>Spell modifications for the current frame; injected via <see cref="SetFrameModifications"/>. Immutable after item eval.</summary>
-    private SpellModificationCollection _frameModifications;
+    private ModificationCatalog _frameModifications;
 
-    SpellModifications ResolveModifications(int spellId) =>
+    ModificationSet ResolveModifications(int spellId) =>
         _frameModifications != null ? _frameModifications.ResolveFor(spellId) : null;
 
     private struct PendingSpawn
@@ -85,7 +85,7 @@ public class SpellEmissionHandler : ISpellEmissionHandler
         _targetProvider = targetProvider;
     }
 
-    public void SetFrameModifications(SpellModificationCollection modifications)
+    public void SetFrameModifications(ModificationCatalog modifications)
     {
         _frameModifications = modifications;
     }
@@ -109,7 +109,7 @@ public class SpellEmissionHandler : ISpellEmissionHandler
         if (emitPoints.Count == 0)
             return;
 
-        SpellModifications mods = ResolveModifications(spellId)?.Clone();
+        ModificationSet mods = ResolveModifications(spellId)?.Clone();
 
         var baseContext = new AttackEntityBuildContext(
             keyFrame.attackEntityData, spellId, spellInvocationId, keyframeIndex,

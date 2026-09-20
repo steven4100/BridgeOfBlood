@@ -12,16 +12,26 @@ namespace BridgeOfBlood.Effects
 	public class EffectContext
 	{
 		public ITelemetryStatLookup telemetry;
-		public SpellModificationCollection spellModificationCollection;
-		/// <summary>Per-evaluation write sink; set to <see cref="SpellModificationCollection.ForSpell"/> for the target slot.</summary>
-		public SpellModifications spellModifications;
+		public ModificationCatalog spellModificationCollection;
+		/// <summary>Per-evaluation write sink; set to <see cref="ModificationCatalog.ForSpell"/> for the target slot.</summary>
+		public ModificationSet spellModifications;
 		public SpellInvocationContext spellInvocation;
 
+		/// <summary>
+		/// Combat telemetry for <paramref name="scope"/>. <see cref="MetricsScope.SpellCast"/> is the previous
+		/// loop slot's per-spell totals this loop (forecast-safe). Slot 1 reads 0.
+		/// The aggregator's live SpellCast store remains the current paid slot including recasts.
+		/// </summary>
 		public float GetTelemetry(MetricsScope scope, string key)
 		{
-			if (scope == MetricsScope.SpellCast)
-				return GetSpellCastTelemetry(key);
-			return telemetry.GetTelemetry(scope, key);
+			if (scope != MetricsScope.SpellCast)
+				return telemetry.GetTelemetry(scope, key);
+
+			int previousSlot = spellInvocation.spellSlotNumber - 1;
+			int spellId = SpellInvocationResolver.GetSlotSpellId(in spellInvocation, previousSlot);
+			if (spellId == 0)
+				return 0f;
+			return telemetry.GetTelemetryForSpell(MetricsScope.SpellLoop, key, spellId);
 		}
 
 		public float GetTelemetryDps(MetricsScope scope)
@@ -30,16 +40,6 @@ namespace BridgeOfBlood.Effects
 			if (duration <= 0f)
 				return 0f;
 			return GetTelemetry(scope, TelemetryCoreStats.TotalDamageKey) / duration;
-		}
-
-		float GetSpellCastTelemetry(string key)
-		{
-			int oneBasedSlot = spellInvocation.spellSlotNumber;
-			var spells = spellInvocation.spells;
-			if (spells == null || oneBasedSlot <= 1 || oneBasedSlot - 1 > spells.Count)
-				return 0f;
-			int spellId = spells[oneBasedSlot - 2].spellId;
-			return telemetry.GetTelemetryForSpell(MetricsScope.SpellLoop, key, spellId);
 		}
 	}
 }

@@ -15,7 +15,7 @@ public class PurchasableItemSpellUI : PurchasableItemUI, IPointerEnterHandler, I
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        spellDescriptionUI.RenderSpell(spellAuthoringData, new SpellModifications());
+        spellDescriptionUI.RenderSpell(spellAuthoringData, new ModificationSet());
         HoverTooltip.Current.Show(this, (RectTransform)spellDescriptionUI.transform, (RectTransform)transform);
     }
 

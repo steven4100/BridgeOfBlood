@@ -38,6 +38,7 @@ MonoBehaviour:
       attackEntityData: {fileID: 11400000, guid: ca9ea33fe69e14045a19cdd317677a05, type: 2}
   baseMultiplier: -1
   castCompletionDuration: 1
+  recastCooldown: 0.5
   castTime: 0
   manaCost: 20
   attributeMask: 8

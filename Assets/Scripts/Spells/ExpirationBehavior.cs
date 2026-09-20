@@ -4,7 +4,7 @@ using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 
 [Serializable]
-public class ExpirationBehavior : FixedAttackEntityBehavior, IPresentableSpellAttribute
+public class ExpirationBehavior : ModifiableAttackEntityBehavior
 {
     [Tooltip("When false, expiration logic is skipped (no time/distance removal).")]
     public bool isActive = true;
@@ -31,23 +31,39 @@ public class ExpirationBehavior : FixedAttackEntityBehavior, IPresentableSpellAt
 
     public override AttackEntityBehavior Clone() => new ExpirationBehavior { isActive = isActive, maxTimeAlive = maxTimeAlive, maxDistanceTravelled = maxDistanceTravelled, maxFrames = maxFrames };
 
-    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
+    public override void ApplyTo(AttackEntityManager manager, int index, ModificationSet mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
     {
         var arr = manager.GetExpirationPolicies();
-        arr[index] = ToRuntime();
+        var policy = ToRuntime();
+        policy.maxTimeAlive = ResolveMaxTimeAlive(mods, mask);
+        arr[index] = policy;
     }
 
-    public string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask)
+    public override string GetDisplayDescription(ModificationSet mods, SpellAttributeMask mask)
     {
         if (!isActive)
             return string.Empty;
+        float duration = ResolveMaxTimeAlive(mods, mask);
         if (maxTimeAlive > 0f && maxDistanceTravelled > 0f)
-            return $"Duration : {maxTimeAlive:0.##}s Range : {maxDistanceTravelled:0.##}";
+            return $"Duration : {duration:0.##}s Range : {maxDistanceTravelled:0.##}";
         if (maxTimeAlive > 0f)
-            return $"Duration : {maxTimeAlive:0.##}s";
+            return $"Duration : {duration:0.##}s";
         if (maxDistanceTravelled > 0f)
             return $"Range : {maxDistanceTravelled:0.##}";
         return string.Empty;
+    }
+
+    float ResolveMaxTimeAlive(ModificationSet mods, SpellAttributeMask mask)
+    {
+        if (maxTimeAlive <= 0f || mods == null)
+            return maxTimeAlive;
+
+        ResolvedModifier duration = ParameterModificationMerger.Merge(
+            mods.Get<DurationModificationData>(),
+            modification => modification.parameters,
+            modification => modification.filter,
+            mask);
+        return Mathf.Max(0f, (maxTimeAlive + duration.flat) * duration.Multiplier);
     }
 }
 

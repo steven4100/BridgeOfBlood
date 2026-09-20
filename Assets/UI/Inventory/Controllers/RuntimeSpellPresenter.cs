@@ -151,7 +151,7 @@ public class RuntimeSpellPresenter : MonoBehaviour, IPointerEnterHandler, IPoint
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        SpellModifications mods = _spellModificationService.GetSpellModCollectionForSpell(Spell);
+        ModificationSet mods = _spellModificationService.GetSpellModCollectionForSpell(Spell);
         spellDescriptionUI.RenderSpell(Spell.Definition, mods);
         HoverTooltip.Current.Show(this, (RectTransform)spellDescriptionUI.transform, (RectTransform)transform);
     }

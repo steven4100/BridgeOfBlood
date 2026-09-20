@@ -13,6 +13,9 @@ namespace BridgeOfBlood.Data.Spells
 		public SpellAnimation SpellAnimation;
 		public int baseMultiplier = 1;
 		public float castCompletionDuration = 1f;
+		[Min(0f)]
+		[Tooltip("Seconds between automatic multicast invocations. Cast completion begins after the final invocation.")]
+		public float recastCooldown;
 		public float castTime = 0.5f;
 		public float manaCost = 25f;
 		public SpellAttributeMask attributeMask;

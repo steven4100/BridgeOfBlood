@@ -24,23 +24,23 @@ public abstract class AttackEntityBehavior
     public abstract void ApplyTo(
         AttackEntityManager manager,
         int index,
-        SpellModifications mods,
+        ModificationSet mods,
         SpellAttributeMask mask,
         ref Random rng);
 }
 
 /// <summary>
-/// Behavior that may apply <see cref="SpellModifications"/> in <see cref="AttackEntityBehavior.ApplyTo"/>.
+/// Behavior that may apply <see cref="ModificationSet"/> data in <see cref="AttackEntityBehavior.ApplyTo"/>.
 /// Player-facing stats are described via <see cref="IPresentableSpellAttribute"/>.
 /// </summary>
 [Serializable]
 public abstract class ModifiableAttackEntityBehavior : AttackEntityBehavior, IPresentableSpellAttribute
 {
-    public abstract string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask);
+    public abstract string GetDisplayDescription(ModificationSet mods, SpellAttributeMask mask);
 }
 
 /// <summary>
-/// Behavior whose authored values are not scaled by spell modifications (e.g. expiration / time).
+/// Behavior whose authored values are not scaled by spell modifications (e.g. fixed VFX or ailment application).
 /// </summary>
 [Serializable]
 public abstract class FixedAttackEntityBehavior : AttackEntityBehavior
@@ -49,7 +49,7 @@ public abstract class FixedAttackEntityBehavior : AttackEntityBehavior
 
 public interface IPresentableSpellAttribute
 {
-    string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask);
+    string GetDisplayDescription(ModificationSet mods, SpellAttributeMask mask);
 }
 
 public static class SpellAttributeDisplay

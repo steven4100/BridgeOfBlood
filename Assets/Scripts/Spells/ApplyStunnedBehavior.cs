@@ -17,13 +17,13 @@ public class ApplyStunnedBehavior : FixedAttackEntityBehavior, IPresentableSpell
 
     public override AttackEntityBehavior Clone() => new ApplyStunnedBehavior { isActive = isActive, applyChance = applyChance };
 
-    public override void ApplyTo(AttackEntityManager manager, int index, SpellModifications mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
+    public override void ApplyTo(AttackEntityManager manager, int index, ModificationSet mods, SpellAttributeMask mask, ref Unity.Mathematics.Random rng)
     {
         var arr = manager.GetStunnedAppliers();
         arr[index] = ToRuntime();
     }
 
-    public string GetDisplayDescription(SpellModifications mods, SpellAttributeMask mask) =>
+    public string GetDisplayDescription(ModificationSet mods, SpellAttributeMask mask) =>
         SpellAttributeDisplay.ChanceToApply(isActive, applyChance, "Stunned");
 }
 

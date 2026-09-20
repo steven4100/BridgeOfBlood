@@ -33,16 +33,16 @@ MonoBehaviour:
         modifier:
           rid: 2000000000000000022
     - rid: 2000000000000000022
-      type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
+      type: {class: ColdDamageScalingModificationData, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
       data:
-        property: 11
         filter: 0
-        flatAdditive:
-          rid: 0
-        percentIncreased:
-          rid: 2000000000000000023
-        moreMultiplier:
-          rid: 0
+        parameters:
+          flatAdditive:
+            rid: 0
+          percentIncreased:
+            rid: 2000000000000000023
+          moreMultiplier:
+            rid: 0
     - rid: 2000000000000000023
       type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:
@@ -53,16 +53,16 @@ MonoBehaviour:
         modifier:
           rid: 2000000000000000025
     - rid: 2000000000000000025
-      type: {class: ParameterModifier, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
+      type: {class: CritChanceModificationData, ns: BridgeOfBlood.Data.Spells, asm: Assembly-CSharp}
       data:
-        property: 0
         filter: 0
-        flatAdditive:
-          rid: 2000000000000000026
-        percentIncreased:
-          rid: 0
-        moreMultiplier:
-          rid: 0
+        parameters:
+          flatAdditive:
+            rid: 2000000000000000026
+          percentIncreased:
+            rid: 0
+          moreMultiplier:
+            rid: 0
     - rid: 2000000000000000026
       type: {class: ConstantValue, ns: BridgeOfBlood.Effects, asm: Assembly-CSharp}
       data:

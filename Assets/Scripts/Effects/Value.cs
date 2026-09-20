@@ -86,6 +86,14 @@ namespace BridgeOfBlood.Effects
 			return def != null ? def.attributeMask : SpellAttributeMask.None;
 		}
 
+		public static int GetSlotSpellId(in SpellInvocationContext context, int oneBasedSlot)
+		{
+			var spells = context.spells;
+			if (spells == null || oneBasedSlot < 1 || oneBasedSlot > spells.Count)
+				return 0;
+			return spells[oneBasedSlot - 1].spellId;
+		}
+
 		public static int CountSlotsWithAttribute(IReadOnlyList<RuntimeSpell> spells, SpellAttributeMask mask)
 		{
 			if (spells == null) return 0;

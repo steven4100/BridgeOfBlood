@@ -9,8 +9,8 @@ namespace BridgeOfBlood.Data.Spells
 	/// <summary>
 	/// Shared stat math for attack entities. Rolls authoring ranges (with spell modifications baked into the
 	/// ranges first), and applies per-property <see cref="ResolvedModifier"/>s to live damage/crit values.
-	/// Used at spawn time (parameter modifiers) and at hit time (predicate conditionals) so the two paths
-	/// share one set of formulas. No <c>Object.Instantiate</c> of authoring data.
+		/// Used at spawn time (parameter modifiers) and at hit time (ConditionalHitModifier) so the two paths
+		/// share one set of formulas. No <c>Object.Instantiate</c> of authoring data.
 	/// </summary>
 	public static class AttackEntityModificationApplicator
 	{
@@ -31,6 +31,7 @@ namespace BridgeOfBlood.Data.Spells
 				entityId = entityId,
 				position = ctx.position,
 				velocity = ctx.velocity,
+				direction = ctx.direction,
 				timeAlive = 0f,
 				framesAlive = 0,
 				distanceTravelled = 0f,
@@ -67,7 +68,7 @@ namespace BridgeOfBlood.Data.Spells
 
 		/// <summary>
 		/// Applies a single resolved modifier (by property) to live damage/crit scalars. Shared by spawn-time
-		/// parameter modifiers and hit-time conditional modifiers. Non-damage/crit properties are no-ops here
+		/// parameter modifiers and hit-time ConditionalHitModifier. Non-damage/crit properties are no-ops here
 		/// (chains/pierce/aoe/knockback are resolved into policies at spawn, not damage at hit time).
 		/// </summary>
 		public static void Apply(

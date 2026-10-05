@@ -36,12 +36,13 @@ namespace BridgeOfBlood.Effects
 		public AttackEntityBuildContext BuildContext(int spellId, int spellInvocationId, float2 position, float eventScaledDamage)
 		{
 			float2 velocity = new float2(attackData.entityVelocity.x, attackData.entityVelocity.y);
+			float2 direction = AttackEntityBuildContext.ResolveFacing(default, velocity);
 			ModificationSet mods = modificationCollection != null
 				? modificationCollection.ResolveFor(spellId)
 				: null;
 			return new AttackEntityBuildContext(
 				attackData, spellId, spellInvocationId, 0,
-				mods, filters.modificationMask, position, velocity, eventScaledDamage);
+				mods, filters.modificationMask, position, velocity, eventScaledDamage, direction);
 		}
 	}
 }

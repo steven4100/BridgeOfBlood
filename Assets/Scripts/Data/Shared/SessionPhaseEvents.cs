@@ -61,4 +61,22 @@ namespace BridgeOfBlood.Data.Shared
 	public sealed class ShopContinueButtonPressed : SessionPhaseEvent<ShopContinueButtonPressed>
 	{
 	}
+
+	[Serializable]
+	public sealed class MapModPlacementRequested : SessionPhaseEvent<MapModPlacementRequested>
+	{
+		public int placementCount;
+	}
+
+	[Serializable]
+	public sealed class MapModEnterEvent : SessionPhaseEvent<MapModEnterEvent>
+	{
+		public int remainingPlacements;
+		public Rect playfield;
+	}
+
+	[Serializable]
+	public sealed class MapModExitEvent : SessionPhaseEvent<MapModExitEvent>
+	{
+	}
 }

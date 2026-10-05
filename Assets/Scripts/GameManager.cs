@@ -40,6 +40,9 @@ public class GameManager : MonoBehaviour
     [Header("Debug")]
     public SimulationDebugController debugController;
 
+    [Header("Map Modifiers")]
+    [SerializeField] MapModifierPlacementHost mapModifierPlacementHost;
+
     CombatSimulationController _combatSimulation;
     SessionFlowController _sessionFlow;
     RoundController _roundController;
@@ -97,6 +100,9 @@ public class GameManager : MonoBehaviour
 
         _sessionFlow.AddPhase(_roundController, SessionState.Round);
         _sessionFlow.AddPhase(new ShopSessionPhase(_sessionFlow), SessionState.Shop);
+        _sessionFlow.AddPhase(
+            new MapModSessionPhase(_sessionFlow, _combatSimulation, mapModifierPlacementHost),
+            SessionState.MapMod);
     }
 
     void Update()
@@ -122,6 +128,8 @@ public class GameManager : MonoBehaviour
                 _runtimeGameConfig.playerInventory));
         ServiceLocator.Current.RegisterInstance<ISimulationZoneService>(
             new SimulationZoneService(simulationZone, renderCamera));
+        ServiceLocator.Current.RegisterInstance<IMapModifierSessionService>(
+            new MapModifierSessionService());
         return _runtimeGameConfig;
     }
 

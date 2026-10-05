@@ -2,7 +2,8 @@ using BridgeOfBlood.Data.Shared;
 using Unity.Mathematics;
 
 /// <summary>
-/// One resolved hit: which attack hit which enemy and where. No damage values; downstream looks up the attack entity.
+/// One resolved hit: attack/enemy ids, contact position, and the attack's base damage/crit/provenance
+/// copied at resolve time. Hit modifiers edit the damage/crit fields in place; DamageSystem commits them.
 /// Blittable for NativeList.
 /// </summary>
 public struct HitEvent
@@ -10,6 +11,21 @@ public struct HitEvent
     public EntityId attackEntityId;
     public EntityId enemyEntityId;
     public float2 hitPosition;
+
+    public float physicalDamage;
+    public float coldDamage;
+    public float fireDamage;
+    public float lightningDamage;
+
+    public bool critIsActive;
+    public float critChance;
+    public float critMultiplier;
+
+    public int spellId;
+    public int spellInvocationId;
+    public AudioUnitRuntime onDamageSound;
+    public EffectSpriteConfigRuntime onHitEffect;
+    public EffectSpriteConfigRuntime onKillEffect;
 }
 
 /// <summary>

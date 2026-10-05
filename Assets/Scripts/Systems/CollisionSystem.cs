@@ -104,8 +104,17 @@ public class CollisionSystem
         if (hitBox.hitBox.isRect)
         {
             float2 halfExtents = hitBox.hitBox.rectDimension * 0.5f * scale;
-            float2 delta = math.abs(point - atk.position);
-            return delta.x <= halfExtents.x && delta.y <= halfExtents.y;
+            float2 rel = point - atk.position;
+            float2 fwd = atk.direction;
+            float lenSq = math.lengthsq(fwd);
+            if (lenSq > 1e-12f)
+                fwd *= math.rsqrt(lenSq);
+            else
+                fwd = new float2(1f, 0f);
+            float2 perp = new float2(-fwd.y, fwd.x);
+            float localX = math.dot(rel, fwd);
+            float localY = math.dot(rel, perp);
+            return math.abs(localX) <= halfExtents.x && math.abs(localY) <= halfExtents.y;
         }
 
         return false;

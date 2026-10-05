@@ -8,43 +8,13 @@ using UnityEngine;
 namespace BridgeOfBlood.Data.Shared
 {
 	/// <summary>
-	/// Per-round spawn and objective tuning. Round index is 1-based via <see cref="GameConfig.GetRoundConfig"/>.
+	/// Per-round enemy health scaling. Round index is 1-based via <see cref="GameConfig.GetRoundConfig"/>.
 	/// </summary>
 	[Serializable]
 	public class RoundConfig
 	{
-		[SerializeReference, SerializeInterface]
-		[Tooltip("Spawn timing/origins for this round. Pick Enemy Spawner from the type menu.")]
-		public IEnemySpawner spawner;
-
-		[Range(0f, 100f)]
-		[Tooltip("Percent of enemies spawned this round that must be killed to go to shop instead of lose.")]
-		public float killQuotaPercent;
-
-		[Tooltip("Multiplier on authored enemy min/max move speed.")]
-		public float enemyMoveSpeedMultiplier;
-
 		[Tooltip("Multiplier on authored enemy health.")]
 		public float enemyHealthMultiplier;
-
-		[Tooltip("Playfield width and height in simulation space. Origin is x = 0 (left) .. width (right); y = ±height/2.")]
-		public Vector2 simulationSize = new Vector2(1600f, 800f);
-
-		public int ResolveMinEnemiesKilled(int enemiesSpawnedThisRound)
-		{
-			float t = Mathf.Clamp(killQuotaPercent, 0f, 100f) * 0.01f;
-			return Mathf.CeilToInt(enemiesSpawnedThisRound * t);
-		}
-
-		/// <summary>
-		/// Playfield in simulation space: x = 0 (left) .. width (right); y = 0 at vertical center (±height/2).
-		/// </summary>
-		public Rect ResolvePlayfield()
-		{
-			float w = simulationSize.x;
-			float h = simulationSize.y;
-			return new Rect(0f, -h * 0.5f, w, h);
-		}
 	}
 
 	[CreateAssetMenu(fileName = "GameConfig", menuName = "Bridge of Blood/Game Config")]
@@ -52,17 +22,26 @@ namespace BridgeOfBlood.Data.Shared
 	{
 		public SimulationConfig simulationConfig = new SimulationConfig();
 
+		[Header("Map")]
+		[SerializeReference, SerializeInterface]
+		[Tooltip("Spawn timing/origins for every round. Pick Enemy Spawner from the type menu.")]
+		public IEnemySpawner spawner;
+
+		[Tooltip("Playfield width and height in simulation space. Origin is x = 0 (left) .. width (right); y = ±height/2.")]
+		public Vector2 simulationSize = new Vector2(1600f, 800f);
+
+		[Range(0f, 100f)]
+		[Tooltip("Percent of enemies spawned this round that must be killed to go to shop instead of lose.")]
+		public float killQuotaPercent = 100f;
+
+		[Tooltip("Multiplier on authored enemy min/max move speed.")]
+		public float enemyMoveSpeedMultiplier = 1f;
+
 		[Header("Round")]
-		[Tooltip("Per-round spawners, kill quota, simulation size, and enemy scaling. Round n uses index n-1; later rounds reuse the last entry.")]
+		[Tooltip("Per-round enemy health scaling. Round n uses index n-1; later rounds reuse the last entry.")]
 		public List<RoundConfig> roundConfigs = new List<RoundConfig>
 		{
-			new RoundConfig
-			{
-				killQuotaPercent = 100f,
-				enemyMoveSpeedMultiplier = 1f,
-				enemyHealthMultiplier = 1f,
-				simulationSize = new Vector2(1600f, 800f)
-			}
+			new RoundConfig { enemyHealthMultiplier = 1f }
 		};
 
 		[Tooltip("Complete spell loops allowed per round.")]
@@ -87,6 +66,22 @@ namespace BridgeOfBlood.Data.Shared
 		[Header("Shop")]
 		[Tooltip("Weighted shop type/item rules. Shared authoring asset — not cloned with the runtime GameConfig.")]
 		public ShopConfig shopConfig;
+
+		public int ResolveMinEnemiesKilled(int enemiesSpawnedThisRound)
+		{
+			float t = Mathf.Clamp(killQuotaPercent, 0f, 100f) * 0.01f;
+			return Mathf.CeilToInt(enemiesSpawnedThisRound * t);
+		}
+
+		/// <summary>
+		/// Playfield in simulation space: x = 0 (left) .. width (right); y = 0 at vertical center (±height/2).
+		/// </summary>
+		public Rect ResolvePlayfield()
+		{
+			float w = simulationSize.x;
+			float h = simulationSize.y;
+			return new Rect(0f, -h * 0.5f, w, h);
+		}
 
 		/// <summary>
 		/// 1-based round lookup. Rounds past the list reuse the last authored config.

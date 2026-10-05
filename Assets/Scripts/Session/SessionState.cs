@@ -6,5 +6,6 @@ public enum SessionState
 	Pregame,
 	Round,
 	Shop,
+	MapMod,
 	Lose
 }

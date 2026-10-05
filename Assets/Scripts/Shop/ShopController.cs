@@ -16,6 +16,7 @@ public class ShopController : MonoBehaviour
     public PurchasableItemSpellUI SpellUI;
     public PurchasableItemJokerUI JokerUI;
     public PurchasableItemGemUI GemUI;
+    public PurchasableItemMapModTicketUI MapModTicketUI;
 
     private readonly List<PurchasableItemUI> _listingInstances = new List<PurchasableItemUI>();
 
@@ -91,6 +92,11 @@ public class ShopController : MonoBehaviour
                     gemUI.InitializeShopItem(purchasable, purchaseContext, this);
                     gemUI.SetGem(purchasable as Gem);
                     item = gemUI;
+                    break;
+                case MapModifierPlacementTicket:
+                    PurchasableItemMapModTicketUI ticketUI = Instantiate(MapModTicketUI, ItemsPurchasableRoot);
+                    ticketUI.InitializeShopItem(purchasable, purchaseContext, this);
+                    item = ticketUI;
                     break;
                 case Item:
                     PurchasableItemJokerUI itemUI = Instantiate(JokerUI, ItemsPurchasableRoot);

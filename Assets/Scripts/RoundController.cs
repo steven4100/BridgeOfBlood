@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Effects;
 using BridgeOfBlood.Telemetry;
+using EZServiceLocation;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
@@ -78,7 +79,7 @@ public sealed class RoundController : SessionPhaseBase
 		PrepareForRoundAfterShop();
 		ApplyRoundRuntimeFromConfig();
 		context.RuntimeGameConfig.playerInventory.SpellCollection.ClearRuntimeSpellTracking();
-		ResetForNewRound();
+		ResetForNewRoundWithMapModifiers();
 		SharedGameEventBus.Bus.Raise(new RoundEnterEvent
 		{
 			state = SessionState.Round,
@@ -114,8 +115,7 @@ public sealed class RoundController : SessionPhaseBase
 		KillsThisRound = (int)telemetry.GetTelemetry(MetricsScope.Round, TelemetryCoreStats.KillsKey);
 		var sim = _combatSimulation.Simulation.State;
 		int spawned = sim.EnemiesSpawnedThisRound;
-		MinEnemiesKilled = _combatSimulation.RuntimeGameConfig.GetRoundConfig(RoundNumber)
-			.ResolveMinEnemiesKilled(spawned);
+		MinEnemiesKilled = _combatSimulation.RuntimeGameConfig.ResolveMinEnemiesKilled(spawned);
 
 		UpdatePhase(
 			loopsExhausted,
@@ -147,6 +147,13 @@ public sealed class RoundController : SessionPhaseBase
 	public void ResetForNewRound()
 	{
 		_combatSimulation.ResetForNewRound();
+	}
+
+	public void ResetForNewRoundWithMapModifiers()
+	{
+		IMapModifierSessionService mapModifiers =
+			ServiceLocator.Current.GetService<IMapModifierSessionService>();
+		_combatSimulation.ResetForNewRoundWithMapModifiers(mapModifiers.PlacedModifiers);
 	}
 
 	/// <summary>
@@ -187,11 +194,10 @@ public sealed class RoundController : SessionPhaseBase
 	void ApplyRoundRuntimeFromConfig()
 	{
 		GameConfig gc = _combatSimulation.RuntimeGameConfig;
-		RoundConfig round = gc.GetRoundConfig(RoundNumber);
-		KillQuotaPercent = round.killQuotaPercent;
-		MinEnemiesKilled = round.ResolveMinEnemiesKilled(0);
+		KillQuotaPercent = gc.killQuotaPercent;
+		MinEnemiesKilled = gc.ResolveMinEnemiesKilled(0);
 		SpellLoopsPerRound = Mathf.Max(0, gc.maxSpellLoopsPerRound);
-		_combatSimulation.ApplyRoundConfig(in round);
+		_combatSimulation.ApplyRoundConfig(gc, RoundNumber);
 	}
 
 	bool UpdatePhase(bool loopsExhausted, bool hasActiveCasts, bool hasPendingSpawns, int attackEntityCount)

@@ -12,6 +12,7 @@ public sealed class SessionFlowContext
 	public GameConfig RuntimeGameConfig { get; set; }
 	public SpellCollection SpellCollection { get; }
 	public RectTransform SimulationZone { get; }
+	public int AllowedMapPlacements { get; set; }
 
 	public SessionFlowContext(
 		GameConfig runtimeGameConfig,

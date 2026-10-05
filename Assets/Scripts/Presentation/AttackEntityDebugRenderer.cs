@@ -70,10 +70,17 @@ public class AttackEntityDebugRenderer : IDebugDrawable
 					sizeY = 4f;
 				}
 
+				Quaternion rotation = Quaternion.identity;
+				if (hitBox.isActive && hitBox.hitBox.isRect && math.lengthsq(e.direction) > 1e-12f)
+				{
+					float angleDeg = math.atan2(e.direction.y, e.direction.x) * Mathf.Rad2Deg;
+					rotation = Quaternion.Euler(0f, 0f, angleDeg);
+				}
+
 				Matrix4x4 entityMatrix = localToWorld
 					* Matrix4x4.TRS(
 						new Vector3(e.position.x, e.position.y, 0f),
-						Quaternion.identity,
+						rotation,
 						new Vector3(sizeX, sizeY, 1f));
 
 				Graphics.DrawMesh(mesh, entityMatrix, _material, 0, camera, 0, null,

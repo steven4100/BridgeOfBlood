@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using BridgeOfBlood.Data.Enemies;
 using BridgeOfBlood.Data.Shared;
+using BridgeOfBlood.Data.Spells;
 using BridgeOfBlood.Effects;
 using Unity.Collections;
 using Unity.Jobs;
@@ -39,7 +40,9 @@ public partial class GameSimulation
     private CollisionSystem _collisionSystem;
     private HitResolver _hitResolver;
     private ChainSystem _chainSystem;
+    private HitModifierSystem _hitModifierSystem;
     private DamageSystem _damageSystem;
+    private KnockbackSystem _knockbackSystem;
     private DeadEnemyRemovalSystem _deadEnemyRemovalSystem;
     private PierceSystem _pierceSystem;
     private ExpirationSystem _expirationSystem;
@@ -64,6 +67,9 @@ public partial class GameSimulation
     /// <summary>Per-frame combat reaction contracts (managed; caller owns the list). Cleared at end of <see cref="StepCombatReactions"/>.</summary>
     private IReadOnlyList<CombatSpawnContract> _frameCombatContracts;
 
+    /// <summary>Frame modification catalog (caller owns). Used by hit modifiers; may be null.</summary>
+    private ModificationCatalog _frameModifications;
+
     private readonly SimulationState _state;
 
     /// <summary>LCD read of simulation-domain buffers and scalars.</summary>
@@ -80,6 +86,7 @@ public partial class GameSimulation
         _movementSystem = new EnemyMovementSystemLinear();
         _cullingSystem = new EnemyCullingSystem();
 
+        _hitModifierSystem = new HitModifierSystem();
         _attackEntityManager = new AttackEntityManager();
         _attackMovementSystem = new AttackEntityMovementSystem();
         _attackTimeSystem = new AttackEntityTimeSystem();
@@ -87,6 +94,7 @@ public partial class GameSimulation
         _hitResolver = new HitResolver();
         _chainSystem = new ChainSystem();
         _damageSystem = new DamageSystem();
+        _knockbackSystem = new KnockbackSystem();
         _deadEnemyRemovalSystem = new DeadEnemyRemovalSystem();
         _pierceSystem = new PierceSystem();
         _expirationSystem = new ExpirationSystem();
@@ -163,15 +171,29 @@ public partial class GameSimulation
     public IEnemySpawner Spawner => _spawner;
 
     /// <summary>
-    /// Assigns this round's playfield, spawner, and enemy scaling. Call before <see cref="ResetForNewRound"/>.
+    /// Assigns the session playfield/spawner/speed and this round's health multiplier.
+    /// Call before <see cref="ResetForNewRound"/>.
     /// </summary>
-    public void ApplyRoundConfig(in RoundConfig roundConfig)
+    public void ApplyRoundConfig(GameConfig gameConfig, int roundNumber)
     {
-        _playfield = roundConfig.ResolvePlayfield();
+        RoundConfig round = gameConfig.GetRoundConfig(roundNumber);
+        _playfield = gameConfig.ResolvePlayfield();
         _enemyManager.RebuildSpatialGrid(_playfield);
-        _spawner = roundConfig.spawner;
-        _enemyHealthMultiplier = roundConfig.enemyHealthMultiplier;
-        _enemyMoveSpeedMultiplier = roundConfig.enemyMoveSpeedMultiplier;
+        _spawner = gameConfig.spawner;
+        _enemyMoveSpeedMultiplier = gameConfig.enemyMoveSpeedMultiplier;
+        _enemyHealthMultiplier = round.enemyHealthMultiplier;
+    }
+
+    /// <summary>Frame modification catalog for hit modifiers; does not take ownership.</summary>
+    public void SetFrameModifications(ModificationCatalog catalog)
+    {
+        _frameModifications = catalog;
+    }
+
+    /// <summary>Clears the reference to the frame modification catalog (caller owns it).</summary>
+    public void ClearFrameModifications()
+    {
+        _frameModifications = null;
     }
 
     /// <summary>Combat reaction contracts for the current frame; does not take ownership of the list.</summary>
@@ -194,6 +216,17 @@ public partial class GameSimulation
         _tickDamageEvents.Clear();
         _statusAilmentAppliedEvents.Clear();
         _attackRemovalEvents.Clear();
+    }
+
+    /// <summary>
+    /// Immediately drains the active spawner into the enemy manager, then rebuilds the spatial grid.
+    /// The map-modifier scene uses this after reset with <see cref="NoiseSheetEnemySpawner"/>, whose
+    /// first collection emits the entire sheet and marks the one-shot spawner as consumed.
+    /// </summary>
+    public void FlushSpawnerNow()
+    {
+        CollectAndCreateEnemies();
+        _enemyManager.BuildGrid();
     }
 
     /// <summary>
@@ -244,10 +277,13 @@ public partial class GameSimulation
 
     private void StepSpawnEnemies()
     {
-        if (_spawner == null || _enemyManager == null)
-            return;
+        CollectAndCreateEnemies();
+    }
 
-        List<EnemySpawnRequest> requests = _spawner.CollectSpawnRequests(_simulationTime, PlayfieldRect);
+    void CollectAndCreateEnemies()
+    {
+        List<EnemySpawnRequest> requests =
+            _spawner.CollectSpawnRequests(_simulationTime, PlayfieldRect);
         for (int i = 0; i < requests.Count; i++)
         {
             EnemySpawnRequest req = requests[i];
@@ -362,10 +398,12 @@ public partial class GameSimulation
 
             // ── Combat pipeline ──
             //   _rawCollisionEvents
-            //       → [HitResolver]  → _resolvedHits              (mutates rehitPolicies)
+            //       → [HitResolver]  → _resolvedHits              (mutates rehitPolicies; copies attack base stats onto hits)
             //       → [ChainSystem]                                (mutates attackEntities, chainPolicies)
+            //       → [HitModifierSystem]                          (edits hit damage/crit in place)
             //       → [DamageSystem] → _hitEvents, _killEvents,    (mutates attackEntities, enemies)
             //                          _damageEvents
+            //       → [KnockbackSystem]                            (mutates enemy motion from damage events)
             //       → [AilmentSystem]                              (parallel track jobs → NativeLists, then apply slice + events)
             //       → [RecordRehit]                                (mutates internal rehit records)
 
@@ -374,6 +412,11 @@ public partial class GameSimulation
             _hitResolver.Resolve(
                 _rawCollisionEvents.AsArray().AsReadOnly(),
                 attackEntities.AsReadOnly(),
+                _attackEntityManager.GetPhysicalDamages().AsReadOnly(),
+                _attackEntityManager.GetColdDamages().AsReadOnly(),
+                _attackEntityManager.GetFireDamages().AsReadOnly(),
+                _attackEntityManager.GetLightningDamages().AsReadOnly(),
+                _attackEntityManager.GetCrits().AsReadOnly(),
                 _attackEntityManager.GetPiercePolicies().AsReadOnly(),
                 _attackEntityManager.GetRehitPolicies(),
                 _resolvedHits);
@@ -389,22 +432,23 @@ public partial class GameSimulation
                 _enemyManager.Grid,
                 enemies.Motion.AsReadOnly());
 
+            _hitModifierSystem.Apply(_frameModifications, _resolvedHits, enemies);
+
             _ailmentSystem.BuildShockDamageMultipliers(_shockDamageMultiplierScratch);
             _damageSystem.ProcessHits(
-                resolvedHitsRO,
+                _resolvedHits.AsArray().AsReadOnly(),
                 attackEntities,
-                _attackEntityManager.GetPhysicalDamages(),
-                _attackEntityManager.GetColdDamages(),
-                _attackEntityManager.GetFireDamages(),
-                _attackEntityManager.GetLightningDamages(),
-                _attackEntityManager.GetCrits(),
-                _attackEntityManager.GetKnockbacks(),
                 enemies,
                 _hitEvents,
                 _killEvents,
                 _damageEvents,
-                _shockDamageMultiplierScratch,
-                _attackEntityManager.HitModifierSets);
+                _shockDamageMultiplierScratch);
+
+            _knockbackSystem.Apply(
+                _damageEvents.AsArray().AsReadOnly(),
+                attackEntities.AsReadOnly(),
+                _attackEntityManager.GetKnockbacks().AsReadOnly(),
+                enemies);
 
             var appliers = new AttackEntityManagerAilmentAppliers { Manager = _attackEntityManager };
             _ailmentSystem.ProcessAilmentApplication(

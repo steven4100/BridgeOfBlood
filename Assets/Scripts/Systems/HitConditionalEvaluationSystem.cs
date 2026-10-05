@@ -1,44 +1,114 @@
+using System;
 using System.Collections.Generic;
 using BridgeOfBlood.Data.Enemies;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
 using BridgeOfBlood.Effects;
+using Unity.Collections;
 using UnityEngine;
 
-public class HitConditionalEvaluationSystem
+[Serializable]
+public abstract class HitModifier : IEffect
 {
-    /// <summary>
-    /// Applies every modifier whose predicate matches enemy <paramref name="enemyEntityIndex"/> to the supplied
-    /// scratch damage/crit values. Numeric application is delegated to <see cref="AttackEntityModificationApplicator"/>.
-    /// </summary>
-    public static void ApplyMatching(
-        int enemyEntityIndex,
-        EnemyBuffers enemies,
-        List<AttackEntityModifier> modifiers,
-        ref float physical,
-        ref float cold,
-        ref float fire,
-        ref float lightning,
-        ref float critChance,
-        ref float critMult)
+    public virtual bool Apply(EffectContext context)
     {
-        if (modifiers == null) return;
+        context.spellModifications.Add(this);
+        return true;
+    }
 
-        for (int i = 0; i < modifiers.Count; i++)
+    public abstract void Modify(NativeList<HitEvent> hits, EnemyBuffers enemies, int ownerSpellId);
+
+    public abstract string GetDescription();
+}
+
+[Serializable, MenuPath("Hit")]
+public class ConditionalHitModifier : HitModifier
+{
+    [SerializeReference, SerializeInterface]
+    public AttackPredicateDataBaker attackPredicateDataBaker;
+
+    [Tooltip("Which stat the conditional modifier targets when the predicate matches.")]
+    public SpellModificationProperty property;
+
+    public ResolvedModifier resolvedModifier;
+
+    AttackPredicate predicate;
+
+    public override bool Apply(EffectContext context)
+    {
+        predicate = attackPredicateDataBaker.Bake();
+        return base.Apply(context);
+    }
+
+    public override string GetDescription()
+    {
+        string then = EffectDescription.Describe(resolvedModifier, property);
+        string when = attackPredicateDataBaker.GetDescription();
+        if (string.IsNullOrEmpty(then))
+            return $"If {when}";
+        return $"If {when}, then {then}";
+    }
+
+    public override void Modify(NativeList<HitEvent> hits, EnemyBuffers enemies, int ownerSpellId)
+    {
+        for (int i = 0; i < hits.Length; i++)
         {
-            AttackEntityModifier m = modifiers[i];
-            if (m == null) continue;
-            if (!EvaluateEnemyPredicate(m.predicate, enemyEntityIndex, enemies)) continue;
+            HitEvent hit = hits[i];
+            if (ownerSpellId != 0 && hit.spellId != ownerSpellId)
+                continue;
+            if (!enemies.IsValid(hit.enemyEntityId))
+                continue;
+            if (!HitModifierSystem.EvaluateEnemyPredicate(predicate, hit.enemyEntityId.Index, enemies))
+                continue;
+
+            float physical = hit.physicalDamage;
+            float cold = hit.coldDamage;
+            float fire = hit.fireDamage;
+            float lightning = hit.lightningDamage;
+            float critChance = hit.critChance;
+            float critMult = hit.critMultiplier;
 
             AttackEntityModificationApplicator.Apply(
-                m.property, m.resolvedModifier,
+                property, resolvedModifier,
                 ref physical, ref cold, ref fire, ref lightning, ref critChance, ref critMult);
+
+            hit.physicalDamage = physical;
+            hit.coldDamage = cold;
+            hit.fireDamage = fire;
+            hit.lightningDamage = lightning;
+            hit.critChance = critChance;
+            hit.critMultiplier = critMult;
+            hits[i] = hit;
         }
+    }
+}
+
+public class HitModifierSystem
+{
+    public void Apply(ModificationCatalog catalog, NativeList<HitEvent> hits, EnemyBuffers enemies)
+    {
+        if (catalog == null)
+            return;
+
+        ApplySet(catalog.Global.hitModifiers, hits, enemies, 0);
+
+        foreach (KeyValuePair<int, ModificationSet> entry in catalog.PerSpell)
+            ApplySet(entry.Value.hitModifiers, hits, enemies, entry.Key);
+    }
+
+    static void ApplySet(
+        List<HitModifier> modifiers,
+        NativeList<HitEvent> hits,
+        EnemyBuffers enemies,
+        int ownerSpellId)
+    {
+        for (int i = 0; i < modifiers.Count; i++)
+            modifiers[i].Modify(hits, enemies, ownerSpellId);
     }
 
     public static bool EvaluateEnemyPredicate(in AttackPredicate predicate, int enemyEntityIndex, EnemyBuffers enemies)
     {
-        float percentHealth = 0;
+        float percentHealth;
         switch (predicate.attackPredicateKind)
         {
             case AttackPredicateKind.HasAilmentFlag:
@@ -55,7 +125,6 @@ public class HitConditionalEvaluationSystem
         }
     }
 }
-
 
 public abstract class AttackPredicateDataBaker
 {
@@ -93,22 +162,20 @@ public class HealthPercentagePredicateBaker : AttackPredicateDataBaker
 
     public override AttackPredicate Bake()
     {
-        if(thresholdType == ThresholdType.Under)
+        if (thresholdType == ThresholdType.Under)
         {
             return new AttackPredicate
             {
                 attackPredicateKind = AttackPredicateKind.HealthBelowPercentage,
-                param1 = (float)healthPercentage,
+                param1 = healthPercentage,
             };
         }
-        else
+
+        return new AttackPredicate
         {
-            return new AttackPredicate
-            {
-                attackPredicateKind = AttackPredicateKind.HealthAbovePercentage,
-                param1 = (float)healthPercentage,
-            };
-        }
+            attackPredicateKind = AttackPredicateKind.HealthAbovePercentage,
+            param1 = healthPercentage,
+        };
     }
 
     public override string GetDescription()
@@ -119,42 +186,6 @@ public class HealthPercentagePredicateBaker : AttackPredicateDataBaker
             : $"the enemy is above {pct}% health";
     }
 }
-
-public class AttackPredicateEffect : IEffect
-{
-    [SerializeReference, SerializeInterface]
-    public AttackPredicateDataBaker attackPredicateDataBaker;
-
-    [Tooltip("Which stat the conditional modifier targets when the predicate matches.")]
-    public SpellModificationProperty property;
-
-    public ResolvedModifier resolvedModifier;
-    public bool Apply(EffectContext context)
-    {
-        context.spellModifications.Add(new AttackEntityModifier
-        {
-            predicate = attackPredicateDataBaker.Bake(),
-            property = property,
-            resolvedModifier = resolvedModifier
-        });
-
-        return true;
-    }
-
-    public string GetDescription()
-    {
-        string then = EffectDescription.Describe(resolvedModifier, property);
-        string when = attackPredicateDataBaker.GetDescription();
-        if (string.IsNullOrEmpty(then))
-            return $"If {when}";
-        return $"If {when}, then {then}";
-    }
-}
-
-
-
-
-
 
 public struct AttackPredicate
 {
@@ -168,11 +199,4 @@ public enum AttackPredicateKind
     HasAilmentFlag,
     HealthBelowPercentage,
     HealthAbovePercentage,
-}
-
-public class AttackEntityModifier
-{
-    public AttackPredicate predicate;
-    public SpellModificationProperty property;
-    public ResolvedModifier resolvedModifier;
 }

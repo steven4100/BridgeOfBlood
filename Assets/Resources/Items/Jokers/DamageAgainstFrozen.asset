@@ -29,7 +29,7 @@ MonoBehaviour:
     version: 2
     RefIds:
     - rid: 8391159717565300800
-      type: {class: AttackPredicateEffect, ns: , asm: Assembly-CSharp}
+      type: {class: ConditionalHitModifier, ns: , asm: Assembly-CSharp}
       data:
         attackPredicateDataBaker:
           rid: 8391159717565300801

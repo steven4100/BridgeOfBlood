@@ -77,7 +77,7 @@ public class LabbingScene : MonoBehaviour
 
         GUI.Label(
             new Rect(bar.x + 8f, bar.y + 32f, bar.width - 16f, 20f),
-            $"Kill quota: {round.killQuotaPercent:0.#}% of spawned   HP ×{round.enemyHealthMultiplier:0.##}   Speed ×{round.enemyMoveSpeedMultiplier:0.##}");
+            $"Kill quota: {_runtimeConfig.killQuotaPercent:0.#}% of spawned   HP ×{round.enemyHealthMultiplier:0.##}   Speed ×{_runtimeConfig.enemyMoveSpeedMultiplier:0.##}");
     }
 
     void SetLabRoundIndex(int index)
@@ -91,8 +91,7 @@ public class LabbingScene : MonoBehaviour
 
     void ApplyLabRound()
     {
-        RoundConfig round = _runtimeConfig.GetRoundConfig(_labRoundIndex + 1);
-        _combatSimulation.ApplyRoundConfig(in round);
+        _combatSimulation.ApplyRoundConfig(_runtimeConfig, _labRoundIndex + 1);
     }
 
     /// <summary>
@@ -128,7 +127,7 @@ public class LabbingScene : MonoBehaviour
         {
             state = SessionState.Round,
             roundNumber = _labRoundIndex + 1,
-            killQuotaPercent = _runtimeConfig.GetRoundConfig(_labRoundIndex + 1).killQuotaPercent,
+            killQuotaPercent = _runtimeConfig.killQuotaPercent,
             spellLoopsPerRound = 0,
             playfield = _combatSimulation.Simulation.State.Playfield
         });
@@ -154,6 +153,8 @@ public class LabbingScene : MonoBehaviour
                 inventory));
         ServiceLocator.Current.RegisterInstance<ISimulationZoneService>(
             new SimulationZoneService(simulationZone, renderCamera));
+        ServiceLocator.Current.RegisterInstance<IMapModifierSessionService>(
+            new MapModifierSessionService());
         ServiceLocator.Current.RegisterInstance(_combatSimulation);
         ServiceLocator.Current.RegisterInstance<ISpellModificationService>(_combatSimulation);
         ServicesRegisteredEvent.Raise();

@@ -1437,6 +1437,7 @@ GameObject:
   - component: {fileID: 1770549540}
   - component: {fileID: 1770549542}
   - component: {fileID: 1770549543}
+  - component: {fileID: 1770549544}
   m_Layer: 0
   m_Name: TestScene
   m_TagString: Untagged
@@ -1462,6 +1463,7 @@ MonoBehaviour:
   gameConfig: {fileID: 11400000, guid: 0a1b2c3d4e5f6789012345678aabbccd, type: 2}
   castInputKey: 32
   debugController: {fileID: 1770549542}
+  mapModifierPlacementHost: {fileID: 1770549544}
 --- !u!4 &1770549541
 Transform:
   m_ObjectHideFlags: 0
@@ -1516,6 +1518,19 @@ MonoBehaviour:
     attackDebugMaterial: {fileID: 2100000, guid: 5cb69cd1c6441e44496eaf809f96136c, type: 2}
     spriteRenderDatabase: {fileID: 11400000, guid: 77a5fc279edf81d4c9cb56cd88810a36, type: 2}
   playerRenderer: {fileID: 22834934}
+--- !u!114 &1770549544
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1770549539}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c4e9a12b8d34f6a9e1c2d5f8a0b3c43, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MapModifierPlacementHost
+  modifierController: {fileID: 0}
 --- !u!1 &2081434061
 GameObject:
   m_ObjectHideFlags: 0
@@ -1527,6 +1542,7 @@ GameObject:
   - component: {fileID: 2081434062}
   - component: {fileID: 2081434063}
   - component: {fileID: 2081434064}
+  - component: {fileID: 2081434065}
   m_Layer: 0
   m_Name: ShopEventListeners
   m_TagString: Untagged
@@ -1603,6 +1619,41 @@ MonoBehaviour:
     RefIds:
     - rid: 9019951731451363391
       type: {class: RoundEnterEventListener, ns: , asm: Assembly-CSharp}
+      data:
+        GameEvent:
+          m_PersistentCalls:
+            m_Calls:
+            - m_Target: {fileID: 133454439}
+              m_TargetAssemblyTypeName: UnityEngine.GameObject, UnityEngine
+              m_MethodName: SetActive
+              m_Mode: 6
+              m_Arguments:
+                m_ObjectArgument: {fileID: 0}
+                m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+                m_IntArgument: 0
+                m_FloatArgument: 0
+                m_StringArgument: 
+                m_BoolArgument: 0
+              m_CallState: 2
+--- !u!114 &2081434065
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2081434061}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 069233120a51df245858cc9afaa97827, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  eventType:
+    rid: 9019951731451363393
+  references:
+    version: 2
+    RefIds:
+    - rid: 9019951731451363393
+      type: {class: MapModEnterEventListener, ns: , asm: Assembly-CSharp}
       data:
         GameEvent:
           m_PersistentCalls:

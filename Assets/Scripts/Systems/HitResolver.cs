@@ -7,7 +7,7 @@ using Unity.Mathematics;
 /// Resolves collisions into hit information. Pierce policy is applied here so the pipeline is
 /// Detect → Resolve → Chain → Damage with no separate pierce step.
 /// No side effects—no damage, no telemetry, no enemiesHit update.
-/// Outputs HitEvents for ChainSystem and DamageSystem to consume.
+/// Outputs HitEvents (ids, contact, and attack base stats) for later pipeline steps.
 /// Assumes collision entity ids are valid; caller (e.g. AttackEntityManager / pipeline owner) must validate upstream.
 /// </summary>
 public class HitResolver
@@ -21,6 +21,11 @@ public class HitResolver
     public void Resolve(
         NativeArray<CollisionEvent>.ReadOnly collisions,
         NativeArray<AttackEntity>.ReadOnly attackEntities,
+        NativeArray<PhysicalDamageRuntime>.ReadOnly physicalDamages,
+        NativeArray<ColdDamageRuntime>.ReadOnly coldDamages,
+        NativeArray<FireDamageRuntime>.ReadOnly fireDamages,
+        NativeArray<LightningDamageRuntime>.ReadOnly lightningDamages,
+        NativeArray<CritRuntime>.ReadOnly crits,
         NativeArray<PiercePolicyRuntime>.ReadOnly piercePolicies,
         NativeArray<RehitPolicyRuntime> rehitPolicies,
         NativeList<HitEvent> hitEvents)
@@ -42,10 +47,10 @@ public class HitResolver
             {
                 CollisionEvent col = collisions[c];
                 int ai = col.attackEntityId.Index;
+                AttackEntity atk = attackEntities[ai];
 
                 if (applyPierce && countPerEntity.IsCreated)
                 {
-                    AttackEntity atk = attackEntities[ai];
                     PiercePolicyRuntime pierce = piercePolicies[ai];
                     int hitsRemaining = int.MaxValue;
                     if (pierce.isActive && pierce.maxEnemiesHit > 0)
@@ -57,7 +62,6 @@ public class HitResolver
 
                 if (applyRehit)
                 {
-                    AttackEntity atk = attackEntities[ai];
                     RehitPolicyRuntime rehit = rehitPolicies[ai];
                     if (rehit.rehitCooldownSeconds > 0f)
                     {
@@ -68,11 +72,24 @@ public class HitResolver
                     }
                 }
 
+                CritRuntime crit = crits[ai];
                 hitEvents.Add(new HitEvent
                 {
                     attackEntityId = col.attackEntityId,
                     enemyEntityId = col.enemyEntityId,
-                    hitPosition = col.enemyPosition
+                    hitPosition = col.enemyPosition,
+                    physicalDamage = physicalDamages[ai].amount,
+                    coldDamage = coldDamages[ai].amount,
+                    fireDamage = fireDamages[ai].amount,
+                    lightningDamage = lightningDamages[ai].amount,
+                    critIsActive = crit.isActive,
+                    critChance = crit.chance,
+                    critMultiplier = crit.multiplier,
+                    spellId = atk.spellId,
+                    spellInvocationId = atk.spellInvocationId,
+                    onDamageSound = atk.onDamageSound,
+                    onHitEffect = atk.onHitEffect,
+                    onKillEffect = atk.onKillEffect
                 });
             }
         }

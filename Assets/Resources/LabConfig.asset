@@ -15,37 +15,17 @@ MonoBehaviour:
   simulationConfig:
     SpawnRate: 2
     GizmoRadius: 5
+  spawner:
+    rid: 451927353652150339
+  simulationSize: {x: 2000, y: 1600}
+  killQuotaPercent: 20
+  enemyMoveSpeedMultiplier: 0
   roundConfigs:
-  - spawner:
-      rid: 451927353652150339
-    killQuotaPercent: 20
-    enemyMoveSpeedMultiplier: 0
-    enemyHealthMultiplier: 1
-    simulationSize: {x: 1600, y: 400}
-  - spawner:
-      rid: 451927353652150340
-    killQuotaPercent: 50
-    enemyMoveSpeedMultiplier: 1
-    enemyHealthMultiplier: 2
-    simulationSize: {x: 1600, y: 600}
-  - spawner:
-      rid: 451927353652150341
-    killQuotaPercent: 50
-    enemyMoveSpeedMultiplier: 1.5
-    enemyHealthMultiplier: 4
-    simulationSize: {x: 1600, y: 800}
-  - spawner:
-      rid: 451927353652150342
-    killQuotaPercent: 50
-    enemyMoveSpeedMultiplier: 2
-    enemyHealthMultiplier: 6
-    simulationSize: {x: 1600, y: 1000}
-  - spawner:
-      rid: 451927353652150343
-    killQuotaPercent: 50
-    enemyMoveSpeedMultiplier: 2.25
-    enemyHealthMultiplier: 8
-    simulationSize: {x: 3200, y: 2000}
+  - enemyHealthMultiplier: 1
+  - enemyHealthMultiplier: 2
+  - enemyHealthMultiplier: 4
+  - enemyHealthMultiplier: 6
+  - enemyHealthMultiplier: 8
   maxSpellLoopsPerRound: 4
   totalMana: 100
   playerStartMoveSpeed: 300
@@ -62,77 +42,20 @@ MonoBehaviour:
         spawnTable: {fileID: 11400000, guid: 4b19a709f1f50f044988ec7136bd03db, type: 2}
         centerOffsetNormalized: {x: 0, y: 0}
         cellSize: 20
-        threshold: 0.6
+        threshold: 0.576
         seed: 1
         layers:
         - enabled: 1
           type: 0
           blend: 0
-          weight: 1
-          frequency: 20
+          weight: 0.58
+          frequency: 35.88
           offset: {x: 0, y: 0}
           invert: 0
-    - rid: 451927353652150340
-      type: {class: NoiseSheetEnemySpawner, ns: , asm: Assembly-CSharp}
-      data:
-        spawnTable: {fileID: 11400000, guid: 4b19a709f1f50f044988ec7136bd03db, type: 2}
-        centerOffsetNormalized: {x: 0, y: 0}
-        cellSize: 20
-        threshold: 0.6
-        seed: 1
-        layers:
         - enabled: 1
-          type: 0
+          type: 2
           blend: 0
-          weight: 1
-          frequency: 20
-          offset: {x: 0, y: 0}
-          invert: 0
-    - rid: 451927353652150341
-      type: {class: NoiseSheetEnemySpawner, ns: , asm: Assembly-CSharp}
-      data:
-        spawnTable: {fileID: 11400000, guid: 4b19a709f1f50f044988ec7136bd03db, type: 2}
-        centerOffsetNormalized: {x: 0, y: 0}
-        cellSize: 20
-        threshold: 0.6
-        seed: 1
-        layers:
-        - enabled: 1
-          type: 0
-          blend: 0
-          weight: 1
-          frequency: 20
-          offset: {x: 0, y: 0}
-          invert: 0
-    - rid: 451927353652150342
-      type: {class: NoiseSheetEnemySpawner, ns: , asm: Assembly-CSharp}
-      data:
-        spawnTable: {fileID: 11400000, guid: 4b19a709f1f50f044988ec7136bd03db, type: 2}
-        centerOffsetNormalized: {x: 0, y: 0}
-        cellSize: 20
-        threshold: 0.6
-        seed: 1
-        layers:
-        - enabled: 1
-          type: 0
-          blend: 0
-          weight: 1
-          frequency: 20
-          offset: {x: 0, y: 0}
-          invert: 0
-    - rid: 451927353652150343
-      type: {class: NoiseSheetEnemySpawner, ns: , asm: Assembly-CSharp}
-      data:
-        spawnTable: {fileID: 11400000, guid: 4b19a709f1f50f044988ec7136bd03db, type: 2}
-        centerOffsetNormalized: {x: 0, y: 0}
-        cellSize: 20
-        threshold: 0.6
-        seed: 1
-        layers:
-        - enabled: 1
-          type: 0
-          blend: 0
-          weight: 1
-          frequency: 20
+          weight: 0.62
+          frequency: 12
           offset: {x: 0, y: 0}
           invert: 0

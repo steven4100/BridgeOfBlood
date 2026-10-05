@@ -15,37 +15,17 @@ MonoBehaviour:
   simulationConfig:
     SpawnRate: 2
     GizmoRadius: 5
+  spawner:
+    rid: 451927353652150339
+  simulationSize: {x: 1600, y: 800}
+  killQuotaPercent: 20
+  enemyMoveSpeedMultiplier: 0
   roundConfigs:
-  - spawner:
-      rid: 451927353652150339
-    killQuotaPercent: 20
-    enemyMoveSpeedMultiplier: 0
-    enemyHealthMultiplier: 1
-    simulationSize: {x: 1600, y: 800}
-  - spawner:
-      rid: 451927353652150340
-    killQuotaPercent: 50
-    enemyMoveSpeedMultiplier: 1
-    enemyHealthMultiplier: 2
-    simulationSize: {x: 1600, y: 800}
-  - spawner:
-      rid: 451927353652150341
-    killQuotaPercent: 50
-    enemyMoveSpeedMultiplier: 1.5
-    enemyHealthMultiplier: 4
-    simulationSize: {x: 1600, y: 800}
-  - spawner:
-      rid: 451927353652150342
-    killQuotaPercent: 50
-    enemyMoveSpeedMultiplier: 2
-    enemyHealthMultiplier: 6
-    simulationSize: {x: 1600, y: 800}
-  - spawner:
-      rid: 451927353652150343
-    killQuotaPercent: 50
-    enemyMoveSpeedMultiplier: 2.25
-    enemyHealthMultiplier: 8
-    simulationSize: {x: 1600, y: 800}
+  - enemyHealthMultiplier: 1
+  - enemyHealthMultiplier: 2
+  - enemyHealthMultiplier: 4
+  - enemyHealthMultiplier: 6
+  - enemyHealthMultiplier: 8
   maxSpellLoopsPerRound: 4
   totalMana: 100
   playerStartMoveSpeed: 500
@@ -63,98 +43,6 @@ MonoBehaviour:
         centerOffsetNormalized: {x: 0, y: 0}
         cellSize: 20
         threshold: 0.65
-        seed: 1
-        layers:
-        - enabled: 1
-          type: 0
-          blend: 0
-          weight: 0.5
-          frequency: 10
-          offset: {x: 0, y: 0}
-          invert: 0
-        - enabled: 1
-          type: 2
-          blend: 0
-          weight: 0.5
-          frequency: 4
-          offset: {x: 0, y: 0}
-          invert: 1
-    - rid: 451927353652150340
-      type: {class: NoiseSheetEnemySpawner, ns: , asm: Assembly-CSharp}
-      data:
-        spawnTable: {fileID: 11400000, guid: 4b19a709f1f50f044988ec7136bd03db, type: 2}
-        centerOffsetNormalized: {x: 0, y: 0}
-        cellSize: 20
-        threshold: 0.6
-        seed: 1
-        layers:
-        - enabled: 1
-          type: 0
-          blend: 0
-          weight: 0.5
-          frequency: 10
-          offset: {x: 0, y: 0}
-          invert: 0
-        - enabled: 1
-          type: 2
-          blend: 0
-          weight: 0.5
-          frequency: 4
-          offset: {x: 0, y: 0}
-          invert: 1
-    - rid: 451927353652150341
-      type: {class: NoiseSheetEnemySpawner, ns: , asm: Assembly-CSharp}
-      data:
-        spawnTable: {fileID: 11400000, guid: 4b19a709f1f50f044988ec7136bd03db, type: 2}
-        centerOffsetNormalized: {x: 0, y: 0}
-        cellSize: 20
-        threshold: 0.55
-        seed: 1
-        layers:
-        - enabled: 1
-          type: 0
-          blend: 0
-          weight: 0.5
-          frequency: 10
-          offset: {x: 0, y: 0}
-          invert: 0
-        - enabled: 1
-          type: 2
-          blend: 0
-          weight: 0.5
-          frequency: 4
-          offset: {x: 0, y: 0}
-          invert: 1
-    - rid: 451927353652150342
-      type: {class: NoiseSheetEnemySpawner, ns: , asm: Assembly-CSharp}
-      data:
-        spawnTable: {fileID: 11400000, guid: 4b19a709f1f50f044988ec7136bd03db, type: 2}
-        centerOffsetNormalized: {x: 0, y: 0}
-        cellSize: 20
-        threshold: 0.45
-        seed: 1
-        layers:
-        - enabled: 1
-          type: 0
-          blend: 0
-          weight: 0.5
-          frequency: 10
-          offset: {x: 0, y: 0}
-          invert: 0
-        - enabled: 1
-          type: 2
-          blend: 0
-          weight: 0.5
-          frequency: 4
-          offset: {x: 0, y: 0}
-          invert: 1
-    - rid: 451927353652150343
-      type: {class: NoiseSheetEnemySpawner, ns: , asm: Assembly-CSharp}
-      data:
-        spawnTable: {fileID: 11400000, guid: 4b19a709f1f50f044988ec7136bd03db, type: 2}
-        centerOffsetNormalized: {x: 0, y: 0}
-        cellSize: 20
-        threshold: 0.4
         seed: 1
         layers:
         - enabled: 1

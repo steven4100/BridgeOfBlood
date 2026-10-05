@@ -60,10 +60,10 @@ namespace BridgeOfBlood.Data.Spells
         readonly Dictionary<Type, List<IModificationData>> byType =
             new Dictionary<Type, List<IModificationData>>();
 
-        public readonly List<AttackEntityModifier> attackEntityModifiers =
-            new List<AttackEntityModifier>();
+        public readonly List<HitModifier> hitModifiers =
+            new List<HitModifier>();
 
-        public bool IsEmpty => byType.Count == 0 && attackEntityModifiers.Count == 0;
+        public bool IsEmpty => byType.Count == 0 && hitModifiers.Count == 0;
 
         public void Add(IModificationData modification)
         {
@@ -77,8 +77,8 @@ namespace BridgeOfBlood.Data.Spells
             values.Add(modification);
         }
 
-        public void Add(AttackEntityModifier modifier) =>
-            attackEntityModifiers.Add(modifier);
+        public void Add(HitModifier modifier) =>
+            hitModifiers.Add(modifier);
 
         public ModificationCollection<T> Get<T>() where T : IModificationData
         {
@@ -89,7 +89,7 @@ namespace BridgeOfBlood.Data.Spells
         public void Clear()
         {
             byType.Clear();
-            attackEntityModifiers.Clear();
+            hitModifiers.Clear();
         }
 
         public void MergeFrom(ModificationSet other)
@@ -105,7 +105,7 @@ namespace BridgeOfBlood.Data.Spells
                 values.AddRange(entry.Value);
             }
 
-            attackEntityModifiers.AddRange(other.attackEntityModifiers);
+            hitModifiers.AddRange(other.hitModifiers);
         }
 
         public ModificationSet Clone()
@@ -135,6 +135,8 @@ namespace BridgeOfBlood.Data.Spells
             perSpellId.Clear();
             resolvedBySpellId.Clear();
         }
+
+        public IReadOnlyDictionary<int, ModificationSet> PerSpell => perSpellId;
 
         public ModificationSet ForSpell(int spellId)
         {

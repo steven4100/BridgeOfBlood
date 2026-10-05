@@ -249,8 +249,15 @@ public class KnockbackBehavior : ModifiableAttackEntityBehavior
 {
     public float knockbackStrength;
 
+    /// <summary>When set, every hit is pushed along the attack entity's facing instead of radially away from its center.</summary>
+    public bool useEntityDirection;
+
     public override AttackEntityBehavior Clone() =>
-        new KnockbackBehavior { knockbackStrength = knockbackStrength };
+        new KnockbackBehavior
+        {
+            knockbackStrength = knockbackStrength,
+            useEntityDirection = useEntityDirection
+        };
 
     public override void ApplyTo(
         AttackEntityManager manager,
@@ -260,7 +267,12 @@ public class KnockbackBehavior : ModifiableAttackEntityBehavior
         ref Random rng)
     {
         var arr = manager.GetKnockbacks();
-        arr[index] = new KnockbackRuntime { isActive = true, strength = ResolveKnockback(mods, mask) };
+        arr[index] = new KnockbackRuntime
+        {
+            isActive = true,
+            useEntityDirection = useEntityDirection,
+            strength = ResolveKnockback(mods, mask)
+        };
     }
 
     public override string GetDisplayDescription(ModificationSet mods, SpellAttributeMask mask)
@@ -342,7 +354,8 @@ public struct HitBoxRuntime
 public struct KnockbackRuntime
 {
     public bool isActive;
+    public bool useEntityDirection;
     public float strength;
 
-    public static KnockbackRuntime Default() => new KnockbackRuntime { isActive = false, strength = 0f };
+    public static KnockbackRuntime Default() => new KnockbackRuntime { isActive = false, useEntityDirection = false, strength = 0f };
 }

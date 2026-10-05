@@ -2,7 +2,6 @@ using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
 using Unity.Collections;
 using Unity.Mathematics;
-using System.Collections.Generic;
 using System;
 using EntityId = BridgeOfBlood.Data.Shared.EntityId;
 
@@ -15,6 +14,8 @@ public struct AttackEntity
     public EntityId entityId;
     public float2 position;
     public float2 velocity;
+    /// <summary>Normalized facing. Local +X of a rect hitbox lies along this vector. Independent of <see cref="velocity"/> so a stationary pulse can still be oriented.</summary>
+    public float2 direction;
     public float timeAlive;
     /// <summary>Increments once per attack time tick (same cadence as <see cref="timeAlive"/>).</summary>
     public int framesAlive;
@@ -63,13 +64,6 @@ public class AttackEntityManager
     private NativeList<KnockbackRuntime> _knockbacks;
     private int _aliveCount;
 
-    /// <summary>
-    /// Hit-conditional modifier sets, keyed by entity id. Snapshotted from <see cref="ModificationSet.attackEntityModifiers"/>
-    /// at spawn so live entities carry the conditionals that were active when they were created. Read by
-    /// <see cref="DamageSystem"/> via <see cref="HitModifierSets"/> at hit time.
-    /// </summary>
-    private readonly Dictionary<EntityId, List<AttackEntityModifier>> _hitModifierSets = new Dictionary<EntityId, List<AttackEntityModifier>>();
-
     public AttackEntityManager()
     {
         _entities = new NativeList<AttackEntity>(Allocator.Persistent);
@@ -96,11 +90,6 @@ public class AttackEntityManager
         _knockbacks = new NativeList<KnockbackRuntime>(Allocator.Persistent);
         _aliveCount = 0;
     }
-
-    /// <summary>
-    /// Read-only view of hit-conditional modifier sets keyed by entity id. Consumed by <see cref="DamageSystem"/> at hit time.
-    /// </summary>
-    public IReadOnlyDictionary<EntityId, List<AttackEntityModifier>> HitModifierSets => _hitModifierSets;
 
     /// <summary>
     /// Spawns a new attack entity from <paramref name="ctx"/>. Rolls stats + applies spell modifications via
@@ -143,10 +132,6 @@ public class AttackEntityManager
             _fireDamages[idx] = fire;
             _lightningDamages[idx] = lightning;
         }
-
-        var hitModifiers = ctx.modifications?.attackEntityModifiers;
-        if (hitModifiers != null && hitModifiers.Count > 0)
-            _hitModifierSets[id] = new List<AttackEntityModifier>(hitModifiers);
 
         return id;
     }
@@ -339,7 +324,6 @@ public class AttackEntityManager
             return;
 
         int index = entityId.Index;
-        _hitModifierSets.Remove(entityId);
         _alive[index] = 0;
         _entities[index] = default;
         _chainPolicies[index] = ChainPolicyRuntime.Default();
@@ -363,7 +347,6 @@ public class AttackEntityManager
     /// </summary>
     public void Clear()
     {
-        _hitModifierSets.Clear();
         _entities.Clear();
         _alive.Clear();
         _generations.Clear();

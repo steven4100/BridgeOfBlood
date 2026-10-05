@@ -170,7 +170,7 @@ public class SpellEmissionHandler : ISpellEmissionHandler
             float2 velocity = pending.point.direction * pending.speed;
             _bufferedSpawns.Add(new BufferedAttackSpawn
             {
-                context = pending.baseContext.WithTransform(pending.point.position, velocity),
+                context = pending.baseContext.WithTransform(pending.point.position, velocity, pending.point.direction),
                 registerSubEmitter = pending.hasSubEmitter,
                 subEmitterReg = pending.subEmitterReg,
                 subEmitterLastEmitSimTime = simulationTime
@@ -239,7 +239,7 @@ public class SpellEmissionHandler : ISpellEmissionHandler
             float2 velocity = emitPoints[j].direction * speed;
             _bufferedSpawns.Add(new BufferedAttackSpawn
             {
-                context = sub.childContext.WithTransform(emitPoints[j].position, velocity),
+                context = sub.childContext.WithTransform(emitPoints[j].position, velocity, emitPoints[j].direction),
                 registerSubEmitter = false
             });
         }

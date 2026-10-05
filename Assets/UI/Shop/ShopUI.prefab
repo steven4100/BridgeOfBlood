@@ -752,6 +752,7 @@ GameObject:
   - component: {fileID: 1946469830078858341}
   - component: {fileID: 4108107867478871772}
   - component: {fileID: 8908281864524712611}
+  - component: {fileID: 8908281864524712700}
   m_Layer: 0
   m_Name: ShopUI
   m_TagString: Untagged
@@ -797,6 +798,7 @@ MonoBehaviour:
   SpellUI: {fileID: 5963585242453162652, guid: d423748c8d05dd840aab516bd89fafd5, type: 3}
   JokerUI: {fileID: 403402825865571486, guid: e6f746475040d1d40a8e5d594f74f555, type: 3}
   GemUI: {fileID: 4881588393066819169, guid: e39150318870c724b87bc1e15d763f2f, type: 3}
+  MapModTicketUI: {fileID: 1001000002, guid: a8c3d1e4f6b27890c1d2e3f4a5b60718, type: 3}
 --- !u!114 &4108107867478871772
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -866,6 +868,41 @@ MonoBehaviour:
                 m_FloatArgument: 0
                 m_StringArgument: 
                 m_BoolArgument: 1
+              m_CallState: 2
+--- !u!114 &8908281864524712700
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3415541115729263477}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 069233120a51df245858cc9afaa97827, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SharedGameEventReceiver
+  eventType:
+    rid: 1399430006803791964
+  references:
+    version: 2
+    RefIds:
+    - rid: 1399430006803791964
+      type: {class: MapModEnterEventListener, ns: , asm: Assembly-CSharp}
+      data:
+        GameEvent:
+          m_PersistentCalls:
+            m_Calls:
+            - m_Target: {fileID: 4461391147786523140}
+              m_TargetAssemblyTypeName: UnityEngine.GameObject, UnityEngine
+              m_MethodName: SetActive
+              m_Mode: 6
+              m_Arguments:
+                m_ObjectArgument: {fileID: 0}
+                m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+                m_IntArgument: 0
+                m_FloatArgument: 0
+                m_StringArgument: 
+                m_BoolArgument: 0
               m_CallState: 2
 --- !u!1 &3503343148298593086
 GameObject:

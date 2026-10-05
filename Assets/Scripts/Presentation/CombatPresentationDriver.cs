@@ -16,12 +16,14 @@ public sealed class CombatPresentationDriver : MonoBehaviour
 
 	CombatPresentationLayer _layer;
 	ISimulationZoneService _zoneService;
+	bool _standaloneBound;
 
 	void OnEnable()
 	{
 		EnsureLayer();
 		SharedGameEventBus.Bus.SubscribeTo<SimulationCompleteEvent>(OnSimulationComplete);
-		ServicesRegisteredEvent.SubscribeAndCatchUp(OnServicesRegistered);
+		if (!_standaloneBound)
+			ServicesRegisteredEvent.SubscribeAndCatchUp(OnServicesRegistered);
 	}
 
 	void OnDisable()
@@ -39,6 +41,20 @@ public sealed class CombatPresentationDriver : MonoBehaviour
 		_zoneService = ServiceLocator.Current.GetService<ISimulationZoneService>();
 		var combat = ServiceLocator.Current.GetService<CombatSimulationController>();
 		_layer.BindAttackEntities(combat.Simulation.AttackEntityManager);
+	}
+
+	/// <summary>
+	/// Binds presentation for a standalone simulation that intentionally has no session services.
+	/// Call before this component's <c>OnEnable</c> (the map-mod scene bootstrap executes earlier).
+	/// </summary>
+	public void InitializeStandalone(
+		ISimulationZoneService zoneService,
+		AttackEntityManager attackEntityManager)
+	{
+		_standaloneBound = true;
+		EnsureLayer();
+		_zoneService = zoneService;
+		_layer.BindAttackEntities(attackEntityManager);
 	}
 
 	void OnSimulationComplete(ref SimulationCompleteEvent @event)

@@ -35,7 +35,10 @@ public class RepositoryShopService : IShopService
 
         if (!ShopPurchase.TryPurchase(purchasable, context))
             return false;
-        RemoveFromShelf(purchasable);
+
+        if (!(purchasable is MapModifierPlacementTicket))
+            RemoveFromShelf(purchasable);
+
         ShopRefreshed?.Invoke();
         return true;
     }

@@ -113,7 +113,8 @@ namespace BridgeOfBlood.Data.Shared
 	public enum ShopItemType : byte
 	{
 		Spell = 0,
-		Joker = 1
+		Joker = 1,
+		MapMod = 2
 	}
 }
 

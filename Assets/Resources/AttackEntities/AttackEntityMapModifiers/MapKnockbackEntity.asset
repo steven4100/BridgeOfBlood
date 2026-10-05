@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1fc02cdc04e029429ad5093b55493cd, type: 3}
+  m_Name: MapKnockbackEntity
+  m_EditorClassIdentifier: Assembly-CSharp::AttackEntityData
+  entityVelocity: {x: 0, y: 0}
+  rehitCooldownSeconds: 0
+  behaviors:
+  - rid: 1399430358284369983
+  - rid: 1399430358284369984
+  - rid: 1399430358284369987
+  - rid: 1399430358284369988
+  visual: {fileID: 0}
+  onDamageSound: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: 1399430358284369983
+      type: {class: KnockbackBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        knockbackStrength: 592.19
+        useEntityDirection: 0
+    - rid: 1399430358284369984
+      type: {class: HitBoxBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        hitBoxData:
+          isSphere: 1
+          isRect: 0
+          rectDimension: {x: 0, y: 0}
+          sphereRadius: 50
+          scaleGrowthRate: 0
+    - rid: 1399430358284369987
+      type: {class: ExpirationBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        isActive: 1
+        maxTimeAlive: 0
+        maxDistanceTravelled: 0
+        maxFrames: 1
+    - rid: 1399430358284369988
+      type: {class: PhysicalDamageBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        damageRange:
+          min: 0.1
+          max: 0.1

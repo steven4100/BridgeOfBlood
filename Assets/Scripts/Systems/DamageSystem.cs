@@ -1,15 +1,11 @@
-using System.Collections.Generic;
 using BridgeOfBlood.Data.Enemies;
 using BridgeOfBlood.Data.Shared;
-using BridgeOfBlood.Data.Spells;
 using Unity.Collections;
-using Unity.Mathematics;
-using UnityEngine;
 using EntityId = BridgeOfBlood.Data.Shared.EntityId;
 
 /// <summary>
-/// Consumes HitEvents (from HitResolver + ChainSystem), applies damage to enemies, increments enemiesHit,
-/// and emits EnemyHitEvent / EnemyKilledEvent. Crit is rolled per hit: if roll < critChance, damage is multiplied by critDamageMultiplier.
+/// Commits resolved HitEvents to enemies: weakness, crit roll, shock taken, health, enemiesHit,
+/// and DamageEvent / EnemyHitEvent / EnemyKilledEvent. Hit modifiers and knockback run in other systems.
 /// Hits where the target already has no HP remaining are ignored (no damage, events, or enemiesHit).
 /// Assumes hit entity ids are valid; caller (e.g. AttackEntityManager.ValidateHitEvents) must validate upstream.
 /// </summary>
@@ -17,27 +13,17 @@ public class DamageSystem
 {
     public const float WeaknessMultiplier = 1.5f;
 
-    static readonly float KnockbackDirectionEpsilonSq = 1e-12f;
-
     public void ProcessHits(
         NativeArray<HitEvent>.ReadOnly hitEvents,
         NativeArray<AttackEntity> attackEntities,
-        NativeArray<PhysicalDamageRuntime> physicalDamages,
-        NativeArray<ColdDamageRuntime> coldDamages,
-        NativeArray<FireDamageRuntime> fireDamages,
-        NativeArray<LightningDamageRuntime> lightningDamages,
-        NativeArray<CritRuntime> crits,
-        NativeArray<KnockbackRuntime> knockbacks,
         EnemyBuffers enemies,
         NativeList<EnemyHitEvent> outHitEvents,
         NativeList<EnemyKilledEvent> outKillEvents,
         NativeList<DamageEvent> outDamageEvents = default,
-        NativeHashMap<int, float> shockDamageTakenMultiplierByEntityId = default,
-        IReadOnlyDictionary<EntityId, List<AttackEntityModifier>> hitModifierSets = null)
+        NativeHashMap<int, float> shockDamageTakenMultiplierByEntityId = default)
     {
         bool emitDamageEvents = outDamageEvents.IsCreated;
         bool useShock = shockDamageTakenMultiplierByEntityId.IsCreated;
-        bool useHitModifiers = hitModifierSets != null && hitModifierSets.Count > 0;
 
         for (int i = 0; i < hitEvents.Length; i++)
         {
@@ -58,34 +44,16 @@ public class DamageSystem
             StatusAilmentFlag status = enemies.Status[ei];
             EnemyMotion motion = enemies.Motion[ei];
             EnemyPresentation presentation = enemies.Presentation[ei];
-            CritRuntime crit = crits[ai];
-            KnockbackRuntime knockback = knockbacks[ai];
 
-            // Hit-conditional modifiers operate on scratch values only; stored damage stays rolled so
-            // re-hits and other targets are unaffected.
-            float physBase = physicalDamages[ai].amount;
-            float coldBase = coldDamages[ai].amount;
-            float fireBase = fireDamages[ai].amount;
-            float lightningBase = lightningDamages[ai].amount;
-            float critChance = crit.chance;
-            float critMult = crit.multiplier;
+            float physical = ApplyDamageType(hit.physicalDamage, DamageType.Physical, entityId, traits.elementalWeakness, outHitEvents);
+            float cold = ApplyDamageType(hit.coldDamage, DamageType.Cold, entityId, traits.elementalWeakness, outHitEvents);
+            float fire = ApplyDamageType(hit.fireDamage, DamageType.Fire, entityId, traits.elementalWeakness, outHitEvents);
+            float lightning = ApplyDamageType(hit.lightningDamage, DamageType.Lightning, entityId, traits.elementalWeakness, outHitEvents);
 
-            if (useHitModifiers && hitModifierSets.TryGetValue(atk.entityId, out List<AttackEntityModifier> hitMods))
-            {
-                HitConditionalEvaluationSystem.ApplyMatching(
-                    ei, enemies, hitMods,
-                    ref physBase, ref coldBase, ref fireBase, ref lightningBase, ref critChance, ref critMult);
-            }
-
-            float physical = ApplyDamageType(physBase, DamageType.Physical, entityId, traits.elementalWeakness, outHitEvents);
-            float cold = ApplyDamageType(coldBase, DamageType.Cold, entityId, traits.elementalWeakness, outHitEvents);
-            float fire = ApplyDamageType(fireBase, DamageType.Fire, entityId, traits.elementalWeakness, outHitEvents);
-            float lightning = ApplyDamageType(lightningBase, DamageType.Lightning, entityId, traits.elementalWeakness, outHitEvents);
-
-            bool isCrit = crit.isActive && critChance > 0f && critMult >= 1f && UnityEngine.Random.value < critChance;
+            bool isCrit = hit.critIsActive && hit.critChance > 0f && hit.critMultiplier >= 1f && UnityEngine.Random.value < hit.critChance;
             if (isCrit)
             {
-                float m = critMult;
+                float m = hit.critMultiplier;
                 physical *= m;
                 cold *= m;
                 fire *= m;
@@ -106,21 +74,6 @@ public class DamageSystem
             bool killed = healthBefore > 0f && vit.health <= 0f;
             float overkill = killed ? -vit.health : 0f;
 
-            if (totalDamage > 0f && knockback.isActive && knockback.strength > 0f)
-            {
-                float2 delta = motion.position - atk.position;
-                float2 dir;
-                if (math.lengthsq(delta) > KnockbackDirectionEpsilonSq)
-                    dir = math.normalize(delta);
-                else if (math.lengthsq(atk.velocity) > KnockbackDirectionEpsilonSq)
-                    dir = math.normalize(-atk.velocity);
-                else
-                    dir = new float2(-1f, 0f);
-
-                motion.knockbackVelocity += dir * knockback.strength;
-                enemies.Motion[ei] = motion;
-            }
-
             if (emitDamageEvents && totalDamage > 0f)
             {
                 outDamageEvents.Add(new DamageEvent
@@ -134,14 +87,14 @@ public class DamageSystem
                     fireDamage = fire,
                     coldDamage = cold,
                     lightningDamage = lightning,
-                    spellId = atk.spellId,
-                    spellInvocationId = atk.spellInvocationId,
+                    spellId = hit.spellId,
+                    spellInvocationId = hit.spellInvocationId,
                     wasKill = killed,
                     overkillDamage = overkill,
                     bloodExtracted = totalDamage + overkill,
-                    onDamageSound = atk.onDamageSound,
-                    onHitEffectForVfx = atk.onHitEffect,
-                    onKillEffectForVfx = atk.onKillEffect,
+                    onDamageSound = hit.onDamageSound,
+                    onHitEffectForVfx = hit.onHitEffect,
+                    onKillEffectForVfx = hit.onKillEffect,
                     enemyStatusAilments = status
                 });
             }
@@ -151,8 +104,8 @@ public class DamageSystem
                 outKillEvents.Add(new EnemyKilledEvent
                 {
                     enemyEntityId = entityId,
-                    spellId = atk.spellId,
-                    spellInvocationId = atk.spellInvocationId,
+                    spellId = hit.spellId,
+                    spellInvocationId = hit.spellInvocationId,
                     position = motion.position,
                     killingBlowDamage = totalDamage,
                     overkillDamage = overkill,

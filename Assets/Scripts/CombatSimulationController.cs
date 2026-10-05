@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shared;
@@ -57,7 +58,7 @@ public sealed class CombatSimulationController : ISpellModificationService
         PlayerInventory inventory = runtime.playerInventory;
 
         _simulation = new GameSimulation(runtime.simulationConfig);
-        _simulation.ApplyRoundConfig(runtime.GetRoundConfig(1));
+        _simulation.ApplyRoundConfig(runtime, 1);
 
         Rect playfield = _simulation.State.Playfield;
         _player = new Player(
@@ -86,11 +87,12 @@ public sealed class CombatSimulationController : ISpellModificationService
     }
 
     /// <summary>
-    /// Assigns this round's playfield, spawner, and enemy scaling. Call before <see cref="ResetForNewRound"/>.
+    /// Assigns the session playfield/spawner/speed and this round's health multiplier.
+    /// Call before <see cref="ResetForNewRound"/>.
     /// </summary>
-    public void ApplyRoundConfig(in RoundConfig roundConfig)
+    public void ApplyRoundConfig(GameConfig gameConfig, int roundNumber)
     {
-        _simulation.ApplyRoundConfig(in roundConfig);
+        _simulation.ApplyRoundConfig(gameConfig, roundNumber);
     }
 
     /// <summary>
@@ -102,6 +104,22 @@ public sealed class CombatSimulationController : ISpellModificationService
         _loopedSpellCaster.Reset();
         _loopedSpellCaster.ClearCastState();
         _player.PlaceAtRightSide(_simulation.State.Playfield);
+    }
+
+    /// <summary>
+    /// Fresh-round reset, then one-shot-flushes the noise sheet and reapplies session map modifiers.
+    /// </summary>
+    public void ResetForNewRoundWithMapModifiers(IReadOnlyList<MapModifier> modifiers)
+    {
+        ResetForNewRound();
+        if (!(_simulation.Spawner is NoiseSheetEnemySpawner))
+        {
+            throw new InvalidOperationException(
+                "Map modifiers require a NoiseSheetEnemySpawner in the map configuration.");
+        }
+
+        _simulation.FlushSpawnerNow();
+        MapModifierApplicator.ApplyMapModifiers(modifiers, _simulation);
     }
 
     /// <summary>
@@ -126,6 +144,7 @@ public sealed class CombatSimulationController : ISpellModificationService
         _player.Update(deltaTime, playfield);
 
         _emissionHandler.SetFrameModifications(mods);
+        _simulation.SetFrameModifications(mods);
 
         var sim = _simulation.State;
         SpellCastResult castResult = _loopedSpellCaster.AttemptToCastNextSpell(
@@ -166,6 +185,7 @@ public sealed class CombatSimulationController : ISpellModificationService
         finally
         {
             _simulation.ClearFrameCombatReactionContracts();
+            _simulation.ClearFrameModifications();
         }
 
         float frameDt = hasController ? debugCtrl.DeltaTime : deltaTime;

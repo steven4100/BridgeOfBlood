@@ -16,7 +16,7 @@ namespace BridgeOfBlood.Data.Spells
         public float percent; // 20 = 20%
     }
     /// <summary>
-    /// Hit-time scratch-stat dispatch retained by AttackEntityModifier.
+    /// Hit-time scratch-stat dispatch retained by ConditionalHitModifier.
     /// Spawn/item modification lookup uses typed IModificationData channels instead.
     /// </summary>
     public enum SpellModificationProperty : byte

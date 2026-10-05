@@ -52,6 +52,12 @@ public class RoundEnterEventListener : GameEventListener<RoundEnterEvent> { }
 [System.Serializable]
 public class ShopEnterEventListener : GameEventListener<ShopEnterEvent> { }
 
+[System.Serializable]
+public class MapModEnterEventListener : GameEventListener<MapModEnterEvent> { }
+
+[System.Serializable]
+public class MapModExitEventListener : GameEventListener<MapModExitEvent> { }
+
 
 [System.Serializable]
 public class ServicesRegisteredEventListener : GameEventListener<ServicesRegisteredEvent>

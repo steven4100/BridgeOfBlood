@@ -22,6 +22,9 @@ namespace BridgeOfBlood.Data.Enemies
 		[Tooltip("Base health points")]
 		public float healthPoints = 100f;
 
+		[Tooltip("World-space circle radius. Attacks overlap this body instead of the center point.")]
+		public float collisionRadius = 30f;
+
 		[Header("Characteristics")]
 		[Tooltip("Corruption type(s) for conditional modifiers")]
 		public EnemyCorruptionFlag corruptionFlag;
@@ -47,6 +50,7 @@ namespace BridgeOfBlood.Data.Enemies
 			float healthMultiplier,
 			float moveSpeedMultiplier,
 			NativeList<EnemyMotion> motion,
+			NativeList<EnemyHurtbox> hurtboxes,
 			NativeList<EnemyVitality> vitality,
 			NativeList<EnemyCombatTraits> combatTraits,
 			NativeList<StatusAilmentFlag> status,
@@ -56,7 +60,13 @@ namespace BridgeOfBlood.Data.Enemies
 			float moveSpeed = random.NextFloat(minMoveSpeed, maxMoveSpeed) * moveSpeedMultiplier;
 			float health = healthPoints * healthMultiplier;
 
-			motion[index] = new EnemyMotion { position = position, moveSpeed = moveSpeed, knockbackVelocity = float2.zero };
+			motion[index] = new EnemyMotion
+			{
+				position = position,
+				moveSpeed = moveSpeed,
+				knockbackVelocity = float2.zero
+			};
+			hurtboxes[index] = new EnemyHurtbox { radius = collisionRadius };
 			vitality[index] = new EnemyVitality { health = health, maxHealth = health };
 			combatTraits[index] = new EnemyCombatTraits
 			{

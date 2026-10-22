@@ -9,7 +9,7 @@ namespace BridgeOfBlood.Data.Spells
 	public class SpellAuthoringData : ScriptableObject, IPurchasable
 	{
 		[SerializeField] ShopItemDefinition shopItemDefinition;
-
+		public bool requiresDirection = true;
 		public SpellAnimation SpellAnimation;
 		public int baseMultiplier = 1;
 		public float castCompletionDuration = 1f;

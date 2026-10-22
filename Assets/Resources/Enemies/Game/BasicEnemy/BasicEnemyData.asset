@@ -15,6 +15,7 @@ MonoBehaviour:
   minMoveSpeed: 50
   maxMoveSpeed: 50
   healthPoints: 100
+  collisionRadius: 15
   corruptionFlag: 0
   elementalWeakness: 4
   visual: {fileID: 11400000, guid: 351a5faaadb963f4d9aa9ebd9240e782, type: 2}

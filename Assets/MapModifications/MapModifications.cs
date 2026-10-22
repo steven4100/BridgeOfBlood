@@ -28,15 +28,18 @@ public sealed class MapModifierContext
 {
     public AttackEntityManager AttackEntityManager { get; }
     public EnemyManager EnemyManager { get; }
+    public MapObjectRegistry MapObjects { get; }
     public Rect Playfield { get; }
 
     public MapModifierContext(
         AttackEntityManager attackEntityManager,
         EnemyManager enemyManager,
+        MapObjectRegistry mapObjects,
         Rect playfield)
     {
         AttackEntityManager = attackEntityManager;
         EnemyManager = enemyManager;
+        MapObjects = mapObjects;
         Playfield = playfield;
     }
 }
@@ -57,6 +60,7 @@ public static class MapModifierApplicator
         var context = new MapModifierContext(
             simulation.AttackEntityManager,
             simulation.EnemyManager,
+            simulation.MapObjects,
             simulation.State.Playfield);
         for (int i = 0; i < ordered.Count; i++)
         {

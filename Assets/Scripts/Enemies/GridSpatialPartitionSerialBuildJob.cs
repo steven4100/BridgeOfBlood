@@ -12,7 +12,7 @@ using Unity.Mathematics;
 public struct GridSpatialPartitionSerialBuildJob : IJob
 {
     [ReadOnly] public NativeArray<EnemyMotion> Motion;
-    [ReadOnly] public NativeArray<byte> Alive;
+    [ReadOnly] public NativeArray<EnemyId> Ids;
     public int SlotCount;
 
     public float2 BoundsMin;
@@ -38,7 +38,7 @@ public struct GridSpatialPartitionSerialBuildJob : IJob
 
         for (int i = 0; i < N; i++)
         {
-            if (Alive[i] == 0)
+            if (Ids[i].IsAlive == 0)
                 continue;
 
             int cell = GetCellIndexClamped(
@@ -62,7 +62,7 @@ public struct GridSpatialPartitionSerialBuildJob : IJob
 
         for (int i = 0; i < N; i++)
         {
-            if (Alive[i] == 0)
+            if (Ids[i].IsAlive == 0)
                 continue;
 
             int cell = CellIndexByEnemy[i];

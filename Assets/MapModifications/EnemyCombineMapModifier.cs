@@ -43,6 +43,8 @@ public sealed class EnemyCombineMapModifier : MapModifier
                 continue;
 
             EnemyMotion motion = enemies.Motion[enemyIndex];
+            if (enemies.Ids[enemyIndex].IsMapObject != 0)
+                continue;
             if (math.distancesq(motion.position, center) > radiusSquared)
                 continue;
 
@@ -75,6 +77,8 @@ public sealed class EnemyCombineMapModifier : MapModifier
                 continue;
 
             EnemyMotion motion = enemies.Motion[enemyIndex];
+            if (enemies.Ids[enemyIndex].IsMapObject != 0)
+                continue;
             if (math.distancesq(motion.position, center) <= radiusSquared)
                 manager.Remove(enemies.GetEntityId(enemyIndex));
         }

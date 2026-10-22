@@ -22,6 +22,16 @@ public struct SpellCastResult
 }
 
 /// <summary>
+/// One pointer cast command for a simulation frame. Callers own input and pass this into the combat tick.
+/// </summary>
+public struct SpellCastRequest
+{
+    public bool requested;
+    public float2 origin;
+    public float2 direction;
+}
+
+/// <summary>
 /// Drives a fixed loop of N spells. A slot may automatically invoke multiple times, spaced by its
 /// recastCooldown, at most once per frame. The next slot may only be cast after the final invocation's
 /// castCompletionDuration.
@@ -49,6 +59,8 @@ public class LoopedSpellCaster
     private int _loopCount;
     private readonly List<float> _loopManaCosts = new List<float>();
     private PendingMulticast _pendingMulticast;
+    private float2 _pressOrigin;
+    private float2 _pressForward;
 
     public IReadOnlyList<RuntimeSpell> Spells => _spellCollection.RuntimeSpells;
 
@@ -125,11 +137,12 @@ public class LoopedSpellCaster
     public SpellCastResult AttemptToCastNextSpell(
         double roundTime,
         float2 origin,
+        float2 forward,
         bool castRequestedThisFrame,
         ModificationCatalog modifications,
         float totalMana)
     {
-        SpellCastResult recastResult = TryFlushDueMulticast(roundTime, origin);
+        SpellCastResult recastResult = TryFlushDueMulticast(roundTime);
         if (recastResult.didCast)
             return recastResult;
 
@@ -198,8 +211,10 @@ public class LoopedSpellCaster
 
         _indexOfLastCast = nextIndex;
         UpdateOnDeckFlags(spells);
+        _pressOrigin = origin;
+        _pressForward = forward;
 
-        SpellCastResult pressResult = StartInvocation(next, origin, roundTime, loopCompleted, isRecast: false);
+        SpellCastResult pressResult = StartInvocation(next, origin, forward, roundTime, loopCompleted, isRecast: false);
 
         SpellAuthoringData nextDefinition = next.Definition;
         ModificationSet nextModifications = modifications != null
@@ -226,6 +241,7 @@ public class LoopedSpellCaster
     SpellCastResult StartInvocation(
         RuntimeSpell spell,
         float2 origin,
+        float2 forward,
         double fireTime,
         bool loopCompleted,
         bool isRecast)
@@ -237,7 +253,8 @@ public class LoopedSpellCaster
             origin,
             (float)fireTime,
             spell.spellId,
-            spell.InvocationCount);
+            spell.InvocationCount,
+            forward);
 
         return new SpellCastResult
         {
@@ -250,7 +267,7 @@ public class LoopedSpellCaster
         };
     }
 
-    SpellCastResult TryFlushDueMulticast(double roundTime, float2 origin)
+    SpellCastResult TryFlushDueMulticast(double roundTime)
     {
         if (_pendingMulticast.remainingInvocations <= 0
             || roundTime < _pendingMulticast.nextFireTime)
@@ -258,7 +275,8 @@ public class LoopedSpellCaster
 
         SpellCastResult result = StartInvocation(
             _pendingMulticast.spell,
-            origin,
+            _pressOrigin,
+            _pressForward,
             roundTime,
             loopCompleted: false,
             isRecast: true);
@@ -288,6 +306,8 @@ public class LoopedSpellCaster
         _timeOfLastCast = -1000.0;
         _loopCount = 0;
         _pendingMulticast = default;
+        _pressOrigin = default;
+        _pressForward = default;
         UpdateOnDeckFlags(_spellCollection.RuntimeSpells);
     }
 
@@ -296,5 +316,14 @@ public class LoopedSpellCaster
         _pendingMulticast = default;
         _spellInvoker?.ClearActiveCasts();
         _emissionHandler?.ClearPendingSpawns();
+    }
+
+
+    public RuntimeSpell PeekNextSpell()
+    {
+        IReadOnlyList<RuntimeSpell> spells = _spellCollection.RuntimeSpells;
+        if (spells.Count == 0)
+            return null;
+        return spells[NextCastIndex];
     }
 }

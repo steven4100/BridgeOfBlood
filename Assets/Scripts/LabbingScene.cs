@@ -2,6 +2,7 @@ using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Shop;
 using EZServiceLocation;
+using Unity.Mathematics;
 using UnityEngine;
 
 /// <summary>
@@ -18,16 +19,14 @@ public class LabbingScene : MonoBehaviour
     [Tooltip("Camera for simulation-zone pointer mapping (registered on ISimulationZoneService).")]
     [SerializeField] Camera renderCamera;
 
-    [Header("Spells & Items")]
-    [Tooltip("Default C so Space can toggle play/pause on Simulation Debug Controller.")]
-    public KeyCode castInputKey = KeyCode.C;
-
     [Header("Debug")]
     [SerializeField] SimulationDebugController debugController;
 
     /// <summary>Session-owned config (wallet, inventory); destroyed on teardown.</summary>
     GameConfig _runtimeConfig;
     CombatSimulationController _combatSimulation;
+    InputManager _inputManager;
+    LoopedSpellCasterController _spellCasterController;
     int _labRoundIndex;
 
     void Start()
@@ -37,7 +36,19 @@ public class LabbingScene : MonoBehaviour
 
     void Update()
     {
-        _combatSimulation.Tick(Time.deltaTime, Input.GetKeyDown(castInputKey), int.MaxValue);
+        SpellCastRequest castRequest = default;
+        _inputManager.ProcessInput();
+        if (_spellCasterController.TryConsumeCast(out SpellInputContext input))
+        {
+            castRequest = new SpellCastRequest
+            {
+                requested = true,
+                origin = new float2(input.Origin.x, input.Origin.y),
+                direction = new float2(input.Direction.x, input.Direction.y)
+            };
+        }
+
+        _combatSimulation.Tick(Time.deltaTime, int.MaxValue, castRequest);
     }
 
     void OnGUI()
@@ -85,6 +96,8 @@ public class LabbingScene : MonoBehaviour
         _labRoundIndex = index;
         ApplyLabRound();
         _combatSimulation.ResetForNewRound();
+        _inputManager.ClearFocus();
+        _spellCasterController.ClearPending();
         RaiseRoundEnter();
         ServicesRegisteredEvent.Raise();
     }
@@ -117,6 +130,10 @@ public class LabbingScene : MonoBehaviour
 
         ApplyLabRound();
         _combatSimulation.ResetForNewRound();
+        _inputManager = new InputManager();
+        _inputManager.Init();
+        _spellCasterController = new LoopedSpellCasterController(_combatSimulation.LoopedSpellCaster);
+        _inputManager.RegisterInputReciever(_spellCasterController);
         RegisterSessionServices();
         RaiseRoundEnter();
     }

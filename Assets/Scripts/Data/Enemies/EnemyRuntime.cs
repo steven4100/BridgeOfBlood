@@ -12,6 +12,20 @@ namespace BridgeOfBlood.Data.Enemies
 		public float2 knockbackVelocity;
 	}
 
+	/// <summary>Circle used by attack overlap. Zero radius is a point.</summary>
+	public struct EnemyHurtbox
+	{
+		public float radius;
+	}
+
+	/// <summary>Per-slot identity. Generation rejects stale <see cref="EntityId"/> handles after reuse.</summary>
+	public struct EnemyId
+	{
+		public uint Generation;
+		public byte IsAlive;
+		public byte IsMapObject;
+	}
+
 	/// <summary>Health pool; hot path for damage and death checks.</summary>
 	public struct EnemyVitality
 	{
@@ -41,8 +55,8 @@ namespace BridgeOfBlood.Data.Enemies
 	{
 		public NativeArray<EnemyMotion> Motion;
 		public NativeArray<EnemyVitality> Vitality;
-		public NativeArray<uint> Generations;
-		public NativeArray<byte> Alive;
+		public NativeArray<EnemyId> Ids;
+		public NativeArray<EnemyHurtbox> Hurtboxes;
 		public NativeArray<EnemyCombatTraits> CombatTraits;
 		public NativeArray<StatusAilmentFlag> Status;
 		public NativeArray<EnemyPresentation> Presentation;
@@ -51,8 +65,8 @@ namespace BridgeOfBlood.Data.Enemies
 		public EnemyBuffers(
 			NativeArray<EnemyMotion> motion,
 			NativeArray<EnemyVitality> vitality,
-			NativeArray<uint> generations,
-			NativeArray<byte> alive,
+			NativeArray<EnemyId> ids,
+			NativeArray<EnemyHurtbox> hurtboxes,
 			NativeArray<EnemyCombatTraits> combatTraits,
 			NativeArray<StatusAilmentFlag> status,
 			NativeArray<EnemyPresentation> presentation,
@@ -60,8 +74,8 @@ namespace BridgeOfBlood.Data.Enemies
 		{
 			Motion = motion;
 			Vitality = vitality;
-			Generations = generations;
-			Alive = alive;
+			Ids = ids;
+			Hurtboxes = hurtboxes;
 			CombatTraits = combatTraits;
 			Status = status;
 			Presentation = presentation;
@@ -72,18 +86,21 @@ namespace BridgeOfBlood.Data.Enemies
 		public int Length => SlotCount;
 
 		public bool IsLive(int index) =>
-			index >= 0 && index < Alive.Length && Alive[index] != 0;
+			index >= 0 && index < Ids.Length && Ids[index].IsAlive != 0;
+
+		public bool IsMapObject(int index) =>
+			IsLive(index) && Ids[index].IsMapObject != 0;
 
 		public bool IsValid(EntityId id) =>
 			id.Index >= 0
-			&& id.Index < Generations.Length
-			&& Alive[id.Index] != 0
-			&& Generations[id.Index] == id.Generation;
+			&& id.Index < Ids.Length
+			&& Ids[id.Index].IsAlive != 0
+			&& Ids[id.Index].Generation == id.Generation;
 
 		public EntityId GetEntityId(int index) => new EntityId
 		{
 			Index = index,
-			Generation = Generations[index]
+			Generation = Ids[index].Generation
 		};
 	}
 

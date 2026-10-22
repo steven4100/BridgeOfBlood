@@ -64,7 +64,13 @@ public sealed class MapModifierPlacementHost : MonoBehaviour
         if (_placementController == null)
             _placementController = gameObject.AddComponent<MapModifierPlacementController>();
 
-        _placementController.Initialize(zoneService, _placedModifiers, OnModifierCommitted);
+        _placementController.Initialize(
+            zoneService,
+            _placedModifiers,
+            OnModifierCommitted,
+            (origin, radius) => _simulation.EnemyManager.FootprintOverlapsEnemy(
+                new float2(origin.x, origin.y),
+                radius));
         _placementController.SetPlacementEnabled(true);
 
         if (modifierController != null)
@@ -212,6 +218,7 @@ public sealed class MapModifierPlacementHost : MonoBehaviour
         var context = new MapModifierContext(
             _simulation.AttackEntityManager,
             _simulation.EnemyManager,
+            _simulation.MapObjects,
             _simulation.State.Playfield);
 
         foreach (CombatSimWait wait in modifier.Apply(context))
@@ -286,6 +293,12 @@ public sealed class MapModifierPlacementHost : MonoBehaviour
             Vector2 position = attack.Emitter.Position;
             return $"{modifier.index + 1}. {attack.AttackEntityData.name} " +
                 $"({position.x:0.#}, {position.y:0.#})";
+        }
+
+        if (modifier is MapObjectMapModifier mapObject)
+        {
+            return $"{modifier.index + 1}. Map object r={mapObject.Radius:0.#} " +
+                $"({mapObject.Position.x:0.#}, {mapObject.Position.y:0.#})";
         }
 
         var combine = (EnemyCombineMapModifier)modifier;

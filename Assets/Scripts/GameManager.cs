@@ -29,13 +29,10 @@ public class GameManager : MonoBehaviour
     [Header("Presentation")]
     [Tooltip("Camera for simulation-zone pointer mapping (registered on ISimulationZoneService).")]
     [SerializeField] Camera renderCamera;
-    [Tooltip("Scene-bound combat audio component. Materials/atlas live on CombatPresentationDriver.")]
-    [SerializeField] GameAudioManager gameAudioManager;
 
     [Header("Spells & Items")]
     [Tooltip("Authoring asset on disk. A runtime clone is created via GameConfig.CreateRuntimeCopy.")]
     [SerializeField] GameConfig gameConfig;
-    public KeyCode castInputKey = KeyCode.Space;
 
     [Header("Debug")]
     public SimulationDebugController debugController;
@@ -64,14 +61,10 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
-        if (gameAudioManager == null)
-        {
-            var audioRoot = new GameObject("GameAudioManager");
-            audioRoot.transform.SetParent(transform, false);
-            gameAudioManager = audioRoot.AddComponent<GameAudioManager>();
-        }
-
-        PlayerInventory inv = _runtimeGameConfig.playerInventory;
+        var audioRoot = new GameObject("GameAudioManager");
+        audioRoot.transform.SetParent(transform, false);
+        audioRoot.AddComponent<GameAudioManager>();
+        
 
         _combatSimulation = new CombatSimulationController(new CombatSimulationControllerConfig
         {
@@ -82,27 +75,18 @@ public class GameManager : MonoBehaviour
         ServiceLocator.Current.RegisterInstance<ISpellModificationService>(_combatSimulation);
         ServicesRegisteredEvent.Raise();
 
-        var sessionContext = new SessionFlowContext(
-           _runtimeGameConfig,
-           inv.SpellCollection,
-           simulationZone);
-
-        _sessionFlow = new SessionFlowController(sessionContext);
+        _sessionFlow = new SessionFlowController();
 
         _roundController = new RoundController(
             _combatSimulation,
-            new RoundControllerConfig
-            {
-                castInputKey = castInputKey
-            },
             null,
             _sessionFlow);
 
-        _sessionFlow.AddPhase(_roundController, SessionState.Round);
-        _sessionFlow.AddPhase(new ShopSessionPhase(_sessionFlow), SessionState.Shop);
-        _sessionFlow.AddPhase(
-            new MapModSessionPhase(_sessionFlow, _combatSimulation, mapModifierPlacementHost),
-            SessionState.MapMod);
+        _sessionFlow.AddRound(_roundController);
+        _sessionFlow.AddShop(new ShopSessionPhase(_sessionFlow, () => _runtimeGameConfig));
+        _sessionFlow.AddMapMod(
+            new MapModSessionPhase(_sessionFlow, _combatSimulation, mapModifierPlacementHost));
+        _sessionFlow.EnterShop(new ShopSessionPhase.Context());
     }
 
     void Update()

@@ -20,7 +20,7 @@ public sealed class CombatSimulationControllerConfig
 /// <summary>
 /// Owns combat simulation coordination: item evaluation, player, casting, time advance, simulation steps,
 /// and frame-complete events. Presentation is owned by <see cref="CombatPresentationDriver"/> via the event bus.
-/// Callers own cast-request gating and pass <c>spellLoopsPerRound</c> into <see cref="Tick"/>.
+/// Callers own cast-request gating and pass <c>spellLoopsPerRound</c> and a <see cref="SpellCastRequest"/> into <see cref="Tick"/>.
 /// </summary>
 public sealed class CombatSimulationController : ISpellModificationService
 {
@@ -125,7 +125,7 @@ public sealed class CombatSimulationController : ISpellModificationService
     /// <summary>
     /// One combat frame: evaluate items into frame mods, then cast / step / raise frame-complete.
     /// </summary>
-    public void Tick(float deltaTime, bool castRequested, int spellLoopsPerRound)
+    public void Tick(float deltaTime, int spellLoopsPerRound, SpellCastRequest castRequest)
     {
         ModificationCatalog mods = _frameModifications;
         mods.ResetForFrame();
@@ -147,8 +147,17 @@ public sealed class CombatSimulationController : ISpellModificationService
         _simulation.SetFrameModifications(mods);
 
         var sim = _simulation.State;
+        float2 castForward = math.lengthsq(castRequest.direction) > 1e-8f
+            ? castRequest.direction
+            : CastForward;
         SpellCastResult castResult = _loopedSpellCaster.AttemptToCastNextSpell(
-            sim.SimulationTime, _player.Position, castRequested, mods, _config.RuntimeGameConfig.totalMana);
+            sim.SimulationTime,
+            castRequest.origin,
+            castForward,
+            castRequest.requested,
+            mods,
+            _config.RuntimeGameConfig.totalMana);
+
         if (castResult.didCast)
         {
             SharedGameEventBus.Bus.Raise(new SpellCastEvent

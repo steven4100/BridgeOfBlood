@@ -48,6 +48,7 @@ public partial class GameSimulation
     private ExpirationSystem _expirationSystem;
     private AttackEntityCullingSystem _attackEntityCullingSystem;
     private AilmentSystem _ailmentSystem;
+    private readonly MapObjectRegistry _mapObjects = new MapObjectRegistry();
 
     private NativeList<CollisionEvent> _rawCollisionEvents;
     private NativeList<HitEvent> _resolvedHits;
@@ -167,6 +168,9 @@ public partial class GameSimulation
     /// <summary>Mutation/capability handle for attack entities (e.g. spell emission).</summary>
     public AttackEntityManager AttackEntityManager => _attackEntityManager;
 
+    /// <summary>Live map objects placed by map modifiers. Cleared with each round reset.</summary>
+    public MapObjectRegistry MapObjects => _mapObjects;
+
     /// <summary>Active enemy spawn strategy (rate line, brush stroke, etc.).</summary>
     public IEnemySpawner Spawner => _spawner;
 
@@ -236,6 +240,7 @@ public partial class GameSimulation
     public void ResetForNewRound()
     {
         _enemyManager.Clear();
+        _mapObjects.Clear();
         _attackEntityManager.Clear();
         _ailmentSystem.Clear();
         _spawner.Reset();
@@ -376,6 +381,7 @@ public partial class GameSimulation
                 _attackEntityManager.GetHitBoxes(),
                 _enemyManager.GetBuffers(),
                 _enemyManager.Grid,
+                _enemyManager.ComputeMaxHurtboxRadius(),
                 _rawCollisionEvents);
         }
         else
@@ -401,6 +407,8 @@ public partial class GameSimulation
             //       → [HitResolver]  → _resolvedHits              (mutates rehitPolicies; copies attack base stats onto hits)
             //       → [ChainSystem]                                (mutates attackEntities, chainPolicies)
             //       → [HitModifierSystem]                          (edits hit damage/crit in place)
+            //       → [MapObjectBehaviors]                         (reads hits, may start spell casts)
+            //       → [MapObjectHitModifiers]                      (pass-through bonuses on attack ids)
             //       → [DamageSystem] → _hitEvents, _killEvents,    (mutates attackEntities, enemies)
             //                          _damageEvents
             //       → [KnockbackSystem]                            (mutates enemy motion from damage events)
@@ -434,6 +442,9 @@ public partial class GameSimulation
 
             _hitModifierSystem.Apply(_frameModifications, _resolvedHits, enemies);
 
+            _mapObjects.ProcessHits(_resolvedHits, enemies, _attackEntityManager, _simulationTime);
+            _mapObjects.ApplyHitModifiers(_resolvedHits, enemies);
+
             _ailmentSystem.BuildShockDamageMultipliers(_shockDamageMultiplierScratch);
             _damageSystem.ProcessHits(
                 _resolvedHits.AsArray().AsReadOnly(),
@@ -460,6 +471,8 @@ public partial class GameSimulation
 
             _attackEntityManager.RecordRehitHits(resolvedHitsRO, attackEntities.AsReadOnly());
         }
+
+        _mapObjects.Tick(_frameDeltaTime, _simulationTime, _attackEntityManager, _enemyManager.GetBuffers());
     }
 
     private void ProcessDeadFromHealthDepleted()

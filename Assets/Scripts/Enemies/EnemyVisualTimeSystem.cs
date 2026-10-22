@@ -8,14 +8,14 @@ using Unity.Mathematics;
 [BurstCompile]
 public struct TickEnemyVisualTimeJob : IJobParallelFor
 {
-    [ReadOnly] public NativeArray<byte> Alive;
+    [ReadOnly] public NativeArray<EnemyId> Ids;
     [ReadOnly] public NativeArray<StatusAilmentFlag> Status;
     public NativeArray<EnemyPresentation> Presentation;
     public float DeltaTime;
 
     public void Execute(int index)
     {
-        if (Alive[index] == 0)
+        if (Ids[index].IsAlive == 0)
             return;
 
         EnemyPresentation p = Presentation[index];
@@ -39,7 +39,7 @@ public static class EnemyVisualTimeSystem
 
         var job = new TickEnemyVisualTimeJob
         {
-            Alive = enemies.Alive,
+            Ids = enemies.Ids,
             Status = enemies.Status,
             Presentation = enemies.Presentation,
             DeltaTime = deltaTime

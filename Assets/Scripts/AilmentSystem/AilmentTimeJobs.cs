@@ -230,8 +230,7 @@ public struct CompactExpiredAilmentRowsJob : IJob
 [BurstCompile]
 public struct SyncEntityStatusAilmentFlagsJob : IJob
 {
-    [ReadOnly] public NativeArray<uint> Generations;
-    [ReadOnly] public NativeArray<byte> Alive;
+    [ReadOnly] public NativeArray<EnemyId> Ids;
     public NativeArray<StatusAilmentFlag> Status;
     [ReadOnly] public NativeList<EnemyFrozenStatus> Frozen;
     [ReadOnly] public NativeList<EnemyIgniteStatus> Ignite;
@@ -245,7 +244,7 @@ public struct SyncEntityStatusAilmentFlagsJob : IJob
     {
         for (int i = 0; i < Status.Length; i++)
         {
-            StatusAilmentFlag s = Alive[i] != 0 ? Status[i] : StatusAilmentFlag.None;
+            StatusAilmentFlag s = Ids[i].IsAlive != 0 ? Status[i] : StatusAilmentFlag.None;
             Status[i] = s & ~TrackedAilmentMask;
         }
 
@@ -273,9 +272,9 @@ public struct SyncEntityStatusAilmentFlagsJob : IJob
 
     private bool IsLive(EntityId enemyId) =>
         enemyId.Index >= 0
-        && enemyId.Index < Generations.Length
-        && Alive[enemyId.Index] != 0
-        && Generations[enemyId.Index] == enemyId.Generation;
+        && enemyId.Index < Ids.Length
+        && Ids[enemyId.Index].IsAlive != 0
+        && Ids[enemyId.Index].Generation == enemyId.Generation;
 }
 
 /// <summary>
@@ -292,8 +291,7 @@ public static class AilmentTimeScheduler
         | StatusAilmentFlag.Bleeding;
 
     public static void Tick(
-        NativeArray<uint> generations,
-        NativeArray<byte> alive,
+        NativeArray<EnemyId> ids,
         NativeArray<StatusAilmentFlag> status,
         float deltaTime,
         NativeList<EnemyBleedStatus> bleed,
@@ -346,12 +344,11 @@ public static class AilmentTimeScheduler
             }.Schedule(h);
         }
 
-        if (generations.IsCreated && generations.Length > 0)
+        if (ids.IsCreated && ids.Length > 0)
         {
             h = new SyncEntityStatusAilmentFlagsJob
             {
-                Generations = generations,
-                Alive = alive,
+                Ids = ids,
                 Status = status,
                 Frozen = frozen,
                 Ignite = ignite,

@@ -3,6 +3,7 @@ using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Effects;
 using BridgeOfBlood.Telemetry;
 using EZServiceLocation;
+using Unity.Mathematics;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
@@ -18,25 +19,29 @@ public enum GameLoopPhase
 }
 
 /// <summary>
-/// Round-session knobs for <see cref="RoundController"/>. Combat frame wiring lives on
-/// <see cref="CombatSimulationControllerConfig"/>.
-/// </summary>
-public class RoundControllerConfig
-{
-	public KeyCode castInputKey;
-}
-
-/// <summary>
 /// Session phase for <see cref="SessionState.Round"/>: cast gating, round phase/quota evaluation.
 /// Combat frame coordination (including item evaluation) is delegated to
 /// <see cref="CombatSimulationController"/>. Uses <see cref="IRoundEndStrategy"/> for win/lose
 /// when a round completes.
 /// </summary>
-public sealed class RoundController : SessionPhaseBase
+public sealed class RoundController : SessionPhaseBase<RoundController.Context>
 {
+	public readonly struct Context
+	{
+		public readonly GameConfig RuntimeGameConfig;
+
+		public Context(GameConfig runtimeGameConfig)
+		{
+			RuntimeGameConfig = runtimeGameConfig;
+		}
+	}
+
+	public override SessionState State => SessionState.Round;
+
 	readonly CombatSimulationController _combatSimulation;
-	readonly RoundControllerConfig _config;
 	readonly IRoundEndStrategy _roundEndStrategy;
+	readonly InputManager _inputManager;
+	readonly LoopedSpellCasterController _spellCasterController;
 
 	public GameLoopPhase Phase { get; private set; }
 	public int RoundNumber { get; private set; }
@@ -51,14 +56,16 @@ public sealed class RoundController : SessionPhaseBase
 
 	public RoundController(
 		CombatSimulationController combatSimulation,
-		RoundControllerConfig config,
 		IRoundEndStrategy roundEndStrategy,
 		SessionFlowController sessionFlowController)
 		: base(sessionFlowController)
 	{
 		_combatSimulation = combatSimulation;
-		_config = config;
 		_roundEndStrategy = roundEndStrategy ?? new QuotaBasedRoundEndStrategy();
+		_inputManager = new InputManager();
+		_inputManager.Init();
+		_spellCasterController = new LoopedSpellCasterController(combatSimulation.LoopedSpellCaster);
+		_inputManager.RegisterInputReciever(_spellCasterController);
 
 		RoundNumber = 1;
 		Phase = GameLoopPhase.Playing;
@@ -73,13 +80,17 @@ public sealed class RoundController : SessionPhaseBase
 		_combatSimulation.SetRuntimeGameConfig(runtime);
 	}
 
-	protected override void OnEnter(SessionFlowContext context)
+	protected override void OnEnter(Context context)
 	{
 		SetGameConfig(context.RuntimeGameConfig);
 		PrepareForRoundAfterShop();
 		ApplyRoundRuntimeFromConfig();
 		context.RuntimeGameConfig.playerInventory.SpellCollection.ClearRuntimeSpellTracking();
-		ResetForNewRoundWithMapModifiers();
+		IMapModifierSessionService mapModifiers =
+			ServiceLocator.Current.GetService<IMapModifierSessionService>();
+		_combatSimulation.ResetForNewRoundWithMapModifiers(mapModifiers.PlacedModifiers);
+		_inputManager.ClearFocus();
+		_spellCasterController.ClearPending();
 		SharedGameEventBus.Bus.Raise(new RoundEnterEvent
 		{
 			state = SessionState.Round,
@@ -90,7 +101,7 @@ public sealed class RoundController : SessionPhaseBase
 		});
 	}
 
-	protected override void OnExit(SessionFlowContext context)
+	protected override void OnExit(Context context)
 	{
 		SharedGameEventBus.Bus.Raise(new RoundExitEvent
 		{
@@ -101,14 +112,27 @@ public sealed class RoundController : SessionPhaseBase
 		});
 	}
 
-	public override void Tick(SessionFlowContext context, float deltaTime)
+	protected override void OnTick(Context context, float deltaTime)
 	{
 		LoopedSpellCaster caster = _combatSimulation.LoopedSpellCaster;
 		bool loopsExhausted = caster.LoopCount >= SpellLoopsPerRound;
 		bool allowCasting = Phase == GameLoopPhase.Playing && !loopsExhausted;
-		bool castRequested = allowCasting && Input.GetKeyDown(_config.castInputKey);
+		SpellCastRequest castRequest = default;
+		if (allowCasting)
+		{
+			_inputManager.ProcessInput();
+			if (_spellCasterController.TryConsumeCast(out SpellInputContext input))
+			{
+				castRequest = new SpellCastRequest
+				{
+					requested = true,
+					origin = new float2(input.Origin.x, input.Origin.y),
+					direction = new float2(input.Direction.x, input.Direction.y)
+				};
+			}
+		}
 
-		_combatSimulation.Tick(deltaTime, castRequested, SpellLoopsPerRound);
+		_combatSimulation.Tick(deltaTime, SpellLoopsPerRound, castRequest);
 
 		TelemetryAggregator telemetry = _combatSimulation.TelemetryAggregator;
 		BloodExtractedThisRound = telemetry.GetTelemetry(MetricsScope.Round, TelemetryCoreStats.BloodExtractedKey);
@@ -136,24 +160,8 @@ public sealed class RoundController : SessionPhaseBase
 			QuotaMet = resolution.QuotaMet;
 			// Stay on RoundEnd after a win so the next Round enter advances; retry the same round on a miss.
 			Phase = QuotaMet ? GameLoopPhase.RoundEnd : GameLoopPhase.Playing;
-			controller.SetState(SessionState.Shop);
+			controller.EnterShop(new ShopSessionPhase.Context());
 		}
-	}
-
-	/// <summary>
-	/// Clears simulation, spell caster, and repositions the player for a fresh round.
-	/// Called from <see cref="Enter"/> after spell-loop sync.
-	/// </summary>
-	public void ResetForNewRound()
-	{
-		_combatSimulation.ResetForNewRound();
-	}
-
-	public void ResetForNewRoundWithMapModifiers()
-	{
-		IMapModifierSessionService mapModifiers =
-			ServiceLocator.Current.GetService<IMapModifierSessionService>();
-		_combatSimulation.ResetForNewRoundWithMapModifiers(mapModifiers.PlacedModifiers);
 	}
 
 	/// <summary>

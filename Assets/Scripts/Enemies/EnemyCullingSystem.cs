@@ -8,8 +8,7 @@ using Unity.Jobs;
 public struct EnemyPastEdgeCullJob : IJob
 {
     [ReadOnly] public NativeArray<EnemyMotion> Motion;
-    [ReadOnly] public NativeArray<uint> Generations;
-    [ReadOnly] public NativeArray<byte> Alive;
+    [ReadOnly] public NativeArray<EnemyId> Ids;
     public float RightEdgeX;
     public NativeList<EntityId> OutEntityIds;
 
@@ -17,12 +16,12 @@ public struct EnemyPastEdgeCullJob : IJob
     {
         for (int i = 0; i < Motion.Length; i++)
         {
-            if (Alive[i] == 0)
+            if (Ids[i].IsAlive == 0 || Ids[i].IsMapObject != 0)
                 continue;
 
             if (Motion[i].position.x > RightEdgeX)
             {
-                OutEntityIds.Add(new EntityId { Index = i, Generation = Generations[i] });
+                OutEntityIds.Add(new EntityId { Index = i, Generation = Ids[i].Generation });
             }
         }
     }
@@ -46,8 +45,7 @@ public class EnemyCullingSystem
         return new EnemyPastEdgeCullJob
         {
             Motion = enemies.Motion,
-            Generations = enemies.Generations,
-            Alive = enemies.Alive,
+            Ids = enemies.Ids,
             RightEdgeX = rightEdgeX,
             OutEntityIds = outEntityIds
         }.Schedule(dependsOn);

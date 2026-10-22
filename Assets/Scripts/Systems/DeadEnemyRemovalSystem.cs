@@ -12,21 +12,20 @@ public class DeadEnemyRemovalSystem
     [BurstCompile]
     private struct CollectDeadEnemiesJob : IJob
     {
+        [ReadOnly] public NativeArray<EnemyId> Ids;
         [ReadOnly] public NativeArray<EnemyVitality> Vitality;
-        [ReadOnly] public NativeArray<uint> Generations;
-        [ReadOnly] public NativeArray<byte> Alive;
         public NativeList<EntityId> OutEntityIds;
 
         public void Execute()
         {
             for (int i = 0; i < Vitality.Length; i++)
             {
-                if (Alive[i] == 0)
+                if (Ids[i].IsAlive == 0 || Ids[i].IsMapObject != 0)
                     continue;
 
                 if (Vitality[i].health > 0f)
                     continue;
-                OutEntityIds.Add(new EntityId { Index = i, Generation = Generations[i] });
+                OutEntityIds.Add(new EntityId { Index = i, Generation = Ids[i].Generation });
             }
         }
     }
@@ -37,9 +36,8 @@ public class DeadEnemyRemovalSystem
 
         JobHandle h = new CollectDeadEnemiesJob
         {
+            Ids = enemies.Ids,
             Vitality = enemies.Vitality,
-            Generations = enemies.Generations,
-            Alive = enemies.Alive,
             OutEntityIds = outEntityIds
         }.Schedule();
 

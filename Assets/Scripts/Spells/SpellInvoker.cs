@@ -39,6 +39,7 @@ public class SpellInvoker
     private struct ActiveCast
     {
         public float2 origin;
+        public float2 forward;
         public float startTime;
         public int nextKeyframeIndex;
         public RuntimeSpell runtime;
@@ -58,7 +59,7 @@ public class SpellInvoker
     /// <summary>
     /// Start a new cast. The timeline played is <paramref name="runtime"/>'s <see cref="RuntimeSpell.Definition"/>.
     /// </summary>
-    public void StartCast(RuntimeSpell runtime, float2 origin, float startTime, int spellId, int spellInvocationId)
+    public void StartCast(RuntimeSpell runtime, float2 origin, float startTime, int spellId, int spellInvocationId, float2 forward = default)
     {
         if (runtime?.Definition == null || runtime.Definition.SpellAnimation?.keyFrames == null || runtime.Definition.SpellAnimation.keyFrames.Count == 0)
             return;
@@ -66,6 +67,7 @@ public class SpellInvoker
         _activeCasts.Add(new ActiveCast
         {
             origin = origin,
+            forward = forward,
             startTime = startTime,
             nextKeyframeIndex = 0,
             runtime = runtime,
@@ -94,7 +96,8 @@ public class SpellInvoker
                 int keyframeIndex = cast.nextKeyframeIndex;
                 float keyframeTime = keyFrames[keyframeIndex].time;
                 float keyframeFireTime = cast.startTime + keyframeTime;
-                _emissionHandler.OnKeyframeFired(keyFrames[keyframeIndex], cast.origin, forward, cast.runtime, keyframeFireTime, cast.spellId, cast.spellInvocationId, keyframeIndex);
+                float2 facing = math.lengthsq(cast.forward) > 1e-8f ? cast.forward : forward;
+                _emissionHandler.OnKeyframeFired(keyFrames[keyframeIndex], cast.origin, facing, cast.runtime, keyframeFireTime, cast.spellId, cast.spellInvocationId, keyframeIndex);
                 cast.nextKeyframeIndex++;
             }
 

@@ -88,8 +88,7 @@ public class AilmentSystem
     public void TickStatusAilmentDurations(EnemyBuffers enemies, float deltaTime)
     {
         AilmentTimeScheduler.Tick(
-            enemies.Generations,
-            enemies.Alive,
+            enemies.Ids,
             enemies.Status,
             deltaTime,
             _enemyBleedStatus,

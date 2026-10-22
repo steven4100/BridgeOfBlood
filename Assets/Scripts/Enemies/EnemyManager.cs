@@ -14,8 +14,8 @@ public class EnemyManager
 
     private NativeList<EnemyMotion> _motion;
     private NativeList<EnemyVitality> _vitality;
-    private NativeList<uint> _generations;
-    private NativeList<byte> _alive;
+    private NativeList<EnemyId> _ids;
+    private NativeList<EnemyHurtbox> _hurtboxes;
     private NativeList<int> _freeSlots;
     private NativeList<EnemyCombatTraits> _combatTraits;
     private NativeList<StatusAilmentFlag> _status;
@@ -28,8 +28,8 @@ public class EnemyManager
     {
         _motion = new NativeList<EnemyMotion>(Allocator.Persistent);
         _vitality = new NativeList<EnemyVitality>(Allocator.Persistent);
-        _generations = new NativeList<uint>(Allocator.Persistent);
-        _alive = new NativeList<byte>(Allocator.Persistent);
+        _ids = new NativeList<EnemyId>(Allocator.Persistent);
+        _hurtboxes = new NativeList<EnemyHurtbox>(Allocator.Persistent);
         _freeSlots = new NativeList<int>(Allocator.Persistent);
         _combatTraits = new NativeList<EnemyCombatTraits>(Allocator.Persistent);
         _status = new NativeList<StatusAilmentFlag>(Allocator.Persistent);
@@ -80,11 +80,42 @@ public class EnemyManager
                 healthMultiplier,
                 moveSpeedMultiplier,
                 _motion,
+                _hurtboxes,
                 _vitality,
                 _combatTraits,
                 _status,
                 _presentation);
         }
+    }
+
+    /// <summary>
+    /// Spawns one permanent map object. Does not increment <see cref="SpawnedThisRound"/>.
+    /// </summary>
+    public EntityId CreateMapObject(float2 position, float collisionRadius, EntityVisual visual)
+    {
+        EntityId id = AllocateSlot();
+        _motion[id.Index] = new EnemyMotion
+        {
+            position = position,
+            moveSpeed = 0f,
+            knockbackVelocity = float2.zero
+        };
+        _hurtboxes[id.Index] = new EnemyHurtbox { radius = collisionRadius };
+        EnemyId slot = _ids[id.Index];
+        slot.IsMapObject = 1;
+        _ids[id.Index] = slot;
+        _vitality[id.Index] = new EnemyVitality { health = 1f, maxHealth = 1f };
+        _combatTraits[id.Index] = default;
+        _status[id.Index] = 0;
+        _presentation[id.Index] = new EnemyPresentation
+        {
+            visual = visual,
+            onDeathSound = AudioUnitRuntime.None,
+            visualTime = 0f,
+            ailmentFlashTimer = 0f,
+            ailmentFlashSource = default
+        };
+        return id;
     }
 
     /// <summary>
@@ -101,7 +132,9 @@ public class EnemyManager
         if (!IsValid(id))
             return;
 
-        _alive[id.Index] = 0;
+        EnemyId slot = _ids[id.Index];
+        slot.IsAlive = 0;
+        _ids[id.Index] = slot;
         _status[id.Index] = 0;
         _freeSlots.Add(id.Index);
         _aliveCount--;
@@ -109,9 +142,9 @@ public class EnemyManager
 
     public bool IsValid(EntityId id) =>
         id.Index >= 0
-        && id.Index < _generations.Length
-        && _alive[id.Index] != 0
-        && _generations[id.Index] == id.Generation;
+        && id.Index < _ids.Length
+        && _ids[id.Index].IsAlive != 0
+        && _ids[id.Index].Generation == id.Generation;
 
     /// <summary>
     /// Parallel column views. Valid until next list modification.
@@ -121,8 +154,8 @@ public class EnemyManager
         return new EnemyBuffers(
             _motion.AsArray(),
             _vitality.AsArray(),
-            _generations.AsArray(),
-            _alive.AsArray(),
+            _ids.AsArray(),
+            _hurtboxes.AsArray(),
             _combatTraits.AsArray(),
             _status.AsArray(),
             _presentation.AsArray(),
@@ -136,8 +169,8 @@ public class EnemyManager
     {
         _motion.Clear();
         _vitality.Clear();
-        _generations.Clear();
-        _alive.Clear();
+        _ids.Clear();
+        _hurtboxes.Clear();
         _freeSlots.Clear();
         _combatTraits.Clear();
         _status.Clear();
@@ -160,7 +193,7 @@ public class EnemyManager
         if (_grid != null && _motion.IsCreated)
         {
             NativeArray<EnemyMotion> motion = _motion.AsArray();
-            _grid.BuildFromPositions(motion, _alive.AsArray(), _aliveCount);
+            _grid.BuildFromPositions(motion, _ids.AsArray(), _aliveCount);
         }
     }
 
@@ -184,12 +217,42 @@ public class EnemyManager
         _grid.QueryNeighbors(pos, radius, results);
     }
 
+    /// <summary>
+    /// True when any live enemy circle overlaps the circle at <paramref name="origin"/>.
+    /// Rebuilds the spatial grid from current positions first.
+    /// </summary>
+    public bool FootprintOverlapsEnemy(float2 origin, float radius)
+    {
+        BuildGrid();
+        if (_grid == null || radius < 0f)
+            return false;
+
+        float queryRadius = radius + ComputeMaxHurtboxRadius();
+        if (queryRadius <= 0f)
+            return false;
+
+        using var candidates = new NativeList<int>(Allocator.Temp);
+        QueryEnemies(origin, queryRadius, candidates);
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            int enemyIndex = candidates[i];
+            if (_ids[enemyIndex].IsAlive == 0)
+                continue;
+
+            float reach = radius + _hurtboxes[enemyIndex].radius;
+            if (math.distancesq(origin, _motion[enemyIndex].position) < reach * reach)
+                return true;
+        }
+
+        return false;
+    }
+
     public void Dispose()
     {
         if (_motion.IsCreated) _motion.Dispose();
         if (_vitality.IsCreated) _vitality.Dispose();
-        if (_generations.IsCreated) _generations.Dispose();
-        if (_alive.IsCreated) _alive.Dispose();
+        if (_ids.IsCreated) _ids.Dispose();
+        if (_hurtboxes.IsCreated) _hurtboxes.Dispose();
         if (_freeSlots.IsCreated) _freeSlots.Dispose();
         if (_combatTraits.IsCreated) _combatTraits.Dispose();
         if (_status.IsCreated) _status.Dispose();
@@ -206,23 +269,43 @@ public class EnemyManager
             index = _freeSlots[last];
             _freeSlots.RemoveAt(last);
 
-            uint generation = _generations[index] + 1u;
-            _generations[index] = generation != 0u ? generation : 1u;
-            _alive[index] = 1;
+            uint generation = _ids[index].Generation + 1u;
+            _ids[index] = new EnemyId
+            {
+                Generation = generation != 0u ? generation : 1u,
+                IsAlive = 1,
+                IsMapObject = 0
+            };
         }
         else
         {
             index = _motion.Length;
             _motion.Add(default);
             _vitality.Add(default);
-            _generations.Add(1u);
-            _alive.Add(1);
+            _ids.Add(new EnemyId { Generation = 1u, IsAlive = 1 });
+            _hurtboxes.Add(default);
             _combatTraits.Add(default);
             _status.Add(default);
             _presentation.Add(default);
         }
 
         _aliveCount++;
-        return new EntityId { Index = index, Generation = _generations[index] };
+        return new EntityId { Index = index, Generation = _ids[index].Generation };
+    }
+
+    /// <summary>Largest live hurtbox radius. Scanned when a query needs it.</summary>
+    public float ComputeMaxHurtboxRadius()
+    {
+        float max = 0f;
+        for (int i = 0; i < _ids.Length; i++)
+        {
+            if (_ids[i].IsAlive == 0)
+                continue;
+            float radius = _hurtboxes[i].radius;
+            if (radius > max)
+                max = radius;
+        }
+
+        return max;
     }
 }

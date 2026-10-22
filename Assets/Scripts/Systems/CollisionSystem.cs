@@ -16,8 +16,12 @@ public struct CollisionEvent
 }
 
 /// <summary>
-/// Detects overlaps between attack entity hitboxes and enemy positions.
+/// Detects overlaps between attack entity hitboxes and enemy circles.
 /// Queries the spatial grid for broad-phase, then runs narrow-phase overlap tests.
+/// The query radius includes the largest live enemy collision radius so a circle whose center
+/// sits outside the attack hitbox is still tested. A sphere overlaps when the distance is at most
+/// the attack radius plus the enemy radius. A rect overlaps when the closest point on the oriented
+/// rect is within the enemy radius.
 /// Outputs a flat list of CollisionEvents for downstream processing. Does not update enemiesHit
 /// (HitResolver → ChainSystem → DamageSystem; DamageSystem increments enemiesHit when applying hits).
 /// Assumes grid was built from the same enemy motion column; caller (e.g. EnemyManager.ValidateGridForCurrentEnemies) must validate upstream.
@@ -37,6 +41,7 @@ public class CollisionSystem
         NativeArray<HitBoxRuntime> hitBoxes,
         EnemyBuffers enemies,
         GridSpatialPartition grid,
+        float maxEnemyCollisionRadius,
         NativeList<CollisionEvent> results)
     {
         results.Clear();
@@ -51,7 +56,7 @@ public class CollisionSystem
                 continue;
 
             AttackEntity atk = attackEntities[ai];
-            float queryRadius = HitBoxQueryRadius(in hitBox);
+            float queryRadius = HitBoxQueryRadius(in hitBox) + math.max(maxEnemyCollisionRadius, 0f);
             if (queryRadius <= 0f)
                 continue;
 
@@ -66,7 +71,7 @@ public class CollisionSystem
 
                 float2 enemyPos = enemies.Motion[ei].position;
 
-                if (!Overlaps(in atk, in hitBox, enemyPos))
+                if (!Overlaps(in atk, in hitBox, enemyPos, enemies.Hurtboxes[ei].radius))
                     continue;
 
                 results.Add(new CollisionEvent
@@ -90,21 +95,22 @@ public class CollisionSystem
         return 0f;
     }
 
-    static bool Overlaps(in AttackEntity atk, in HitBoxRuntime hitBox, float2 point)
+    static bool Overlaps(in AttackEntity atk, in HitBoxRuntime hitBox, float2 center, float enemyRadius)
     {
         float scale = hitBox.currentScale;
+        float reach = math.max(enemyRadius, 0f);
 
         if (hitBox.hitBox.isSphere)
         {
-            float r = hitBox.hitBox.sphereRadius * scale;
-            float distSq = math.distancesq(atk.position, point);
+            float r = hitBox.hitBox.sphereRadius * scale + reach;
+            float distSq = math.distancesq(atk.position, center);
             return distSq <= r * r;
         }
 
         if (hitBox.hitBox.isRect)
         {
             float2 halfExtents = hitBox.hitBox.rectDimension * 0.5f * scale;
-            float2 rel = point - atk.position;
+            float2 rel = center - atk.position;
             float2 fwd = atk.direction;
             float lenSq = math.lengthsq(fwd);
             if (lenSq > 1e-12f)
@@ -114,7 +120,11 @@ public class CollisionSystem
             float2 perp = new float2(-fwd.y, fwd.x);
             float localX = math.dot(rel, fwd);
             float localY = math.dot(rel, perp);
-            return math.abs(localX) <= halfExtents.x && math.abs(localY) <= halfExtents.y;
+            float clampedX = math.clamp(localX, -halfExtents.x, halfExtents.x);
+            float clampedY = math.clamp(localY, -halfExtents.y, halfExtents.y);
+            float dx = localX - clampedX;
+            float dy = localY - clampedY;
+            return dx * dx + dy * dy <= reach * reach;
         }
 
         return false;

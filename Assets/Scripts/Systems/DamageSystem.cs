@@ -7,7 +7,7 @@ using EntityId = BridgeOfBlood.Data.Shared.EntityId;
 /// Commits resolved HitEvents to enemies: weakness, crit roll, shock taken, health, enemiesHit,
 /// and DamageEvent / EnemyHitEvent / EnemyKilledEvent. Hit modifiers and knockback run in other systems.
 /// Hits where the target already has no HP remaining are ignored (no damage, events, or enemiesHit).
-/// Assumes hit entity ids are valid; caller (e.g. AttackEntityManager.ValidateHitEvents) must validate upstream.
+/// Map-object hits increment enemiesHit and skip health, damage events, kills, and ailments.
 /// </summary>
 public class DamageSystem
 {
@@ -33,6 +33,14 @@ public class DamageSystem
             int ai = hit.attackEntityId.Index;
             if (!enemies.IsValid(hit.enemyEntityId))
                 continue;
+
+            if (enemies.Ids[ei].IsMapObject != 0)
+            {
+                AttackEntity mapHitAttack = attackEntities[ai];
+                mapHitAttack.enemiesHit++;
+                attackEntities[ai] = mapHitAttack;
+                continue;
+            }
 
             EnemyVitality vit = enemies.Vitality[ei];
             if (vit.health <= 0f)

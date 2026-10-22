@@ -1,23 +1,31 @@
+using System;
 using BridgeOfBlood.Data.Shared;
 using UnityEngine;
 
-public sealed class ShopSessionPhase : SessionPhaseBase
+public sealed class ShopSessionPhase : SessionPhaseBase<ShopSessionPhase.Context>
 {
-	SessionFlowContext _context;
-
-	public ShopSessionPhase(SessionFlowController controller) : base(controller)
+	public readonly struct Context
 	{
 	}
 
-	protected override void OnEnter(SessionFlowContext context)
+	readonly Func<GameConfig> _runtimeGameConfig;
+
+	public override SessionState State => SessionState.Shop;
+
+	public ShopSessionPhase(SessionFlowController controller, Func<GameConfig> runtimeGameConfig)
+		: base(controller)
 	{
-		_context = context;
+		_runtimeGameConfig = runtimeGameConfig;
+	}
+
+	protected override void OnEnter(Context context)
+	{
 		SharedGameEventBus.Bus.SubscribeTo<ShopContinueButtonPressed>(OnShopContinueButtonPressed);
 		SharedGameEventBus.Bus.SubscribeTo<MapModPlacementRequested>(OnMapModPlacementRequested);
 		SharedGameEventBus.Bus.Raise(new ShopEnterEvent());
 	}
 
-	protected override void OnExit(SessionFlowContext context)
+	protected override void OnExit(Context context)
 	{
 		SharedGameEventBus.Bus.UnsubscribeFrom<ShopContinueButtonPressed>(OnShopContinueButtonPressed);
 		SharedGameEventBus.Bus.UnsubscribeFrom<MapModPlacementRequested>(OnMapModPlacementRequested);
@@ -26,18 +34,17 @@ public sealed class ShopSessionPhase : SessionPhaseBase
 
 	void OnShopContinueButtonPressed(ref ShopContinueButtonPressed @event)
 	{
-		controller.SetState(SessionState.Round);
+		controller.EnterRound(new RoundController.Context(_runtimeGameConfig()));
 	}
 
 	void OnMapModPlacementRequested(ref MapModPlacementRequested @event)
 	{
-		_context.AllowedMapPlacements = @event.placementCount;
-		controller.SetState(SessionState.MapMod);
+		controller.EnterMapMod(new MapModSessionPhase.Context(@event.placementCount));
 	}
 
-	public override void Tick(SessionFlowContext context, float deltaTime)
+	protected override void OnTick(Context context, float deltaTime)
 	{
 		if (Input.GetKeyDown(KeyCode.N))
-			controller.SetState(SessionState.Round);
+			controller.EnterRound(new RoundController.Context(_runtimeGameConfig()));
 	}
 }

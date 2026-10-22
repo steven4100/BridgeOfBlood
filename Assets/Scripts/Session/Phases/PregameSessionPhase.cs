@@ -1,23 +1,35 @@
+using System;
+using BridgeOfBlood.Data.Shared;
 using UnityEngine;
 
-public sealed class PregameSessionPhase : SessionPhaseBase
+public sealed class PregameSessionPhase : SessionPhaseBase<PregameSessionPhase.Context>
 {
-	public PregameSessionPhase(SessionFlowController controller) : base(controller) { }
+	public readonly struct Context
+	{
+	}
 
-    public override void Tick(SessionFlowContext context, float deltaTime)
-    {
-        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Space))
-            context.Flow.SetState(SessionState.Round);
-    }
+	readonly Func<GameConfig> _runtimeGameConfig;
 
-    protected override void OnEnter(SessionFlowContext context)
-    {
-        
-    }
+	public override SessionState State => SessionState.Pregame;
 
-    protected override void OnExit(SessionFlowContext context)
-    {
-        throw new System.NotImplementedException();
-    }
+	public PregameSessionPhase(SessionFlowController controller, Func<GameConfig> runtimeGameConfig)
+		: base(controller)
+	{
+		_runtimeGameConfig = runtimeGameConfig;
+	}
 
+	protected override void OnTick(Context context, float deltaTime)
+	{
+		if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Space))
+			controller.EnterRound(new RoundController.Context(_runtimeGameConfig()));
+	}
+
+	protected override void OnEnter(Context context)
+	{
+	}
+
+	protected override void OnExit(Context context)
+	{
+		throw new NotImplementedException();
+	}
 }

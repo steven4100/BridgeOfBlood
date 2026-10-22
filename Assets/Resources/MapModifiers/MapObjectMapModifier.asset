@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: MapObjectMapModifier
+  m_EditorClassIdentifier: Assembly-CSharp::MapObjectMapModifierDefinition
+  displayName: tjmdtymu
+  radius: 25
+  visual: {fileID: 11400000, guid: 6a89cbba6c71e5440a3a15edec0394fe, type: 2}
+  behaviors:
+  - rid: 8832584849575903294
+  - rid: 8832584849575903295
+  references:
+    version: 2
+    RefIds:
+    - rid: 8832584849575903294
+      type: {class: PassThroughDamageBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        bonusDamage: 10000
+    - rid: 8832584849575903295
+      type: {class: EmitAttackEveryHitsBehavior, ns: , asm: Assembly-CSharp}
+      data:
+        hitsRequired: 1
+        emitCount: 1
+        spell: {fileID: 11400000, guid: 7428b9f97e9a05848b3b6bd82db1a0cd, type: 2}

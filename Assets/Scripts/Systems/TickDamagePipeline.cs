@@ -143,6 +143,8 @@ public static class TickDamagePipeline
     {
         if (enemyIndex < 0 || enemyIndex >= enemies.Length)
             return;
+        if (enemies.Ids[enemyIndex].IsMapObject != 0)
+            return;
         EntityId enemyId = enemies.GetEntityId(enemyIndex);
 
         EnemyVitality vit = enemies.Vitality[enemyIndex];

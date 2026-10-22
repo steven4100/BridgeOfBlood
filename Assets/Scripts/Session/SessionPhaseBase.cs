@@ -1,27 +1,32 @@
 /// <summary>
 /// Shared Enter / Exit / Tick wiring for one <see cref="SessionState"/>.
+/// The context supplied to <see cref="Enter"/> is stored and passed to exit and tick.
 /// </summary>
-public abstract class SessionPhaseBase : ISessionPhase
+public abstract class SessionPhaseBase<TContext> : ISessionPhase
 {
-	protected SessionFlowController controller;
+	protected readonly SessionFlowController controller;
+	TContext _context;
+
 	protected SessionPhaseBase(SessionFlowController controller)
 	{
 		this.controller = controller;
 	}
 
-	public void Enter(SessionFlowContext context)
+	public abstract SessionState State { get; }
+
+	internal void Enter(TContext context)
 	{
+		_context = context;
 		OnEnter(context);
 	}
 
-	public void Exit(SessionFlowContext context)
-	{
-		OnExit(context);
-	}
+	public void Exit() => OnExit(_context);
 
-	protected abstract void OnEnter(SessionFlowContext context);
+	public void Tick(float deltaTime) => OnTick(_context, deltaTime);
 
-	protected abstract void OnExit(SessionFlowContext context);
+	protected abstract void OnEnter(TContext context);
 
-	public abstract void Tick(SessionFlowContext context, float deltaTime);
+	protected abstract void OnExit(TContext context);
+
+	protected abstract void OnTick(TContext context, float deltaTime);
 }

@@ -7,12 +7,28 @@ using UnityEngine;
 /// Shop-nested placement visit: injects session map config and existing modifiers,
 /// then returns to <see cref="SessionState.Shop"/> after the purchased placement budget.
 /// </summary>
-public sealed class MapModSessionPhase : SessionPhaseBase
+public sealed class MapModSessionPhase : SessionPhaseBase<MapModSessionPhase.Context>
 {
+	public readonly struct Context
+	{
+		public readonly int PlacementCount;
+
+		public Context(int placementCount)
+		{
+			if (placementCount <= 0)
+				throw new ArgumentOutOfRangeException(
+					nameof(placementCount),
+					"Map mod entry requires a positive placement count.");
+			PlacementCount = placementCount;
+		}
+	}
+
 	readonly CombatSimulationController _combatSimulation;
 	readonly MapModifierPlacementHost _placementHost;
 
 	IMapModifierSessionService _mapModifiers;
+
+	public override SessionState State => SessionState.MapMod;
 
 	public MapModSessionPhase(
 		SessionFlowController controller,
@@ -24,16 +40,10 @@ public sealed class MapModSessionPhase : SessionPhaseBase
 		_placementHost = placementHost;
 	}
 
-	protected override void OnEnter(SessionFlowContext context)
+	protected override void OnEnter(Context context)
 	{
 		_mapModifiers = ServiceLocator.Current.GetService<IMapModifierSessionService>();
-		int placementCount = context.AllowedMapPlacements;
-		context.AllowedMapPlacements = 0;
-		if (placementCount <= 0)
-		{
-			throw new InvalidOperationException(
-				"MapModSessionPhase requires AllowedMapPlacements on the session flow context.");
-		}
+		int placementCount = context.PlacementCount;
 
 		ISimulationZoneService zoneService = ServiceLocator.Current.GetService<ISimulationZoneService>();
 		_combatSimulation.ResetForNewRoundWithMapModifiers(_mapModifiers.PlacedModifiers);
@@ -54,7 +64,7 @@ public sealed class MapModSessionPhase : SessionPhaseBase
 		});
 	}
 
-	protected override void OnExit(SessionFlowContext context)
+	protected override void OnExit(Context context)
 	{
 		_placementHost.EndSession();
 		SharedGameEventBus.Bus.Raise(new MapModExitEvent
@@ -63,7 +73,7 @@ public sealed class MapModSessionPhase : SessionPhaseBase
 		});
 	}
 
-	public override void Tick(SessionFlowContext context, float deltaTime)
+	protected override void OnTick(Context context, float deltaTime)
 	{
 		bool overPanel =
 			Input.mousePosition.x <= 320f
@@ -74,6 +84,6 @@ public sealed class MapModSessionPhase : SessionPhaseBase
 
 	void OnPlacementBudgetExhausted()
 	{
-		controller.SetState(SessionState.Shop);
+		controller.EnterShop(new ShopSessionPhase.Context());
 	}
 }

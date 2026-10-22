@@ -13,8 +13,10 @@ public sealed class MapModifierPlacementController : MonoBehaviour
     const float LineWidth = 0.8f;
 
     static readonly Color PreviewColor = new Color(0.25f, 0.8f, 1f, 1f);
+    static readonly Color BlockedColor = new Color(1f, 0.25f, 0.2f, 1f);
     static readonly Color PlacedAttackColor = new Color(0.25f, 0.65f, 1f, 1f);
     static readonly Color PlacedCombineColor = new Color(1f, 0.25f, 0.2f, 1f);
+    static readonly Color PlacedMapObjectColor = new Color(0.75f, 0.55f, 1f, 1f);
 
     Mesh _circleMesh;
     Mesh _quadMesh;
@@ -24,21 +26,25 @@ public sealed class MapModifierPlacementController : MonoBehaviour
     ISimulationZoneService _zoneService;
     IReadOnlyList<MapModifier> _placedModifiers;
     Action<MapModifier> _onCommitted;
+    Func<Vector2, float, bool> _footprintOverlapsEnemy;
     MapModifierDefinition _activeDefinition;
     IEmitterController _activeEmitterController;
     bool _placementEnabled;
     bool _pointerBlocked;
+    bool _previewBlocked;
 
     public MapModifierDefinition ActiveDefinition => _activeDefinition;
 
     public void Initialize(
         ISimulationZoneService zoneService,
         IReadOnlyList<MapModifier> placedModifiers,
-        Action<MapModifier> onCommitted)
+        Action<MapModifier> onCommitted,
+        Func<Vector2, float, bool> footprintOverlapsEnemy)
     {
         _zoneService = zoneService;
         _placedModifiers = placedModifiers;
         _onCommitted = onCommitted;
+        _footprintOverlapsEnemy = footprintOverlapsEnemy;
         _placementEnabled = true;
     }
 
@@ -105,7 +111,12 @@ public sealed class MapModifierPlacementController : MonoBehaviour
             Input.GetMouseButtonUp(0),
             Input.mouseScrollDelta.y);
 
-        if (_activeEmitterController.TryCommit(in input, out MapModifierPlacement placement))
+        bool blocked = false;
+        if (inside && _activeDefinition is MapObjectMapModifierDefinition mapObject)
+            blocked = _footprintOverlapsEnemy(local, mapObject.Radius);
+        _previewBlocked = blocked;
+
+        if (_activeEmitterController.TryCommit(in input, out MapModifierPlacement placement) && !blocked)
             _onCommitted(_activeDefinition.CreateRuntime(in placement));
     }
 
@@ -122,6 +133,10 @@ public sealed class MapModifierPlacementController : MonoBehaviour
             {
                 DrawAttackModifier(attack, PlacedAttackColor);
             }
+            else if (modifier is MapObjectMapModifier mapObject)
+            {
+                DrawLocalCircle(mapObject.Position, mapObject.Radius, PlacedMapObjectColor);
+            }
         }
     }
 
@@ -135,7 +150,14 @@ public sealed class MapModifierPlacementController : MonoBehaviour
         }
 
         MapModifierPlacement preview = _activeEmitterController.Preview;
-        if (_activeDefinition is AttackEntitySpawnMapModifierDefinition attackDefinition)
+        if (_activeDefinition is MapObjectMapModifierDefinition mapObjectDefinition)
+        {
+            DrawLocalCircle(
+                preview.Origin,
+                mapObjectDefinition.Radius,
+                _previewBlocked ? BlockedColor : PreviewColor);
+        }
+        else if (_activeDefinition is AttackEntitySpawnMapModifierDefinition attackDefinition)
         {
             DrawAttackFootprint(
                 preview.Origin,

@@ -43,7 +43,9 @@ public sealed class CombatPresentationLayer
 	/// </summary>
 	public void HandleFrameComplete(
 		ref SimulationCompleteEvent @event,
-		RectTransform simulationZone,
+		Matrix4x4 playfieldLocalToWorld,
+		Vector3 playfieldForward,
+		Bounds worldBounds,
 		Camera camera)
 	{
 		GameSimulation.SimulationState sim = @event.simulationState;
@@ -59,14 +61,25 @@ public sealed class CombatPresentationLayer
 
 		SyncPlayerTransform(@event.playerPosition);
 		_spriteBuilder.Build(sim.EnemyBuffers, sim.AttackEntities, _effectSprites.GetEntities());
-		_spriteRenderer.Render(_spriteBuilder.Buffer, _spriteBuilder.Count, simulationZone, camera);
-		_attackDebugRenderer.Render(sim.AttackEntities, sim.AttackHitBoxes, simulationZone, camera);
-		_damageNumbers.Render(simulationZone, camera);
+		_spriteRenderer.Render(
+			_spriteBuilder.Buffer,
+			_spriteBuilder.Count,
+			playfieldLocalToWorld,
+			playfieldForward,
+			worldBounds,
+			camera);
+		_attackDebugRenderer.Render(
+			sim.AttackEntities,
+			sim.AttackHitBoxes,
+			playfieldLocalToWorld,
+			playfieldForward,
+			camera);
+		_damageNumbers.Render(playfieldLocalToWorld, playfieldForward, worldBounds, camera);
 	}
 
-	public void DrawGizmos(Transform simulationZone)
+	public void DrawGizmos(Matrix4x4 playfieldLocalToWorld)
 	{
-		_attackDebugRenderer.DrawGizmos(simulationZone);
+		_attackDebugRenderer.DrawGizmos(playfieldLocalToWorld);
 	}
 
 	public void Dispose()

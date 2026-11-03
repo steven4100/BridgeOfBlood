@@ -3,6 +3,7 @@ using System.Threading;
 using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shared;
 using UnityEngine;
+using EntityId = BridgeOfBlood.Data.Shared.EntityId;
 
 namespace BridgeOfBlood.Data.Spells
 {
@@ -30,6 +31,9 @@ namespace BridgeOfBlood.Data.Spells
 		/// <summary>True while this slot is the next one to cast.</summary>
 		public bool IsOnDeck { get; private set; }
 
+		/// <summary>Entity this spell's attacks cannot hit. Invalid hits every category allowed by <see cref="SpellAuthoringData.hitTarget"/>.</summary>
+		public EntityId ExcludedTarget { get; set; } = EntityId.Invalid;
+
 		/// <summary>Raised when a cast is recorded (see <see cref="RecordCast"/>).</summary>
 		public event Action CastInvoked;
 
@@ -42,7 +46,7 @@ namespace BridgeOfBlood.Data.Spells
 		public int TileSideLength => 1;
 		public Sprite GhostSprite => Definition.icon;
 
-		public AttackEntityData AttackEntityData => Definition.SpellAnimation.keyFrames[0].attackEntityData;
+		public AttackEntityData AttackEntityData => Definition.attackEntityData;
 
 		public RuntimeSpell(SpellAuthoringData definition)
 		{

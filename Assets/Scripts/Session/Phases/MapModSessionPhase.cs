@@ -24,7 +24,7 @@ public sealed class MapModSessionPhase : SessionPhaseBase<MapModSessionPhase.Con
 	}
 
 	readonly CombatSimulationController _combatSimulation;
-	readonly MapModifierPlacementHost _placementHost;
+	readonly MapModifierController _mapModifierController;
 
 	IMapModifierSessionService _mapModifiers;
 
@@ -33,11 +33,11 @@ public sealed class MapModSessionPhase : SessionPhaseBase<MapModSessionPhase.Con
 	public MapModSessionPhase(
 		SessionFlowController controller,
 		CombatSimulationController combatSimulation,
-		MapModifierPlacementHost placementHost)
+		MapModifierController mapModifierController)
 		: base(controller)
 	{
 		_combatSimulation = combatSimulation;
-		_placementHost = placementHost;
+		_mapModifierController = mapModifierController;
 	}
 
 	protected override void OnEnter(Context context)
@@ -45,9 +45,9 @@ public sealed class MapModSessionPhase : SessionPhaseBase<MapModSessionPhase.Con
 		_mapModifiers = ServiceLocator.Current.GetService<IMapModifierSessionService>();
 		int placementCount = context.PlacementCount;
 
-		ISimulationZoneService zoneService = ServiceLocator.Current.GetService<ISimulationZoneService>();
+		IMapService zoneService = ServiceLocator.Current.GetService<IMapService>();
 		_combatSimulation.ResetForNewRoundWithMapModifiers(_mapModifiers.PlacedModifiers);
-		_placementHost.BeginSession(
+		_mapModifierController.BeginSession(
 			_combatSimulation.Simulation,
 			zoneService,
 			_mapModifiers.PlacedModifiers,
@@ -66,7 +66,7 @@ public sealed class MapModSessionPhase : SessionPhaseBase<MapModSessionPhase.Con
 
 	protected override void OnExit(Context context)
 	{
-		_placementHost.EndSession();
+		_mapModifierController.EndSession();
 		SharedGameEventBus.Bus.Raise(new MapModExitEvent
 		{
 			state = SessionState.MapMod
@@ -78,8 +78,8 @@ public sealed class MapModSessionPhase : SessionPhaseBase<MapModSessionPhase.Con
 		bool overPanel =
 			Input.mousePosition.x <= 320f
 			&& Input.mousePosition.y >= Screen.height - 540f;
-		_placementHost.SetPointerBlocked(overPanel);
-		_placementHost.Tick(deltaTime);
+		_mapModifierController.SetPointerBlocked(overPanel);
+		_mapModifierController.Tick(deltaTime);
 	}
 
 	void OnPlacementBudgetExhausted()

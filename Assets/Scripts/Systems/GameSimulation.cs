@@ -278,6 +278,7 @@ public partial class GameSimulation
         if (_shockDamageMultiplierScratch.IsCreated) _shockDamageMultiplierScratch.Dispose();
         _enemyRemovals.Dispose();
         _ailmentSystem.Dispose();
+        _mapObjects.Dispose();
     }
 
     private void StepSpawnEnemies()
@@ -442,7 +443,7 @@ public partial class GameSimulation
 
             _hitModifierSystem.Apply(_frameModifications, _resolvedHits, enemies);
 
-            _mapObjects.ProcessHits(_resolvedHits, enemies, _attackEntityManager, _simulationTime);
+            _mapObjects.ProcessHits(_resolvedHits, enemies, _attackEntityManager, _enemyManager, _simulationTime);
             _mapObjects.ApplyHitModifiers(_resolvedHits, enemies);
 
             _ailmentSystem.BuildShockDamageMultipliers(_shockDamageMultiplierScratch);
@@ -472,7 +473,7 @@ public partial class GameSimulation
             _attackEntityManager.RecordRehitHits(resolvedHitsRO, attackEntities.AsReadOnly());
         }
 
-        _mapObjects.Tick(_frameDeltaTime, _simulationTime, _attackEntityManager, _enemyManager.GetBuffers());
+        _mapObjects.Tick(_frameDeltaTime, _simulationTime, _attackEntityManager, _enemyManager, _enemyManager.GetBuffers());
     }
 
     private void ProcessDeadFromHealthDepleted()

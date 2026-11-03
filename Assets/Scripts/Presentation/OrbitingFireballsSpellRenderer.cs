@@ -4,14 +4,14 @@ using UnityEngine;
 
 /// <summary>
 /// Diegetic <see cref="SpellRenderer"/> for Fireball: one sphere per resolved projectile, equally spaced
-/// on a ring around the cast origin (the player) and spinning in the playfield XY plane.
+/// on a ring around the cast origin (the cursor) and spinning in the playfield XY plane.
 ///
 /// Sphere size tracks the resolved hitbox; count tracks <see cref="SpellModificationsApplicator.ResolveEmitCount"/>.
 /// Children are pooled and only rebuilt when those resolved values change.
 /// </summary>
 public sealed class OrbitingFireballsSpellRenderer : SpellRenderer
 {
-	[Tooltip("Distance from the player to each fireball's center.")]
+	[Tooltip("Distance from the cast origin to each fireball's center.")]
 	[SerializeField, Min(0.1f)] float orbitRadius = 40f;
 	[Tooltip("Degrees per second while idle. On-deck and cast multiply this.")]
 	[SerializeField] float orbitDegreesPerSecond = 90f;
@@ -77,11 +77,11 @@ public sealed class OrbitingFireballsSpellRenderer : SpellRenderer
 
 	protected override bool IsPreviewDirty()
 	{
-		SpellKeyFrame keyFrame = PrimaryKeyFrame;
+		AttackEntityEmitter emitter = Spell.Definition.attackEntityEmitter;
 		int emitCount = SpellModificationsApplicator.ResolveEmitCount(
-			FrameMods, keyFrame.attackEntityEmitter.baseEmitCount, AttributeMask);
+			FrameMods, emitter.baseEmitCount, AttributeMask);
 		HitBoxData hitBox = AttackEntityModificationApplicator.ResolveHitBox(
-			keyFrame.attackEntityData, FrameMods, AttributeMask);
+			Spell.Definition.attackEntityData, FrameMods, AttributeMask);
 		float visualRadius = Mathf.Max(minRadius, ResolveHitBoxRadius(hitBox) * hitBoxRadiusScale);
 
 		if (emitCount == _lastEmitCount

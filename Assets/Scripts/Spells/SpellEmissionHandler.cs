@@ -7,14 +7,14 @@ using UnityEngine;
 using EntityId = BridgeOfBlood.Data.Shared.EntityId;
 
 /// <summary>
-/// Handles what happens when a spell keyframe fires: gets emit points (with time offsets) from the emitter,
-/// builds an <see cref="AttackEntityBuildContext"/> from keyframe entity data (plus the frame's spell modifications),
+/// Handles what happens when a spell emits: gets emit points (with time offsets) from the spell's emitter,
+/// builds an <see cref="AttackEntityBuildContext"/> from the spell's attack entity data (plus the frame's spell modifications),
 /// then spawns at the correct times. Also tracks active sub-emitters on live parent entities and ticks them each
 /// frame, spawning child entities at the parent's current position when the emission interval elapses.
 /// Call Update(simulationTime) each frame to process time-delayed spawns and sub-emitter ticks; all attack spawns
 /// from this frame are applied in one batch at the end of Update so the entity buffer is not reallocated mid-tick.
 /// </summary>
-public class SpellEmissionHandler : ISpellEmissionHandler
+public class SpellEmissionHandler
 {
     private readonly AttackEntityManager _attackEntityManager;
     private readonly IEmissionTargetProvider _targetProvider;
@@ -85,43 +85,49 @@ public class SpellEmissionHandler : ISpellEmissionHandler
         _targetProvider = targetProvider;
     }
 
+    /// <summary>
+    /// Spell modifications applied to attack entities spawned this frame. Injected by the round/lab
+    /// each frame after item evaluation; must be treated as immutable for the rest of the frame (delayed and
+    /// sub-emitter spawns keep this reference as their snapshot).
+    /// </summary>
     public void SetFrameModifications(ModificationCatalog modifications)
     {
         _frameModifications = modifications;
     }
 
-    public void OnKeyframeFired(SpellKeyFrame keyFrame, float2 origin, float2 forward, RuntimeSpell runtime, float keyframeFireTime, int spellId, int spellInvocationId, int keyframeIndex)
+    public void Emit(RuntimeSpell runtime, float2 origin, float2 forward, float fireTime, int spellId, int spellInvocationId)
     {
-        if (keyFrame?.attackEntityEmitter == null || keyFrame.attackEntityData == null)
-            return;
+        SpellAuthoringData definition = runtime.Definition;
+        AttackEntityEmitter emitter = definition.attackEntityEmitter;
+        AttackEntityData attackData = definition.attackEntityData;
+        SpellAttributeMask mask = definition.attributeMask;
 
-         SpellAttributeMask mask = runtime?.Definition != null ? runtime.Definition.attributeMask : default;
-
-        int count = GetEmitCount(keyFrame, mask, spellId);
+        int count = GetEmitCount(emitter, mask, spellId);
         var context = new SpellEmissionContext
         {
             origin = origin,
             forward = forward,
             count = count,
-            targetProvider = _targetProvider
+            targetProvider = _targetProvider,
+            excludedTarget = runtime.ExcludedTarget
         };
-        var emitPoints = keyFrame.attackEntityEmitter.GetEmitPoints(context);
+        var emitPoints = emitter.GetEmitPoints(context);
         if (emitPoints.Count == 0)
             return;
 
         ModificationSet mods = ResolveModifications(spellId)?.Clone();
 
         var baseContext = new AttackEntityBuildContext(
-            keyFrame.attackEntityData, spellId, spellInvocationId, keyframeIndex,
-            mods, mask, float2.zero, float2.zero);
+            attackData, spellId, spellInvocationId, keyframeIndex: 0,
+            mods, mask, float2.zero, float2.zero, runtimeSpell: runtime);
 
-        float speed = keyFrame.attackEntityEmitter.speed;
+        float speed = emitter.speed;
         if (speed < 0.0001f)
             speed = 1f;
 
         bool hasSubEmitter = false;
         var subReg = default(SubEmitterRegistration);
-        SubEmitterBehavior subBehavior = FindSubEmitterBehavior(keyFrame.attackEntityData);
+        SubEmitterBehavior subBehavior = FindSubEmitterBehavior(attackData);
         if (subBehavior != null && subBehavior.subEmitter != null && subBehavior.subAttackEntityData != null)
         {
             hasSubEmitter = true;
@@ -129,8 +135,8 @@ public class SpellEmissionHandler : ISpellEmissionHandler
             {
                 emitter = subBehavior.subEmitter,
                 childContext = new AttackEntityBuildContext(
-                    subBehavior.subAttackEntityData, spellId, spellInvocationId, keyframeIndex,
-                    mods, mask, float2.zero, float2.zero),
+                    subBehavior.subAttackEntityData, spellId, spellInvocationId, keyframeIndex: 0,
+                    mods, mask, float2.zero, float2.zero, runtimeSpell: runtime),
                 emitInterval = subBehavior.emitInterval,
                 startDelay = subBehavior.startDelay
             };
@@ -139,7 +145,7 @@ public class SpellEmissionHandler : ISpellEmissionHandler
         for (int i = 0; i < emitPoints.Count; i++)
         {
             var point = emitPoints[i];
-            float spawnTime = keyframeFireTime + point.timeOffset;
+            float spawnTime = fireTime + point.timeOffset;
             _pending.Add(new PendingSpawn
             {
                 baseContext = baseContext,
@@ -223,7 +229,10 @@ public class SpellEmissionHandler : ISpellEmissionHandler
             origin = parent.position,
             forward = forward,
             count = sub.emitter.baseEmitCount,
-            targetProvider = _targetProvider
+            targetProvider = _targetProvider,
+            excludedTarget = sub.childContext.runtimeSpell != null
+                ? sub.childContext.runtimeSpell.ExcludedTarget
+                : EntityId.Invalid
         };
 
         var emitPoints = sub.emitter.GetEmitPoints(context);
@@ -279,9 +288,8 @@ public class SpellEmissionHandler : ISpellEmissionHandler
         return null;
     }
 
-    protected virtual int GetEmitCount(SpellKeyFrame keyFrame, SpellAttributeMask mask, int spellId)
+    protected virtual int GetEmitCount(AttackEntityEmitter emitter, SpellAttributeMask mask, int spellId)
     {
-        int baseCount = keyFrame.attackEntityEmitter != null ? keyFrame.attackEntityEmitter.baseEmitCount : 1;
-        return SpellModificationsApplicator.ResolveEmitCount(ResolveModifications(spellId), baseCount, mask);
+        return SpellModificationsApplicator.ResolveEmitCount(ResolveModifications(spellId), emitter.baseEmitCount, mask);
     }
 }

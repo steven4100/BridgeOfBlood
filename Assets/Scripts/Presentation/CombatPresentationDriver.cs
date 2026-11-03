@@ -5,7 +5,7 @@ using UnityEngine;
 /// <summary>
 /// Scene-bound owner of combat presentation: materials/atlas serialized on this component,
 /// player renderer, and draw/update driven by <see cref="SimulationCompleteEvent"/>.
-/// Zone/camera and attack-entity debug bind from <see cref="ServiceLocator"/> on
+/// Map service and attack-entity debug bind from <see cref="ServiceLocator"/> on
 /// <see cref="ServicesRegisteredEvent"/> — simulation never references this type.
 /// </summary>
 [DefaultExecutionOrder(-100)]
@@ -15,7 +15,7 @@ public sealed class CombatPresentationDriver : MonoBehaviour
 	[SerializeField] PlayerRenderer playerRenderer;
 
 	CombatPresentationLayer _layer;
-	ISimulationZoneService _zoneService;
+	IMapService _zoneService;
 	bool _standaloneBound;
 
 	void OnEnable()
@@ -38,7 +38,7 @@ public sealed class CombatPresentationDriver : MonoBehaviour
 	void OnServicesRegistered(ref ServicesRegisteredEvent _)
 	{
 		EnsureLayer();
-		_zoneService = ServiceLocator.Current.GetService<ISimulationZoneService>();
+		_zoneService = ServiceLocator.Current.GetService<IMapService>();
 		var combat = ServiceLocator.Current.GetService<CombatSimulationController>();
 		_layer.BindAttackEntities(combat.Simulation.AttackEntityManager);
 	}
@@ -48,7 +48,7 @@ public sealed class CombatPresentationDriver : MonoBehaviour
 	/// Call before this component's <c>OnEnable</c> (the map-mod scene bootstrap executes earlier).
 	/// </summary>
 	public void InitializeStandalone(
-		ISimulationZoneService zoneService,
+		IMapService zoneService,
 		AttackEntityManager attackEntityManager)
 	{
 		_standaloneBound = true;
@@ -60,16 +60,23 @@ public sealed class CombatPresentationDriver : MonoBehaviour
 	void OnSimulationComplete(ref SimulationCompleteEvent @event)
 	{
 		EnsureLayer();
-		RectTransform zone = _zoneService.Zone;
+		if (_zoneService == null || !_zoneService.HasPlayfieldTransform)
+			return;
+
 		Camera cam = _zoneService.Camera != null ? _zoneService.Camera : Camera.main;
-		_layer.HandleFrameComplete(ref @event, zone, cam);
+		_layer.HandleFrameComplete(
+			ref @event,
+			_zoneService.LocalToWorld,
+			_zoneService.PlayfieldForward,
+			_zoneService.WorldBounds,
+			cam);
 	}
 
 	void OnDrawGizmos()
 	{
-		if (_zoneService?.Zone == null || _layer == null)
+		if (_zoneService == null || !_zoneService.HasPlayfieldTransform || _layer == null)
 			return;
-		_layer.DrawGizmos(_zoneService.Zone);
+		_layer.DrawGizmos(_zoneService.LocalToWorld);
 	}
 
 	void EnsureLayer()

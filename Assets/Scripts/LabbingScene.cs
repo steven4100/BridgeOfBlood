@@ -16,7 +16,7 @@ public class LabbingScene : MonoBehaviour
     [Tooltip("Authoring asset on disk. A runtime clone is created via GameConfig.CreateRuntimeCopy.")]
     [SerializeField] GameConfig gameConfig;
     [SerializeField] RectTransform simulationZone;
-    [Tooltip("Camera for simulation-zone pointer mapping (registered on ISimulationZoneService).")]
+    [Tooltip("Camera for map pointer rays (registered on IMapService).")]
     [SerializeField] Camera renderCamera;
 
     [Header("Debug")]
@@ -168,8 +168,8 @@ public class LabbingScene : MonoBehaviour
             new RepositoryShopService(
                 new ShopRepository(_runtimeConfig.shopConfig),
                 inventory));
-        ServiceLocator.Current.RegisterInstance<ISimulationZoneService>(
-            new SimulationZoneService(simulationZone, renderCamera));
+        ServiceLocator.Current.RegisterInstance<IMapService>(
+            new MapService(new Map(_runtimeConfig.simulationSize.x, _runtimeConfig.simulationSize.y), renderCamera));
         ServiceLocator.Current.RegisterInstance<IMapModifierSessionService>(
             new MapModifierSessionService());
         ServiceLocator.Current.RegisterInstance(_combatSimulation);

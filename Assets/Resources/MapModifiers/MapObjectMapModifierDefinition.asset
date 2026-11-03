@@ -9,25 +9,20 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
-  m_Name: MapObjectMapModifier
+  m_Script: {fileID: 11500000, guid: 7e1c4a9b2d8f4e6a9c0b1d3e5f7a8b24, type: 3}
+  m_Name: MapObjectMapModifierDefinition
   m_EditorClassIdentifier: Assembly-CSharp::MapObjectMapModifierDefinition
-  displayName: tjmdtymu
-  radius: 25
-  visual: {fileID: 11400000, guid: 6a89cbba6c71e5440a3a15edec0394fe, type: 2}
+  displayName: FireballMapMod
+  radius: 30
+  visual: {fileID: 11400000, guid: 6c03777a1f3524145980b04cac24ecd0, type: 2}
   behaviors:
-  - rid: 8832584849575903294
-  - rid: 8832584849575903295
+  - rid: 8832585230542438461
   references:
     version: 2
     RefIds:
-    - rid: 8832584849575903294
-      type: {class: PassThroughDamageBehavior, ns: , asm: Assembly-CSharp}
-      data:
-        bonusDamage: 10000
-    - rid: 8832584849575903295
+    - rid: 8832585230542438461
       type: {class: EmitAttackEveryHitsBehavior, ns: , asm: Assembly-CSharp}
       data:
         hitsRequired: 1
         emitCount: 1
-        spell: {fileID: 11400000, guid: 7428b9f97e9a05848b3b6bd82db1a0cd, type: 2}
+        spell: {fileID: 11400000, guid: ce046695958259f4d92884294007cec5, type: 2}

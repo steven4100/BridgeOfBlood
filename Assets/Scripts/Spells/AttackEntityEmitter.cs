@@ -26,11 +26,11 @@ public class AttackEntityEmitter
     [Range(-180f, 180f)]
     public float forwardDegrees = 0f;
 
-    [Tooltip("Seconds over which to spread emissions. 0 = all at keyframe time; >0 = first at 0, last at this time, evenly spaced.")]
+    [Tooltip("Seconds over which to spread emissions. 0 = all at once; >0 = first at 0, last at this time, evenly spaced.")]
     [Min(0f)]
     public float emitDuration = 0f;
 
-    [Tooltip("Number of projectiles emitted per keyframe. 1 = single, higher = spread/fan.")]
+    [Tooltip("Number of projectiles emitted. 1 = single, higher = spread/fan.")]
     [Min(1)]
     public int baseEmitCount = 1;
 
@@ -101,7 +101,12 @@ public class AttackEntityEmitter
             return new List<EmitPoint>(0);
 
         var positions = TargetPositionsBuffer;
-        context.targetProvider.FindNearby(context.origin, targetRange, context.count, positions);
+        context.targetProvider.FindNearby(
+            context.origin,
+            targetRange,
+            context.count,
+            positions,
+            context.excludedTarget);
 
         if (positions.Count == 0)
             return new List<EmitPoint>(0);
@@ -154,12 +159,12 @@ public class AttackEntityEmitter
 }
 
 /// <summary>
-/// One spawn slot from an emitter: position, normalized direction, and time offset (seconds from keyframe fire). Payload is built by the handler.
+/// One spawn slot from an emitter: position, normalized direction, and time offset (seconds from emit). Payload is built by the handler.
 /// </summary>
 public struct EmitPoint
 {
     public float2 position;
     public float2 direction;
-    /// <summary>Seconds after the keyframe fire time when this should spawn. 0 = same instant.</summary>
+    /// <summary>Seconds after the cast emit time when this should spawn. 0 = same instant.</summary>
     public float timeOffset;
 }

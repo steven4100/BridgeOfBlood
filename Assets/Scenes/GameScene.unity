@@ -1527,10 +1527,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1770549539}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7c4e9a12b8d34f6a9e1c2d5f8a0b3c43, type: 3}
+  m_Script: {fileID: 11500000, guid: 0c6f7362c8b84bb8a8fc788d83204006, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MapModifierPlacementHost
-  modifierController: {fileID: 0}
+  m_EditorClassIdentifier: Assembly-CSharp::MapModifierController
+  layoutRoot: {fileID: 0}
+  modifierPrefab: {fileID: 0}
 --- !u!1 &2081434061
 GameObject:
   m_ObjectHideFlags: 0

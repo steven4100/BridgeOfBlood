@@ -46,9 +46,9 @@ public class DamageNumberController
         _manager.Update(deltaTime);
     }
 
-    public void Render(RectTransform simZone, Camera camera)
+    public void Render(Matrix4x4 playfieldLocalToWorld, Vector3 playfieldForward, Bounds worldBounds, Camera camera)
     {
-        _renderSystem.Render(_manager.GetEntities(), simZone, camera);
+        _renderSystem.Render(_manager.GetEntities(), playfieldLocalToWorld, playfieldForward, worldBounds, camera);
     }
 
     public void Dispose()

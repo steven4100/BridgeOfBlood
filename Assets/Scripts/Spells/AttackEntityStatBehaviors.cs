@@ -3,6 +3,7 @@ using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Spells;
 using UnityEngine;
 using Random = Unity.Mathematics.Random;
+using EntityId = BridgeOfBlood.Data.Shared.EntityId;
 
 [Serializable]
 public abstract class DamageBehavior : ModifiableAttackEntityBehavior
@@ -227,7 +228,9 @@ public class HitBoxBehavior : ModifiableAttackEntityBehavior
         {
             isActive = true,
             hitBox = AttackEntityModificationApplicator.ResolveHitBox(hitBoxData, mods, mask),
-            currentScale = 1f
+            currentScale = 1f,
+            canHit = HitTarget.All,
+            excludedTarget = EntityId.Invalid
         };
     }
 
@@ -340,6 +343,15 @@ public struct CritRuntime
     public static CritRuntime Default() => new CritRuntime { isActive = false, chance = 0f, multiplier = 1f };
 }
 
+/// <summary>Categories an attack hitbox is allowed to overlap.</summary>
+[Flags]
+public enum HitTarget : byte
+{
+    Enemies = 1 << 0,
+    MapObjects = 1 << 1,
+    All = Enemies | MapObjects
+}
+
 [Serializable]
 public struct HitBoxRuntime
 {
@@ -347,7 +359,26 @@ public struct HitBoxRuntime
     public HitBoxData hitBox;
     public float currentScale;
 
-    public static HitBoxRuntime Default() => new HitBoxRuntime { isActive = false, currentScale = 1f };
+    /// <summary>Target categories this hitbox can overlap. <see cref="excludedTarget"/> is skipped even when its category is allowed.</summary>
+    public HitTarget canHit;
+
+    /// <summary>Specific entity this hitbox cannot hit. Invalid means no exclusion.</summary>
+    public EntityId excludedTarget;
+
+    public static HitBoxRuntime Default() => new HitBoxRuntime
+    {
+        isActive = false,
+        currentScale = 1f,
+        canHit = HitTarget.All,
+        excludedTarget = EntityId.Invalid
+    };
+
+    public bool Allows(HitTarget target, EntityId targetId)
+    {
+        if ((canHit & target) == 0)
+            return false;
+        return !excludedTarget.IsValid || excludedTarget != targetId;
+    }
 }
 
 [Serializable]

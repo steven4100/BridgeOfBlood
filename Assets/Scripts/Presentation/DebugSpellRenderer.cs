@@ -79,9 +79,8 @@ public sealed class DebugSpellRenderer : SpellRenderer
 
 	protected override bool IsPreviewDirty()
 	{
-		SpellKeyFrame keyFrame = PrimaryKeyFrame;
-		AttackEntityEmitter emitter = keyFrame.attackEntityEmitter;
-		AttackEntityData attackData = keyFrame.attackEntityData;
+		AttackEntityEmitter emitter = Spell.Definition.attackEntityEmitter;
+		AttackEntityData attackData = Spell.Definition.attackEntityData;
 		SpellAttributeMask mask = AttributeMask;
 
 		int emitCount = SpellModificationsApplicator.ResolveEmitCount(FrameMods, emitter.baseEmitCount, mask);

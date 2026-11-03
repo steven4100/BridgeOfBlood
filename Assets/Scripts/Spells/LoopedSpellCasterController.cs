@@ -4,7 +4,7 @@ using BridgeOfBlood.Data.Spells;
 using EZServiceLocation;
 using UnityEngine;
 
-public class LoopedSpellCasterController : InputReciever
+public class LoopedSpellCasterController : IInputReciever
 {
     readonly LoopedSpellCaster _loopedCaster;
     CancellationTokenSource _cancellationTokenSource;
@@ -100,7 +100,7 @@ public class LoopedSpellCasterController : InputReciever
 
         void OnClick(InputContext context)
         {
-            if (TryTransformScreenToSimulation(context.mousePosition, out Vector2 local))
+            if (TryTransformScreenToSimulation(out Vector2 local))
                 tcs.TrySetResult(local);
         }
 
@@ -119,10 +119,10 @@ public class LoopedSpellCasterController : InputReciever
         }
     }
 
-    bool TryTransformScreenToSimulation(Vector2 screen, out Vector2 local)
+    bool TryTransformScreenToSimulation(out Vector2 local)
     {
-        ISimulationZoneService zone = ServiceLocator.Current.GetService<ISimulationZoneService>();
-        return SimulationZonePointer.TryGetLocalPoint(zone.Zone, zone.Camera, screen, out local);
+        IMapService maps = ServiceLocator.Current.GetService<IMapService>();
+        return maps.TryScreenPositionToMapPosition(Map.MapCoordinateSystem.CENTER_LEFT, out local);
     }
 
     public bool IsHover(in Vector2 position)

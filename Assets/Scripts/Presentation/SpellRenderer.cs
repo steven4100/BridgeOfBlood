@@ -10,7 +10,7 @@ using UnityEngine;
 /// <see cref="SyncFrame"/> calls from the manager. Subclasses resolve preview fields from authoring data and
 /// frame modifications, rebuilding visuals only when resolved values change.
 ///
-/// Every cast originates at the player, so this base class places the instance at the player position plus the
+/// Previews follow the live pointer, so this base class places the instance at the cursor plus the
 /// emitter's authoring offset; subclasses draw in local space around that origin.
 /// Instances must live under the simulation zone rect, where local space is simulation space.
 /// </summary>
@@ -19,13 +19,11 @@ public abstract class SpellRenderer : MonoBehaviour
 	/// <summary>The bound loop slot, or null while unbound.</summary>
 	public RuntimeSpell Spell { get; private set; }
 
-	Vector2 _playerPosition;
+	Vector2 _cursorPosition;
 	bool _previewDirty = true;
 
 	/// <summary>Resolved modifications for the current simulation frame.</summary>
 	protected ModificationSet FrameMods { get; private set; }
-
-	protected SpellKeyFrame PrimaryKeyFrame => Spell.Definition.SpellAnimation.keyFrames[0];
 
 	protected SpellAttributeMask AttributeMask => Spell.Definition.attributeMask;
 
@@ -63,15 +61,15 @@ public abstract class SpellRenderer : MonoBehaviour
 	}
 
 	/// <summary>
-	/// Pushes the current player position (simulation space) so the instance can sit on the cast origin.
+	/// Pushes the current cursor position (simulation space) so the instance can sit on the cast origin.
 	/// Called each simulation frame by <see cref="SpellRenderManager"/> for bound renderers only.
 	/// </summary>
-	public void SyncOrigin(Vector2 playerPosition)
+	public void SyncOrigin(Vector2 cursorPosition)
 	{
-		if (_playerPosition == playerPosition)
+		if (_cursorPosition == cursorPosition)
 			return;
 
-		_playerPosition = playerPosition;
+		_cursorPosition = cursorPosition;
 		ApplyOrigin();
 	}
 
@@ -108,9 +106,7 @@ public abstract class SpellRenderer : MonoBehaviour
 	/// <summary>Rebuild preview visuals from the cached resolved values (updated by <see cref="IsPreviewDirty"/>).</summary>
 	protected abstract void OnPreviewRefresh();
 
-	/// <summary>
-	/// The bound spell was cast. Read <see cref="PrimaryKeyFrame"/>.time to drive cast animation timing.
-	/// </summary>
+	/// <summary>The bound spell was cast.</summary>
 	protected abstract void OnCastInvoked();
 
 	/// <summary>The bound spell became (or stopped being) the next spell to cast.</summary>
@@ -135,11 +131,11 @@ public abstract class SpellRenderer : MonoBehaviour
 		OnDeckChanged(Spell.IsOnDeck);
 	}
 
-	/// <summary>Places the instance on its spell's spawn point: player position + the emitter's authoring offset.</summary>
+	/// <summary>Places the instance on its spell's spawn point: cursor position + the emitter's authoring offset.</summary>
 	void ApplyOrigin()
 	{
-		Vector2 offset = PrimaryKeyFrame.attackEntityEmitter.relativeToPlayerSpawnCriteria.offsetFromPlayer;
-		Vector2 origin = _playerPosition + offset;
+		Vector2 offset = Spell.Definition.attackEntityEmitter.relativeToPlayerSpawnCriteria.offsetFromPlayer;
+		Vector2 origin = _cursorPosition + offset;
 		Vector3 local = transform.localPosition;
 		transform.localPosition = new Vector3(origin.x, origin.y, local.z);
 	}

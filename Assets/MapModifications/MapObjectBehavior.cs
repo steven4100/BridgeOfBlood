@@ -36,18 +36,20 @@ public struct MapObjectHit
 
 public struct MapObjectCombatContext
 {
+    public EntityId ObjectId;
     public float2 ObjectPosition;
     public float SimulationTime;
     public MapObjectSpellCast Caster;
 
     public void CastSpell(SpellAuthoringData spell, int times)
     {
-        Caster.Cast(spell, ObjectPosition, SimulationTime, times);
+        Caster.Cast(spell, ObjectId, ObjectPosition, SimulationTime, times);
     }
 }
 
 public struct MapObjectTickContext
 {
+    public EntityId ObjectId;
     public float DeltaTime;
     public float SimulationTime;
     public float2 Position;
@@ -55,57 +57,58 @@ public struct MapObjectTickContext
 
     public void CastSpell(SpellAuthoringData spell, int times)
     {
-        Caster.Cast(spell, Position, SimulationTime, times);
+        Caster.Cast(spell, ObjectId, Position, SimulationTime, times);
     }
 }
 
 /// <summary>
-/// Plays authored spells from map objects through the same keyframe emission path as a player cast.
+/// Plays authored spells from map objects through the same emission path as a player cast.
 /// </summary>
 public sealed class MapObjectSpellCast
 {
-    SpellInvoker _invoker;
     SpellEmissionHandler _handler;
-    readonly Dictionary<SpellAuthoringData, RuntimeSpell> _runtimes = new Dictionary<SpellAuthoringData, RuntimeSpell>();
+    EnemyEmissionTargetProvider _targets;
 
-    public void Bind(AttackEntityManager attacks)
+    public void Bind(AttackEntityManager attacks, EnemyManager enemies)
     {
         if (_handler != null)
             return;
 
-        _handler = new SpellEmissionHandler(attacks);
-        _invoker = new SpellInvoker(_handler);
+        _targets = new EnemyEmissionTargetProvider(enemies);
+        _handler = new SpellEmissionHandler(attacks, _targets);
     }
 
-    public void Cast(SpellAuthoringData spell, float2 origin, float simulationTime, int times)
+    public void Cast(SpellAuthoringData spell, EntityId source, float2 origin, float simulationTime, int times)
     {
         if (times <= 0)
             return;
 
-        if (!_runtimes.TryGetValue(spell, out RuntimeSpell runtime))
-        {
-            runtime = new RuntimeSpell(spell);
-            _runtimes[spell] = runtime;
-        }
+        var runtime = new RuntimeSpell(spell);
+        runtime.ExcludedTarget = source;
 
         for (int i = 0; i < times; i++)
-            _invoker.StartCast(runtime, origin, simulationTime, runtime.spellId, i);
+            _handler.Emit(runtime, origin, new float2(1f, 0f), simulationTime, runtime.spellId, i);
     }
 
     public void Update(float simulationTime)
     {
-        if (_invoker == null)
+        if (_handler == null)
             return;
 
-        _invoker.Update(simulationTime, new float2(1f, 0f));
         _handler.Update(simulationTime);
     }
 
     public void Clear()
     {
-        _invoker?.ClearActiveCasts();
         _handler?.ClearPendingSpawns();
-        _runtimes.Clear();
+    }
+
+    public void Dispose()
+    {
+        Clear();
+        _targets?.Dispose();
+        _targets = null;
+        _handler = null;
     }
 }
 
@@ -129,6 +132,12 @@ public sealed class MapObjectRegistry
         _caster.Clear();
     }
 
+    public void Dispose()
+    {
+        Clear();
+        _caster.Dispose();
+    }
+
     public void Register(EntityId id, IReadOnlyList<MapObjectBehavior> templates)
     {
         int count = templates != null ? templates.Count : 0;
@@ -142,9 +151,10 @@ public sealed class MapObjectRegistry
         NativeList<HitEvent> hits,
         EnemyBuffers enemies,
         AttackEntityManager attacks,
+        EnemyManager enemyManager,
         float simulationTime)
     {
-        _caster.Bind(attacks);
+        _caster.Bind(attacks, enemyManager);
         if (_live.Count == 0 || hits.Length == 0)
             return;
 
@@ -167,6 +177,7 @@ public sealed class MapObjectRegistry
             };
             var context = new MapObjectCombatContext
             {
+                ObjectId = live.Id,
                 ObjectPosition = enemies.Motion[enemyIndex].position,
                 SimulationTime = simulationTime,
                 Caster = _caster
@@ -194,9 +205,14 @@ public sealed class MapObjectRegistry
         }
     }
 
-    public void Tick(float deltaTime, float simulationTime, AttackEntityManager attacks, EnemyBuffers enemies)
+    public void Tick(
+        float deltaTime,
+        float simulationTime,
+        AttackEntityManager attacks,
+        EnemyManager enemyManager,
+        EnemyBuffers enemies)
     {
-        _caster.Bind(attacks);
+        _caster.Bind(attacks, enemyManager);
         if (_live.Count > 0)
         {
             for (int i = 0; i < _live.Count; i++)
@@ -207,6 +223,7 @@ public sealed class MapObjectRegistry
 
                 var context = new MapObjectTickContext
                 {
+                    ObjectId = live.Id,
                     DeltaTime = deltaTime,
                     SimulationTime = simulationTime,
                     Position = enemies.Motion[live.Id.Index].position,

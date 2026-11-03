@@ -9,8 +9,8 @@ using UnityEngine;
 /// <see cref="SpellAuthoringData.rendererPrefab"/>, binds it to that slot's <see cref="RuntimeSpell"/>, and
 /// keeps instance order in sync with the loop.
 ///
-/// Each frame, pushes frame modifications and player position from <see cref="SimulationCompleteEvent"/>
-/// so renderers can resolve previews and place themselves on the cast origin.
+/// Each frame, pushes frame modifications from <see cref="SimulationCompleteEvent"/> and the live pointer
+/// (simulation space, the same conversion as cast clicks) so renderers can resolve previews and sit on the cursor.
 ///
 /// <see cref="rendererRoot"/> must be the simulation zone rect so instance local space is simulation space.
 /// </summary>
@@ -20,6 +20,7 @@ public sealed class SpellRenderManager : MonoBehaviour
 	[SerializeField] Transform rendererRoot;
 
 	ISpellInventoryService _service;
+	IMapService _mapService;
 
 	readonly Dictionary<int, SpellRenderer> _renderersBySpellId = new Dictionary<int, SpellRenderer>();
 	readonly List<SpellRenderer> _boundRenderers = new List<SpellRenderer>();
@@ -40,6 +41,8 @@ public sealed class SpellRenderManager : MonoBehaviour
 			_service.SpellsUpdated -= OnSpellsUpdated;
 			_service = null;
 		}
+
+		_mapService = null;
 	}
 
 	void OnDestroy()
@@ -70,17 +73,21 @@ public sealed class SpellRenderManager : MonoBehaviour
 	void OnServicesRegistered(ref ServicesRegisteredEvent _)
 	{
 		Initialize();
+		_mapService = ServiceLocator.Current.GetService<IMapService>();
 	}
 
-	/// <summary>Keeps every renderer synced to frame mods and the player cast origin.</summary>
+	/// <summary>Keeps every renderer synced to frame mods and the cursor cast origin.</summary>
 	void OnSimulationComplete(ref SimulationCompleteEvent @event)
 	{
-		var playerPosition = new Vector2(@event.playerPosition.x, @event.playerPosition.y);
+		Vector2 cursor = default;
+		bool hasCursor = _mapService != null
+			&& _mapService.TryScreenPositionToMapPosition(Map.MapCoordinateSystem.CENTER_LEFT, out cursor);
 		for (int i = 0; i < _boundRenderers.Count; i++)
 		{
 			SpellRenderer renderer = _boundRenderers[i];
 			renderer.SyncFrame(@event.frameModifications.ResolveFor(renderer.Spell.spellId));
-			renderer.SyncOrigin(playerPosition);
+			if (hasCursor)
+				renderer.SyncOrigin(cursor);
 		}
 	}
 

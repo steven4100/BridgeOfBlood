@@ -3,8 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// Diegetic <see cref="SpellRenderer"/>: a sphere that hovers above the playfield at half the spell's
-/// resolved AoE radius. On cast it crashes to the ground over the primary keyframe's spawn time
-/// (matching attack-entity emit), then slowly rises back to hover height.
+/// resolved AoE radius. On cast it crashes to the ground immediately, then slowly rises back to hover height.
 ///
 /// Height is on local Z — the simulation zone lies flat, so Z is "up" from the ground plane, and
 /// <see cref="SpellRenderer"/> already preserves Z while syncing XY to the cast origin.
@@ -89,7 +88,7 @@ public sealed class HoveringSphereSpellRenderer : SpellRenderer
 
 	protected override bool IsPreviewDirty()
 	{
-		AttackEntityData attackData = PrimaryKeyFrame.attackEntityData;
+		AttackEntityData attackData = Spell.Definition.attackEntityData;
 		HitBoxData hitBox = AttackEntityModificationApplicator.ResolveHitBox(
 			attackData, FrameMods, AttributeMask);
 		float visualRadius = Mathf.Max(minRadius, ResolveAoeRadius(hitBox) * aoeRadiusScale);
@@ -111,7 +110,7 @@ public sealed class HoveringSphereSpellRenderer : SpellRenderer
 
 	protected override void OnCastInvoked()
 	{
-		BeginCrash(PrimaryKeyFrame.time);
+		BeginCrash(0f);
 	}
 
 	protected override void OnDeckChanged(bool isOnDeck)

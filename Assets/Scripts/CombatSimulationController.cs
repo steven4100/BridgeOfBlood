@@ -167,7 +167,7 @@ public sealed class CombatSimulationController : ISpellModificationService
                 origin = _player.Position
             });
         }
-        _loopedSpellCaster.Update(sim.SimulationTime, CastForward);
+        _loopedSpellCaster.Update(sim.SimulationTime);
 
         bool advanceTime = !hasController || debugCtrl.ShouldAdvanceTime;
         if (advanceTime)

@@ -25,7 +25,7 @@ public class BrushStrokeSpawnerController : MonoBehaviour, IDebugDrawable
     [SerializeField] Color brushFillColor = new Color(1f, 0.35f, 0.2f, 0.12f);
     [SerializeField] int brushCircleSegments = 48;
 
-    ISimulationZoneService _zoneService;
+    IMapService _zoneService;
     BrushStrokeEnemySpawner _brushSpawner;
     bool _hasHover;
     Vector2 _hoverLocal;
@@ -47,14 +47,14 @@ public class BrushStrokeSpawnerController : MonoBehaviour, IDebugDrawable
 
     void OnServicesRegistered(ref ServicesRegisteredEvent _)
     {
-        _zoneService = ServiceLocator.Current.GetService<ISimulationZoneService>();
+        _zoneService = ServiceLocator.Current.GetService<IMapService>();
         var combat = ServiceLocator.Current.GetService<CombatSimulationController>();
         _brushSpawner = combat.Simulation.Spawner as BrushStrokeEnemySpawner;
     }
 
     void Update()
     {
-        if (_brushSpawner == null || _zoneService == null || _zoneService.Zone == null)
+        if (_brushSpawner == null || _zoneService == null || !_zoneService.HasPlayfieldTransform)
             return;
 
         HandleBrushSizeInput();
@@ -101,16 +101,12 @@ public class BrushStrokeSpawnerController : MonoBehaviour, IDebugDrawable
 
     void UpdateHover()
     {
-        RectTransform zone = _zoneService.Zone;
-        _hasHover = TryGetPlayfieldLocal(Input.mousePosition, out _hoverLocal)
-            && zone.rect.Contains(_hoverLocal);
+        _hasHover = TryGetPlayfieldLocal(out _hoverLocal);
     }
 
     void HandlePaintInput()
     {
-        RectTransform zone = _zoneService.Zone;
-        if (!TryGetPlayfieldLocal(Input.mousePosition, out Vector2 local)
-            || !zone.rect.Contains(local))
+        if (!TryGetPlayfieldLocal(out Vector2 local))
         {
             if (_isPainting)
             {
@@ -137,28 +133,39 @@ public class BrushStrokeSpawnerController : MonoBehaviour, IDebugDrawable
         }
     }
 
-    bool TryGetPlayfieldLocal(Vector2 screenPosition, out Vector2 localPoint) =>
-        SimulationZonePointer.TryGetLocalPoint(_zoneService.Zone, _zoneService.Camera, screenPosition, out localPoint);
+    bool TryGetPlayfieldLocal(out Vector2 localPoint)
+    {
+        localPoint = default;
+        return _zoneService.TryScreenPositionToMapPosition(Map.MapCoordinateSystem.CENTER_LEFT, out localPoint)
+            && _zoneService.Map.Contains(Map.MapCoordinateSystem.CENTER_LEFT, localPoint);
+    }
 
     void OnDrawGizmos()
     {
-        if (_zoneService?.Zone == null)
+        if (_zoneService == null || !_zoneService.HasPlayfieldTransform)
             return;
-        DrawGizmos(_zoneService.Zone.transform);
+        DrawGizmos(_zoneService.LocalToWorld);
     }
 
     public void DrawGizmos(Transform zoneTransform)
     {
-        if (_brushSpawner == null || _zoneService?.Zone == null || !_hasHover)
+        if (zoneTransform == null)
             return;
-
-        DrawBrushCircle(zoneTransform, _hoverLocal, _brushSpawner.BrushRadius);
+        DrawGizmos(zoneTransform.localToWorldMatrix);
     }
 
-    void DrawBrushCircle(Transform zoneTransform, Vector2 localCenter, float radius)
+    void DrawGizmos(Matrix4x4 playfieldLocalToWorld)
     {
-        Vector3 worldCenter = zoneTransform.TransformPoint(new Vector3(localCenter.x, localCenter.y, 0f));
-        float scale = zoneTransform.lossyScale.x;
+        if (_brushSpawner == null || !_hasHover)
+            return;
+
+        DrawBrushCircle(playfieldLocalToWorld, _hoverLocal, _brushSpawner.BrushRadius);
+    }
+
+    void DrawBrushCircle(Matrix4x4 playfieldLocalToWorld, Vector2 localCenter, float radius)
+    {
+        Vector3 worldCenter = playfieldLocalToWorld.MultiplyPoint3x4(new Vector3(localCenter.x, localCenter.y, 0f));
+        float scale = playfieldLocalToWorld.GetColumn(0).magnitude;
         float worldRadius = radius * scale;
 
         Gizmos.color = brushFillColor;
@@ -170,13 +177,12 @@ public class BrushStrokeSpawnerController : MonoBehaviour, IDebugDrawable
 
     void DrawRuntimeBrushPreview()
     {
-        RectTransform zone = _zoneService.Zone;
-        if (!_hasHover || zone == null)
+        if (!_hasHover || !_zoneService.HasPlayfieldTransform)
             return;
 
-        Transform t = zone.transform;
-        Vector3 center = t.TransformPoint(new Vector3(_hoverLocal.x, _hoverLocal.y, 0f));
-        float radius = _brushSpawner.BrushRadius * t.lossyScale.x;
+        Matrix4x4 playfieldLocalToWorld = _zoneService.LocalToWorld;
+        Vector3 center = playfieldLocalToWorld.MultiplyPoint3x4(new Vector3(_hoverLocal.x, _hoverLocal.y, 0f));
+        float radius = _brushSpawner.BrushRadius * playfieldLocalToWorld.GetColumn(0).magnitude;
         DrawWorldCircle(center, radius, brushCircleSegments, brushOutlineColor);
     }
 

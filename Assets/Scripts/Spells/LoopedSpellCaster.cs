@@ -35,8 +35,8 @@ public struct SpellCastRequest
 /// Drives a fixed loop of N spells. A slot may automatically invoke multiple times, spaced by its
 /// recastCooldown, at most once per frame. The next slot may only be cast after the final invocation's
 /// castCompletionDuration.
-/// When it's time to cast, uses its SpellInvoker to run the spell animation.
-/// Plain class — call AttemptToCastNextSpell each frame; call Update each frame to advance invoked casts.
+/// When it's time to cast, emits through its <see cref="SpellEmissionHandler"/>.
+/// Plain class — call AttemptToCastNextSpell each frame; call Update each frame to advance pending spawns.
 ///
 /// Also the sole writer of <see cref="RuntimeSpell"/> cast/on-deck state via
 /// <see cref="RuntimeSpell.RecordCast"/> and <see cref="UpdateOnDeckFlags"/>.
@@ -52,8 +52,7 @@ public class LoopedSpellCaster
     }
 
     private readonly SpellCollection _spellCollection;
-    private readonly SpellInvoker _spellInvoker;
-    private readonly ISpellEmissionHandler _emissionHandler;
+    private readonly SpellEmissionHandler _emissionHandler;
     private int _indexOfLastCast;
     private double _timeOfLastCast;
     private int _loopCount;
@@ -103,9 +102,7 @@ public class LoopedSpellCaster
         }
     }
 
-    public bool HasActiveCasts =>
-        _pendingMulticast.remainingInvocations > 0
-        || (_spellInvoker != null && _spellInvoker.HasActiveCasts);
+    public bool HasActiveCasts => _pendingMulticast.remainingInvocations > 0;
 
     public bool HasPendingSpawns => _emissionHandler != null && _emissionHandler.HasPendingSpawns;
 
@@ -118,11 +115,10 @@ public class LoopedSpellCaster
         return def != null ? def.attributeMask : SpellAttributeMask.None;
     }
 
-    public LoopedSpellCaster(SpellCollection spellCollection, ISpellEmissionHandler emissionHandler)
+    public LoopedSpellCaster(SpellCollection spellCollection, SpellEmissionHandler emissionHandler)
     {
         _spellCollection = spellCollection;
         _emissionHandler = emissionHandler ?? throw new System.ArgumentNullException(nameof(emissionHandler));
-        _spellInvoker = new SpellInvoker(_emissionHandler);
         _indexOfLastCast = -1;
         _timeOfLastCast = -1000.0;
         _loopCount = 0;
@@ -248,13 +244,13 @@ public class LoopedSpellCaster
     {
         spell.RecordCast(fireTime);
         _timeOfLastCast = fireTime;
-        _spellInvoker.StartCast(
+        _emissionHandler.Emit(
             spell,
             origin,
+            forward,
             (float)fireTime,
             spell.spellId,
-            spell.InvocationCount,
-            forward);
+            spell.InvocationCount);
 
         return new SpellCastResult
         {
@@ -294,9 +290,8 @@ public class LoopedSpellCaster
             spells[i].SetOnDeck(i == onDeck);
     }
 
-    public void Update(float simulationTime, float2 forward)
+    public void Update(float simulationTime)
     {
-        _spellInvoker?.Update(simulationTime, forward);
         _emissionHandler?.Update(simulationTime);
     }
 
@@ -314,7 +309,6 @@ public class LoopedSpellCaster
     public void ClearCastState()
     {
         _pendingMulticast = default;
-        _spellInvoker?.ClearActiveCasts();
         _emissionHandler?.ClearPendingSpawns();
     }
 

@@ -7,7 +7,7 @@ using EntityId = BridgeOfBlood.Data.Shared.EntityId;
 
 /// <summary>
 /// Runtime state of a live attack entity (projectile, AoE, etc.).
-/// Spawned from an AttackEntityBuildContext when a spell keyframe fires.
+/// Spawned from an AttackEntityBuildContext when a spell emits.
 /// </summary>
 public struct AttackEntity
 {
@@ -118,6 +118,22 @@ public class AttackEntityManager
             for (int i = 0; i < behaviors.Count; i++)
                 behaviors[i]?.ApplyTo(this, idx, ctx.modifications, ctx.attributeMask, ref rng);
         }
+
+        HitBoxRuntime hitBox = _hitBoxes[idx];
+        HitTarget canHit = HitTarget.All;
+        EntityId excludedTarget = EntityId.Invalid;
+        RuntimeSpell runtimeSpell = ctx.runtimeSpell;
+        if (runtimeSpell?.Definition != null)
+        {
+            canHit = runtimeSpell.Definition.hitTarget == 0
+                ? HitTarget.All
+                : runtimeSpell.Definition.hitTarget;
+            excludedTarget = runtimeSpell.ExcludedTarget;
+        }
+
+        hitBox.canHit = canHit;
+        hitBox.excludedTarget = excludedTarget;
+        _hitBoxes[idx] = hitBox;
 
         if (ctx.eventScaledDamage > 0f)
         {

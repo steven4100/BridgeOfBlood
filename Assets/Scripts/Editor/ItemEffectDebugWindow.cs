@@ -39,6 +39,7 @@ namespace BridgeOfBlood.Editor
 
 		void OnGUI()
 		{
+			/*
 			if (!EditorApplication.isPlaying)
 			{
 				EditorGUILayout.HelpBox("Enter Play mode to see item effect results.", MessageType.Info);
@@ -80,6 +81,7 @@ namespace BridgeOfBlood.Editor
 			}
 
 			EditorGUILayout.EndScrollView();
+			*/
 		}
 	}
 }

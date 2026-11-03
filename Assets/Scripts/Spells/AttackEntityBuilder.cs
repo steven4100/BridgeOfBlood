@@ -4,7 +4,7 @@ using Unity.Mathematics;
 
 /// <summary>
 /// The single input required to spawn one attack entity. Produced by <see cref="SpellEmissionHandler"/>
-/// (per keyframe) or by combat reactions, and consumed by <see cref="AttackEntityManager.Spawn"/>.
+/// (per emit) or by combat reactions, and consumed by <see cref="AttackEntityManager.Spawn"/>.
 /// <para>
 /// Holds authoring data + spell provenance + the modifications/mask to apply at spawn time, plus the
 /// transform (position/velocity/direction). There is no intermediate rolled-stats struct: the manager rolls and
@@ -33,6 +33,12 @@ public readonly struct AttackEntityBuildContext
     /// <summary>&lt;= 0 = unused; &gt; 0 = scale total rolled damage to this value (combat reactions ScaleByTriggeringHitDamage).</summary>
     public readonly float eventScaledDamage;
 
+    /// <summary>
+    /// Spell that owns this spawn. Hit filtering is read from <see cref="RuntimeSpell.Definition"/>
+    /// and <see cref="RuntimeSpell.ExcludedTarget"/> at spawn. Null hits every category.
+    /// </summary>
+    public readonly RuntimeSpell runtimeSpell;
+
     public AttackEntityBuildContext(
         AttackEntityData data,
         int spellId,
@@ -43,7 +49,8 @@ public readonly struct AttackEntityBuildContext
         float2 position,
         float2 velocity,
         float eventScaledDamage = 0f,
-        float2 direction = default)
+        float2 direction = default,
+        RuntimeSpell runtimeSpell = null)
     {
         this.data = data;
         this.spellId = spellId;
@@ -55,6 +62,7 @@ public readonly struct AttackEntityBuildContext
         this.velocity = velocity;
         this.direction = ResolveFacing(direction, velocity);
         this.eventScaledDamage = eventScaledDamage;
+        this.runtimeSpell = runtimeSpell;
     }
 
     /// <summary>
@@ -84,6 +92,7 @@ public readonly struct AttackEntityBuildContext
     {
         return new AttackEntityBuildContext(
             data, spellId, spellInvocationId, keyframeIndex,
-            modifications, attributeMask, position, velocity, eventScaledDamage, direction);
+            modifications, attributeMask, position, velocity, eventScaledDamage, direction,
+            runtimeSpell);
     }
 }

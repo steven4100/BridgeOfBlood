@@ -17,7 +17,6 @@ MonoBehaviour:
   behaviors:
   - rid: 4044631629293158462
   - rid: 4044631629293158463
-  - rid: 4044631629293158465
   - rid: 4044631629293158466
   - rid: 9100000000000560932
   - rid: 9100000000000560933
@@ -34,24 +33,19 @@ MonoBehaviour:
       type: {class: OnKillEffectBehavior, ns: , asm: Assembly-CSharp}
       data:
         config: {fileID: 11400000, guid: 469335601d0786d4ea6b11cc3dd255c1, type: 2}
-    - rid: 4044631629293158465
-      type: {class: PierceBehavior, ns: , asm: Assembly-CSharp}
-      data:
-        isActive: 1
-        maxEnemiesHit: 2
     - rid: 4044631629293158466
       type: {class: ExpirationBehavior, ns: , asm: Assembly-CSharp}
       data:
         isActive: 1
         maxTimeAlive: 1
-        maxDistanceTravelled: 10000000
+        maxDistanceTravelled: 0
         maxFrames: 0
     - rid: 9100000000000560932
       type: {class: LightningDamageBehavior, ns: , asm: Assembly-CSharp}
       data:
         damageRange:
-          min: 3.0
-          max: 15.0
+          min: 2
+          max: 7
     - rid: 9100000000000560933
       type: {class: HitBoxBehavior, ns: , asm: Assembly-CSharp}
       data:

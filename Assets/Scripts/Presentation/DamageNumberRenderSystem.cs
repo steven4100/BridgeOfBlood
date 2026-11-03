@@ -64,9 +64,14 @@ public class DamageNumberRenderSystem
     static readonly Vector3 NormalColor = new Vector3(1f, 1f, 1f);
 
 
-    public void Render(NativeArray<DamageNumber> numbers, RectTransform rectTransform, Camera camera)
+    public void Render(
+        NativeArray<DamageNumber> numbers,
+        Matrix4x4 playfieldLocalToWorld,
+        Vector3 playfieldForward,
+        Bounds worldBounds,
+        Camera camera)
     {
-        if (rectTransform == null || numbers.Length == 0 || camera == null) return;
+        if (numbers.Length == 0 || camera == null) return;
 
         int count = numbers.Length;
         EnsureCapacity(count);
@@ -96,9 +101,8 @@ public class DamageNumberRenderSystem
         args[0].startInstance = 0;
         _argsBuffer.SetData(args);
 
-        Matrix4x4 localToWorld = rectTransform.localToWorldMatrix;
-        Vector3 forward = rectTransform.forward;
-        localToWorld *= Matrix4x4.Translate(-forward * DepthOffsetTowardCamera);
+        Matrix4x4 localToWorld = playfieldLocalToWorld;
+        localToWorld *= Matrix4x4.Translate(-playfieldForward * DepthOffsetTowardCamera);
 
         _mpb.SetBuffer(PropInstanceData, _instanceBuffer);
         _mpb.SetMatrix(PropLocalToWorld, localToWorld);
@@ -106,7 +110,7 @@ public class DamageNumberRenderSystem
 
         RenderParams rp = new RenderParams(_material)
         {
-            worldBounds = ComputeWorldBounds(rectTransform),
+            worldBounds = worldBounds,
             matProps = _mpb,
             shadowCastingMode = ShadowCastingMode.Off,
             receiveShadows = false,
@@ -134,17 +138,6 @@ public class DamageNumberRenderSystem
             UnsafeUtility.SizeOf<DamageNumberInstanceData>());
         _cpuData = new DamageNumberInstanceData[newCap];
         _bufferCapacity = newCap;
-    }
-
-    private static Bounds ComputeWorldBounds(RectTransform rt)
-    {
-        Vector3[] corners = new Vector3[4];
-        rt.GetWorldCorners(corners);
-        Bounds b = new Bounds(corners[0], Vector3.zero);
-        for (int i = 1; i < 4; i++)
-            b.Encapsulate(corners[i]);
-        b.Expand(50f);
-        return b;
     }
 
     /// <summary>

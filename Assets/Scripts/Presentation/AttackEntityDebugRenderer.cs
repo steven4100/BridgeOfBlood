@@ -29,13 +29,17 @@ public class AttackEntityDebugRenderer : IDebugDrawable
 		_manager = manager;
 	}
 
-	public void Render(NativeArray<AttackEntity> entities, NativeArray<HitBoxRuntime> hitBoxes, RectTransform simZone, Camera camera)
+	public void Render(
+		NativeArray<AttackEntity> entities,
+		NativeArray<HitBoxRuntime> hitBoxes,
+		Matrix4x4 playfieldLocalToWorld,
+		Vector3 playfieldForward,
+		Camera camera)
 	{
-		if (entities.Length == 0 || simZone == null || camera == null) return;
+		if (entities.Length == 0 || camera == null) return;
 
-		Matrix4x4 localToWorld = simZone.localToWorldMatrix;
-		Vector3 forward = simZone.forward;
-		localToWorld *= Matrix4x4.Translate(-forward * 0.05f);
+		Matrix4x4 localToWorld = playfieldLocalToWorld;
+		localToWorld *= Matrix4x4.Translate(-playfieldForward * 0.05f);
 		try
 		{
 			for (int i = 0; i < entities.Length; i++)
@@ -93,9 +97,20 @@ public class AttackEntityDebugRenderer : IDebugDrawable
 		}
 	}
 
+	public void DrawGizmos(Matrix4x4 playfieldLocalToWorld)
+	{
+		DrawGizmos(playfieldLocalToWorld, playfieldLocalToWorld.GetColumn(0).magnitude);
+	}
+
 	public void DrawGizmos(Transform transform)
 	{
-		if (_manager == null || transform == null || _manager.EntityCount == 0) return;
+		if (transform == null) return;
+		DrawGizmos(transform.localToWorldMatrix);
+	}
+
+	void DrawGizmos(Matrix4x4 playfieldLocalToWorld, float worldScale)
+	{
+		if (_manager == null || _manager.EntityCount == 0) return;
 
 		try
 		{
@@ -110,8 +125,7 @@ public class AttackEntityDebugRenderer : IDebugDrawable
 				HitBoxRuntime hitBox = hitBoxes[i];
 				float scale = hitBox.currentScale;
 
-				Vector3 worldPos = transform.TransformPoint(new Vector3(e.position.x, e.position.y, 0f));
-				float worldScale = transform.lossyScale.x;
+				Vector3 worldPos = playfieldLocalToWorld.MultiplyPoint3x4(new Vector3(e.position.x, e.position.y, 0f));
 
 				float radius;
 				if (hitBox.isActive && hitBox.hitBox.isSphere)

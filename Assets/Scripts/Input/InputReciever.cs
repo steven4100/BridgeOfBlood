@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public interface InputReciever
+public interface IInputReciever
 {
     public bool IsHover(in Vector2 position);
 

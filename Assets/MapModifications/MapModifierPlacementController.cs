@@ -23,7 +23,7 @@ public sealed class MapModifierPlacementController : MonoBehaviour
     Material _previewMaterial;
     MaterialPropertyBlock _previewProps;
 
-    ISimulationZoneService _zoneService;
+    IMapService _zoneService;
     IReadOnlyList<MapModifier> _placedModifiers;
     Action<MapModifier> _onCommitted;
     Func<Vector2, float, bool> _footprintOverlapsEnemy;
@@ -36,7 +36,7 @@ public sealed class MapModifierPlacementController : MonoBehaviour
     public MapModifierDefinition ActiveDefinition => _activeDefinition;
 
     public void Initialize(
-        ISimulationZoneService zoneService,
+        IMapService zoneService,
         IReadOnlyList<MapModifier> placedModifiers,
         Action<MapModifier> onCommitted,
         Func<Vector2, float, bool> footprintOverlapsEnemy)
@@ -96,13 +96,12 @@ public sealed class MapModifierPlacementController : MonoBehaviour
 
     void HandlePlacementInput()
     {
-        RectTransform zone = _zoneService.Zone;
-        bool mapped = SimulationZonePointer.TryGetLocalPoint(
-            zone,
-            _zoneService.Camera,
-            Input.mousePosition,
+        bool mapped = _zoneService.TryScreenPositionToMapPosition(
+            Map.MapCoordinateSystem.CENTER_LEFT,
             out Vector2 local);
-        bool inside = !_pointerBlocked && mapped && zone.rect.Contains(local);
+        bool inside = !_pointerBlocked
+            && mapped
+            && _zoneService.Map.Contains(Map.MapCoordinateSystem.CENTER_LEFT, local);
         var input = new EmitterPointerInput(
             local,
             inside,
@@ -276,10 +275,12 @@ public sealed class MapModifierPlacementController : MonoBehaviour
     void DrawMesh(Mesh mesh, Vector2 localPosition, Quaternion localRotation, Vector3 localScale, Color color)
     {
         EnsurePreviewResources();
-        RectTransform zone = _zoneService.Zone;
+        if (!_zoneService.HasPlayfieldTransform)
+            return;
+
         Camera camera = _zoneService.Camera;
-        Matrix4x4 localToWorld = zone.localToWorldMatrix;
-        localToWorld *= Matrix4x4.Translate(-zone.forward * 0.05f);
+        Matrix4x4 localToWorld = _zoneService.LocalToWorld;
+        localToWorld *= Matrix4x4.Translate(-_zoneService.PlayfieldForward * 0.05f);
         Matrix4x4 matrix = localToWorld * Matrix4x4.TRS(
             new Vector3(localPosition.x, localPosition.y, 0f),
             localRotation,

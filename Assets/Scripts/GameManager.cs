@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using EZServiceLocation;
 using UnityEngine;
+using UnityEngine.Serialization;
 using BridgeOfBlood.Data.Shared;
 using BridgeOfBlood.Data.Inventory;
 using BridgeOfBlood.Data.Shop;
@@ -24,22 +25,15 @@ public struct ItemEvalResult
 [DefaultExecutionOrder(-40)]
 public class GameManager : MonoBehaviour
 {
-    public RectTransform simulationZone;
 
-    [Header("Presentation")]
-    [Tooltip("Camera for simulation-zone pointer mapping (registered on ISimulationZoneService).")]
     [SerializeField] Camera renderCamera;
-
-    [Header("Spells & Items")]
-    [Tooltip("Authoring asset on disk. A runtime clone is created via GameConfig.CreateRuntimeCopy.")]
     [SerializeField] GameConfig gameConfig;
+    [SerializeField] SimulationDebugController debugController;
+    [SerializeField, FormerlySerializedAs("mapModifierPlacementHost")]
+    MapModifierController mapModifierController;
 
-    [Header("Debug")]
-    public SimulationDebugController debugController;
 
-    [Header("Map Modifiers")]
-    [SerializeField] MapModifierPlacementHost mapModifierPlacementHost;
-
+    Map map;
     CombatSimulationController _combatSimulation;
     SessionFlowController _sessionFlow;
     RoundController _roundController;
@@ -47,46 +41,28 @@ public class GameManager : MonoBehaviour
     /// <summary>Session-owned config (wallet, inventory, round tuning); destroyed when rebuilding session.</summary>
     GameConfig _runtimeGameConfig;
 
-    public TelemetryAggregator TelemetryAggregator => _combatSimulation?.TelemetryAggregator;
     public GameState CurrentGameState => _currentGameState;
-    public IReadOnlyList<ItemEvalResult> LastItemResults => _roundController?.LastItemResults;
     public GameSimulation Simulation => _combatSimulation?.Simulation;
-    public RoundController RoundController => _roundController;
-    public SessionFlowController SessionFlow => _sessionFlow;
 
-    void Awake()
-    {
-        CreateRuntimeGameConfigCopy();
-    }
-
+   
     void Start()
     {
         var audioRoot = new GameObject("GameAudioManager");
         audioRoot.transform.SetParent(transform, false);
         audioRoot.AddComponent<GameAudioManager>();
-        
+
+        _runtimeGameConfig = GameConfig.CreateRuntimeCopy(gameConfig);
+        map = new Map(_runtimeGameConfig.simulationSize.x, _runtimeGameConfig.simulationSize.y);
 
         _combatSimulation = new CombatSimulationController(new CombatSimulationControllerConfig
         {
             RuntimeGameConfig = _runtimeGameConfig,
             DebugController = debugController
         });
-        ServiceLocator.Current.RegisterInstance(_combatSimulation);
-        ServiceLocator.Current.RegisterInstance<ISpellModificationService>(_combatSimulation);
+
+        _sessionFlow = PrepareStateMachine();
+        RegisterServices();
         ServicesRegisteredEvent.Raise();
-
-        _sessionFlow = new SessionFlowController();
-
-        _roundController = new RoundController(
-            _combatSimulation,
-            null,
-            _sessionFlow);
-
-        _sessionFlow.AddRound(_roundController);
-        _sessionFlow.AddShop(new ShopSessionPhase(_sessionFlow, () => _runtimeGameConfig));
-        _sessionFlow.AddMapMod(
-            new MapModSessionPhase(_sessionFlow, _combatSimulation, mapModifierPlacementHost));
-        _sessionFlow.EnterShop(new ShopSessionPhase.Context());
     }
 
     void Update()
@@ -95,14 +71,27 @@ public class GameManager : MonoBehaviour
         _currentGameState = BuildGameState();
     }
 
-    /// <summary>
-    /// Replaces <see cref="_runtimeGameConfig"/> with a new <see cref="GameConfig.CreateRuntimeCopy"/> of the serialized template,
-    /// then re-registers session services so inventory and shop UIs follow the new instance.
-    /// </summary>
-    GameConfig CreateRuntimeGameConfigCopy()
+    SessionFlowController PrepareStateMachine()
     {
-        GameConfig.DestroyRuntimeCopy(_runtimeGameConfig);
-        _runtimeGameConfig = GameConfig.CreateRuntimeCopy(gameConfig);
+        SessionFlowController sessionFlow = new SessionFlowController();
+
+        _roundController = new RoundController(
+            _combatSimulation,
+            null,
+            sessionFlow);
+
+        sessionFlow.AddRound(_roundController);
+        sessionFlow.AddShop(new ShopSessionPhase(sessionFlow, () => _runtimeGameConfig));
+        sessionFlow.AddMapMod(
+            new MapModSessionPhase(sessionFlow, _combatSimulation, mapModifierController));
+        sessionFlow.EnterShop(new ShopSessionPhase.Context());
+        return sessionFlow;
+    }
+
+    GameConfig RegisterServices()
+    {
+        ServiceLocator.Current.RegisterInstance(_combatSimulation);
+        ServiceLocator.Current.RegisterInstance<ISpellModificationService>(_combatSimulation);
         ServiceLocator.Current.RegisterInstance<ISpellInventoryService>(_runtimeGameConfig.playerInventory.SpellCollection);
         ServiceLocator.Current.RegisterInstance<IInventoryService>(_runtimeGameConfig.playerInventory);
         ServiceLocator.Current.RegisterInstance<IWalletService>(_runtimeGameConfig.playerWallet);
@@ -110,8 +99,8 @@ public class GameManager : MonoBehaviour
             new RepositoryShopService(
                 new ShopRepository(_runtimeGameConfig.shopConfig),
                 _runtimeGameConfig.playerInventory));
-        ServiceLocator.Current.RegisterInstance<ISimulationZoneService>(
-            new SimulationZoneService(simulationZone, renderCamera));
+        ServiceLocator.Current.RegisterInstance<IMapService>(
+            new MapService(map, renderCamera));
         ServiceLocator.Current.RegisterInstance<IMapModifierSessionService>(
             new MapModifierSessionService());
         return _runtimeGameConfig;
@@ -145,12 +134,5 @@ public class GameManager : MonoBehaviour
         _runtimeGameConfig = null;
         _combatSimulation?.Dispose();
         _combatSimulation = null;
-    }
-
-    void OnDrawGizmos()
-    {
-        if (simulationZone == null)
-            return;
-        _combatSimulation?.DrawGizmos(simulationZone);
     }
 }

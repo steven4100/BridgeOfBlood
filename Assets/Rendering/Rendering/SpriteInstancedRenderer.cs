@@ -45,9 +45,15 @@ public class SpriteInstancedRenderer
             GraphicsBuffer.IndirectDrawIndexedArgs.size);
     }
 
-    public void Render(SpriteInstanceData[] data, int count, RectTransform rectTransform, Camera camera)
+    public void Render(
+        SpriteInstanceData[] data,
+        int count,
+        Matrix4x4 playfieldLocalToWorld,
+        Vector3 playfieldForward,
+        Bounds worldBounds,
+        Camera camera)
     {
-        if (rectTransform == null || count == 0 || camera == null) return;
+        if (count == 0 || camera == null) return;
 
         EnsureCapacity(count);
 
@@ -62,16 +68,15 @@ public class SpriteInstancedRenderer
         args[0].startInstance = 0;
         _argsBuffer.SetData(args);
 
-        Matrix4x4 localToWorld = rectTransform.localToWorldMatrix;
-        Vector3 forward = rectTransform.forward;
-        localToWorld *= Matrix4x4.Translate(-forward * DepthOffsetTowardCamera);
+        Matrix4x4 localToWorld = playfieldLocalToWorld;
+        localToWorld *= Matrix4x4.Translate(-playfieldForward * DepthOffsetTowardCamera);
 
         _mpb.SetBuffer(PropInstanceData, _instanceBuffer);
         _mpb.SetMatrix(PropLocalToWorld, localToWorld);
 
         RenderParams rp = new RenderParams(_material)
         {
-            worldBounds = ComputeWorldBounds(rectTransform),
+            worldBounds = worldBounds,
             matProps = _mpb,
             shadowCastingMode = ShadowCastingMode.Off,
             receiveShadows = false,
@@ -99,17 +104,6 @@ public class SpriteInstancedRenderer
             UnsafeUtility.SizeOf<SpriteInstanceData>());
         _cpuData = new SpriteInstanceData[newCap];
         _bufferCapacity = newCap;
-    }
-
-    private static Bounds ComputeWorldBounds(RectTransform rt)
-    {
-        Vector3[] corners = new Vector3[4];
-        rt.GetWorldCorners(corners);
-        Bounds b = new Bounds(corners[0], Vector3.zero);
-        for (int i = 1; i < 4; i++)
-            b.Encapsulate(corners[i]);
-        b.Expand(50f);
-        return b;
     }
 
     private static Mesh CreateQuadMesh()

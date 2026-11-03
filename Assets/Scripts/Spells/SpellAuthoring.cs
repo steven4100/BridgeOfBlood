@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using BridgeOfBlood.Data.Shared;
 using UnityEngine;
 using BridgeOfBlood.Data.Shop;
@@ -10,7 +9,10 @@ namespace BridgeOfBlood.Data.Spells
 	{
 		[SerializeField] ShopItemDefinition shopItemDefinition;
 		public bool requiresDirection = true;
-		public SpellAnimation SpellAnimation;
+		[Tooltip("Emission pattern (spread, forward). Returns spawn position + direction per emit.")]
+		public AttackEntityEmitter attackEntityEmitter;
+		[Tooltip("Entity to spawn. Handler builds payload from this and game modifiers.")]
+		public AttackEntityData attackEntityData;
 		public int baseMultiplier = 1;
 		public float castCompletionDuration = 1f;
 		[Min(0f)]
@@ -19,6 +21,10 @@ namespace BridgeOfBlood.Data.Spells
 		public float castTime = 0.5f;
 		public float manaCost = 25f;
 		public SpellAttributeMask attributeMask;
+
+		[Tooltip("Categories this spell's attacks can hit. Unset hits enemies and map objects.")]
+		public HitTarget hitTarget = HitTarget.All;
+
 		public AudioUnit castAudio;
 
 		public ShopItemDefinition ShopItemDefinition => shopItemDefinition;
@@ -35,8 +41,6 @@ namespace BridgeOfBlood.Data.Spells
 			set => ((IRandomElement)shopItemDefinition).Weight = value;
 		}
 
-		public AttackEntityData AttackEntityData => SpellAnimation.keyFrames[0].attackEntityData;
-
 		public bool CanPurchase(PurchaseContext context)
 		{
 			return true;
@@ -47,22 +51,6 @@ namespace BridgeOfBlood.Data.Spells
 			context.SpellInventory.AddSpell(this);
 		}
     }
-
-    [System.Serializable]
-	public class SpellAnimation
-	{
-		public List<SpellKeyFrame> keyFrames = new List<SpellKeyFrame>();
-	}
-    [System.Serializable]
-    public class SpellKeyFrame
-	{
-        public float time;
-        [Tooltip("Emission pattern (spread, forward). Returns spawn position + direction per emit.")]
-        public AttackEntityEmitter attackEntityEmitter;
-        [Tooltip("Entity to spawn. Handler builds payload from this and game modifiers.")]
-        public AttackEntityData attackEntityData;
-	}
-	
 }
 
 [System.Serializable]

@@ -1,4 +1,5 @@
 using BridgeOfBlood.Data.Shared;
+using EZServiceLocation;
 using UnityEngine;
 
 /// <summary>
@@ -7,7 +8,7 @@ using UnityEngine;
 /// Listens for <see cref="RoundEnterEvent"/> — no scene-manager wiring required.
 /// Early execution so subscription is live before lab/session bootstrap raises the event.
 /// </summary>
-[DefaultExecutionOrder(-100)]
+[DefaultExecutionOrder(-200)]
 [RequireComponent(typeof(RectTransform))]
 public class SimulationRectRenderer : MonoBehaviour
 {
@@ -56,5 +57,28 @@ public class SimulationRectRenderer : MonoBehaviour
 		_rect.sizeDelta = new Vector2(w, h);
 		// Pivot is at local (0,0); offset so playfield.center sits on the parent center anchor.
 		_rect.anchoredPosition = -playfield.center;
+		PublishPlayfieldTransform();
+	}
+
+	void Update()
+	{
+		PublishPlayfieldTransform();
+	}
+
+	void LateUpdate()
+	{
+		PublishPlayfieldTransform();
+	}
+
+	void PublishPlayfieldTransform()
+	{
+		IMapService mapService = ServiceLocator.Current.GetService<IMapService>(throwError: false);
+		if (mapService == null)
+			return;
+
+		if (_rect == null)
+			_rect = (RectTransform)transform;
+
+		mapService.SetPlayfieldTransform(_rect.localToWorldMatrix, _rect.forward);
 	}
 }

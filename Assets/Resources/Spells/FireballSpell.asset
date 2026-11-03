@@ -22,26 +22,25 @@ MonoBehaviour:
     rarity: 0
     shopItemType: 0
     weight: 0.33333334
-  SpellAnimation:
-    keyFrames:
-    - time: 0
-      attackEntityEmitter:
-        targetMode: 0
-        spreadDegrees: 181
-        forwardDegrees: -180
-        emitDuration: 0
-        baseEmitCount: 1
-        speed: 176
-        relativeToPlayerSpawnCriteria:
-          offsetFromPlayer: {x: 0, y: 0}
-        targetRange: 5
-      attackEntityData: {fileID: 11400000, guid: ca9ea33fe69e14045a19cdd317677a05, type: 2}
+  requiresDirection: 1
+  attackEntityEmitter:
+    targetMode: 0
+    spreadDegrees: 181
+    forwardDegrees: -180
+    emitDuration: 0
+    baseEmitCount: 1
+    speed: 176
+    relativeToPlayerSpawnCriteria:
+      offsetFromPlayer: {x: 0, y: 0}
+    targetRange: 5
+  attackEntityData: {fileID: 11400000, guid: ca9ea33fe69e14045a19cdd317677a05, type: 2}
   baseMultiplier: -1
   castCompletionDuration: 1
   recastCooldown: 0.5
   castTime: 0
   manaCost: 20
   attributeMask: 8
+  hitTarget: 255
   castAudio: {fileID: 11400000, guid: a4e1c965eda5e764e8bc21a2637d5e25, type: 2}
   icon: {fileID: 21300000, guid: 1b042da6561ffed4fb214b105ebd6f3d, type: 3}
   rendererPrefab: {fileID: 5128491029384756103, guid: c4a8e2b17f6d4e3a9c1b0d5e8a7f6c3b, type: 3}

@@ -4,22 +4,22 @@ using UnityEngine;
 public class InputManager
 {
     InputActionMap _actionMap;
-    List<InputReciever> _inputRecieverList;
-    InputReciever _focused;
+    List<IInputReciever> _inputRecieverList;
+    IInputReciever _focused;
 
     public void Init()
     {
         _actionMap = new InputActionMap();
-        _inputRecieverList = new List<InputReciever>();
+        _inputRecieverList = new List<IInputReciever>();
         _focused = null;
     }
 
-    public void RegisterInputReciever(InputReciever inputReciever)
+    public void RegisterInputReciever(IInputReciever inputReciever)
     {
         _inputRecieverList.Add(inputReciever);
     }
 
-    public void UnregisterInputReciever(InputReciever inputReciever)
+    public void UnregisterInputReciever(IInputReciever inputReciever)
     {
         if (_focused == inputReciever)
         {
@@ -38,7 +38,7 @@ public class InputManager
             isClicking = Input.GetMouseButtonDown(0)
         };
 
-        InputReciever hovered = GetCurrentlyHoveredInputReciever(inputContext.mousePosition);
+        IInputReciever hovered = GetCurrentlyHoveredInputReciever(inputContext.mousePosition);
         if (hovered != GetCurrentFocusedInputReciever())
         {
             _focused?.OnLostInputFocus(_actionMap);
@@ -59,12 +59,12 @@ public class InputManager
         _focused = null;
     }
 
-    private InputReciever GetCurrentFocusedInputReciever()
+    private IInputReciever GetCurrentFocusedInputReciever()
     {
         return _focused;
     }
 
-    private InputReciever GetCurrentlyHoveredInputReciever(Vector2 position)
+    private IInputReciever GetCurrentlyHoveredInputReciever(Vector2 position)
     {
         for (int i = _inputRecieverList.Count - 1; i >= 0; i--)
         {

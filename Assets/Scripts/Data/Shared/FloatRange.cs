@@ -33,7 +33,7 @@ namespace BridgeOfBlood.Data.Shared
 		}
 	}
 
-	/// <summary>Deterministic seed for rolling attack entity stats once per keyframe.</summary>
+	/// <summary>Deterministic seed for rolling attack entity stats once per emit.</summary>
 	public static class AttackEntityBuildRngSeed
 	{
 		public static uint Mix(int spellId, int spellInvocationId, int keyframeIndex, int attackDataInstanceId)

@@ -781,10 +781,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 226802642}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7c4e9a12b8d34f6a9e1c2d5f8a0b3c43, type: 3}
+  m_Script: {fileID: 11500000, guid: 0c6f7362c8b84bb8a8fc788d83204006, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MapModifierPlacementHost
-  modifierController: {fileID: 0}
+  m_EditorClassIdentifier: Assembly-CSharp::MapModifierController
+  layoutRoot: {fileID: 0}
+  modifierPrefab: {fileID: 0}
 --- !u!4 &226802644
 Transform:
   m_ObjectHideFlags: 0
@@ -1791,7 +1792,6 @@ MonoBehaviour:
   gameConfig: {fileID: 11400000, guid: d3d332c4e659a4fbea81c963a5d50a0f, type: 2}
   simulationZone: {fileID: 467884413}
   renderCamera: {fileID: 1813748367}
-  castInputKey: 32
   debugController: {fileID: 928116186}
 --- !u!4 &928116185
 Transform:
@@ -1840,13 +1840,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 04e02f0386b6d374398cac082da0060c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TestSceneManager
-  simulationZone: {fileID: 467884413}
   renderCamera: {fileID: 1813748367}
-  gameAudioManager: {fileID: 0}
   gameConfig: {fileID: 11400000, guid: d3d332c4e659a4fbea81c963a5d50a0f, type: 2}
-  castInputKey: 32
   debugController: {fileID: 928116186}
-  mapModifierPlacementHost: {fileID: 226802643}
+  mapModifierController: {fileID: 226802643}
 --- !u!1001 &1037779504
 PrefabInstance:
   m_ObjectHideFlags: 0

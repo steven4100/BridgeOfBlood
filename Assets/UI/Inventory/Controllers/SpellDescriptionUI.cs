@@ -13,7 +13,7 @@ public class SpellDescriptionUI : MonoBehaviour
     public void RenderSpell(SpellAuthoringData spell, ModificationSet spellModifications)
     {
         Clear();
-        AttackEntityData attackEntityData = spell.AttackEntityData;
+        AttackEntityData attackEntityData = spell.attackEntityData;
         foreach (AttackEntityBehavior behavior in attackEntityData.GetAllBehaviors())
         {
             if (behavior is not IPresentableSpellAttribute presentableSpellAttribute) continue;

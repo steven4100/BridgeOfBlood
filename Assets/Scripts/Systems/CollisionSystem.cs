@@ -69,6 +69,12 @@ public class CollisionSystem
                 if (!enemies.IsLive(ei))
                     continue;
 
+                HitTarget target = enemies.Ids[ei].IsMapObject != 0
+                    ? HitTarget.MapObjects
+                    : HitTarget.Enemies;
+                if (!hitBox.Allows(target, enemies.GetEntityId(ei)))
+                    continue;
+
                 float2 enemyPos = enemies.Motion[ei].position;
 
                 if (!Overlaps(in atk, in hitBox, enemyPos, enemies.Hurtboxes[ei].radius))

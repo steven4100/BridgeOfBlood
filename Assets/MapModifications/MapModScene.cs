@@ -1,10 +1,11 @@
 using System.Collections.Generic;
 using BridgeOfBlood.Data.Shared;
+using EZServiceLocation;
 using UnityEngine;
 
 /// <summary>
 /// Standalone map-modifier authoring scene. Owns a local <see cref="GameSimulation"/> and
-/// delegates placement/tick/rebuild to <see cref="MapModifierPlacementHost"/>.
+/// delegates placement/tick/rebuild to <see cref="MapModifierController"/>.
 /// </summary>
 [DefaultExecutionOrder(-110)]
 public sealed class MapModScene : MonoBehaviour
@@ -15,14 +16,14 @@ public sealed class MapModScene : MonoBehaviour
     [SerializeField] Camera renderCamera;
     [SerializeField] CombatPresentationDriver presentationDriver;
 
-    [Header("Optional catalog UI")]
+    [Header("Placement")]
     [SerializeField] MapModifierController modifierController;
 
     readonly List<MapModifier> _placedModifiers = new List<MapModifier>();
 
     GameSimulation _simulation;
-    ISimulationZoneService _zoneService;
-    MapModifierPlacementHost _host;
+    MapService _mapService;
+    MapModifierController _controller;
 
     public IReadOnlyList<MapModifier> PlacedModifiers => _placedModifiers;
 
@@ -33,7 +34,7 @@ public sealed class MapModScene : MonoBehaviour
 
     void Start()
     {
-        _host.RebuildField();
+        _controller.RebuildField();
     }
 
     void Update()
@@ -41,31 +42,36 @@ public sealed class MapModScene : MonoBehaviour
         bool overPanel =
             Input.mousePosition.x <= 320f
             && Input.mousePosition.y >= Screen.height - 540f;
-        _host.SetPointerBlocked(overPanel);
-        _host.Tick(Time.deltaTime);
+        _controller.SetPointerBlocked(overPanel);
+        _controller.Tick(Time.deltaTime);
     }
 
     void CreateSimulation()
     {
+
         _simulation = new GameSimulation(gameConfig.simulationConfig);
         _simulation.ApplyRoundConfig(gameConfig, 1);
 
-        _zoneService = new SimulationZoneService(simulationZone, renderCamera);
+        _mapService = new MapService(
+            new Map(gameConfig.simulationSize.x, gameConfig.simulationSize.y),
+            renderCamera);
+        ServiceLocator.Current.RegisterInstance<IMapService>(_mapService);
         simulationZone
             .GetComponent<SimulationRectRenderer>()
             .SyncFrom(_simulation.State.Playfield);
         presentationDriver.InitializeStandalone(
-            _zoneService,
+            _mapService,
             _simulation.AttackEntityManager);
 
-        _host = gameObject.GetComponent<MapModifierPlacementHost>();
-        if (_host == null)
-            _host = gameObject.AddComponent<MapModifierPlacementHost>();
+        _controller = modifierController;
+        if (_controller == null)
+            _controller = gameObject.GetComponent<MapModifierController>();
+        if (_controller == null)
+            _controller = gameObject.AddComponent<MapModifierController>();
 
-        _host.ModifierController = modifierController;
-        _host.BeginSession(
+        _controller.BeginSession(
             _simulation,
-            _zoneService,
+            _mapService,
             _placedModifiers,
             int.MaxValue,
             _placedModifiers.Add,
@@ -75,8 +81,8 @@ public sealed class MapModScene : MonoBehaviour
 
     void OnDestroy()
     {
-        if (_host != null)
-            _host.EndSession();
+        if (_controller != null)
+            _controller.EndSession();
         _simulation?.Dispose();
         _simulation = null;
     }
